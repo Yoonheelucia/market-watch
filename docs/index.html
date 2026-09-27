@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>데일리 주식 차트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #ffffff; --text: #16181d; --muted: #6b7280; --line: #e5e7eb;
+  --accent: #2f5bea; --up: #e0314b; --down: #2463eb; --index: #16181d; --stock: #e0314b;
+  --row-hover: #f1f4fb;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1115; --card: #171a21; --text: #e8eaef; --muted: #9098a6; --line: #2a2f3a;
+    --accent: #7aa2ff; --up: #ff5c73; --down: #5b8cff; --index: #e8eaef; --stock: #ff5c73;
+    --row-hover: #1e2330;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1115; --card: #171a21; --text: #e8eaef; --muted: #9098a6; --line: #2a2f3a;
+  --accent: #7aa2ff; --up: #ff5c73; --down: #5b8cff; --index: #e8eaef; --stock: #ff5c73;
+  --row-hover: #1e2330;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font-family: 'Noto Sans KR', system-ui, -apple-system, sans-serif; font-size: 14px; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 64px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+h1 { font-size: 22px; margin: 0; }
+.updated { color: var(--muted); font-size: 13px; }
+.tabs { display: flex; gap: 4px; margin: 20px 0 16px; border-bottom: 1px solid var(--line); }
+.tab { background: none; border: 0; padding: 10px 16px; font: inherit; font-weight: 500; color: var(--muted);
+  cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.idx { display: flex; flex-wrap: wrap; gap: 24px; align-items: baseline; }
+.idx .name { font-weight: 700; font-size: 16px; }
+.idx .big { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.idx .stat { color: var(--muted); font-size: 13px; }
+.idx .stat b { font-variant-numeric: tabular-nums; }
+.up { color: var(--up); } .down { color: var(--down); }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 8px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th:nth-child(-n+2), td:nth-child(-n+2) { text-align: left; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; cursor: pointer; user-select: none; }
+th[data-dir]::after { content: attr(data-dir); margin-left: 4px; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--row-hover); }
+td .tk { color: var(--muted); font-size: 12px; margin-left: 6px; }
+h2 { font-size: 16px; margin: 32px 0 12px; }
+.stock h3 { font-size: 15px; margin: 0 0 4px; }
+.stock h3 .tk { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 6px; }
+.stock .meta { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+.charts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.chart-box { min-width: 0; }
+.chart-box .legend { font-size: 12px; color: var(--muted); margin-bottom: 4px; display: flex; gap: 12px; }
+.chart-box .legend i { display: inline-block; width: 10px; height: 2px; vertical-align: middle; margin-right: 4px; }
+.chart { height: 260px; }
+.note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+@media (max-width: 760px) {
+  .charts { grid-template-columns: minmax(0, 1fr); }
+  .chart { height: 220px; }
+  .idx { gap: 4px 16px; }
+  th, td { padding: 8px 6px; }
+  th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5) { display: none; }
+  td .tk { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>데일리 주식 차트</h1>
+    <span class="updated" id="updated">불러오는 중…</span>
+  </header>
+  <nav class="tabs" id="tabs" role="tablist"></nav>
+  <main id="main"></main>
+</div>
+
+<script>
+const LWC = LightweightCharts;
+let DATA, current, observer, charts = [];
+
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const pct = (a, b) => (a != null && b != null && b !== 0) ? (a / b - 1) * 100 : null;
+const firstValid = arr => arr.find(v => v != null);
+const lastValid = (arr, skip = 0) => { let n = 0; for (let i = arr.length - 1; i >= 0; i--) if (arr[i] != null && n++ === skip) return arr[i]; return null; };
+const fmtPct = v => v == null ? '–' : `<span class="${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : ''}${v.toFixed(2)}%</span>`;
+const fmtPp = v => v == null ? '–' : `<span class="${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%p</span>`;
+const fmtPrice = (v, cur) => v == null ? '–' : cur === 'KRW' ? v.toLocaleString('ko-KR') + '원' : '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function stats(closes) {
+  const last = lastValid(closes);
+  return {
+    last,
+    d1: pct(last, lastValid(closes, 1)),
+    m1: pct(last, lastValid(closes, 21)),
+    all: pct(last, firstValid(closes)),
+  };
+}
+
+async function init() {
+  DATA = await (await fetch('data.json', { cache: 'no-cache' })).json();
+  document.getElementById('updated').textContent = `업데이트 ${DATA.updated} · 기준일 ${DATA.start}`;
+  const tabs = document.getElementById('tabs');
+  DATA.markets.forEach(m => {
+    const b = document.createElement('button');
+    b.className = 'tab'; b.textContent = m.label; b.role = 'tab'; b.dataset.id = m.id;
+    b.onclick = () => { location.hash = m.id; };
+    tabs.appendChild(b);
+  });
+  window.addEventListener('hashchange', route);
+  route();
+}
+
+function route() {
+  const id = location.hash.slice(1);
+  const m = DATA.markets.find(x => x.id === id) || DATA.markets[0];
+  if (current === m) return;
+  current = m;
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.id === m.id));
+  render(m);
+}
+
+let sortKey = 'excess', sortDir = -1;
+
+function render(m) {
+  charts.forEach(c => c.remove()); charts = [];
+  if (observer) observer.disconnect();
+
+  const idx = stats(m.index.c);
+  m.rows = m.stocks.map((s, i) => { const st = stats(s.c); return { i, s, ...st, excess: st.all != null && idx.all != null ? st.all - idx.all : null }; });
+
+  const main = document.getElementById('main');
+  main.innerHTML = `
+    <section class="card idx">
+      <span class="name">${m.index.name}</span>
+      <span class="big">${idx.last?.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+      <span class="stat">1일 <b>${fmtPct(idx.d1)}</b></span>
+      <span class="stat">1개월 <b>${fmtPct(idx.m1)}</b></span>
+      <span class="stat">${m.dates.length}거래일 <b>${fmtPct(idx.all)}</b></span>
+    </section>
+    <section class="card">
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th data-k="rank">#</th><th data-k="name">종목</th><th data-k="last">현재가</th>
+          <th data-k="d1">1일</th><th data-k="m1">1개월</th><th data-k="all">기간</th><th data-k="excess">지수 대비</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table></div>
+      <div class="note">'기간'은 기준일 이후 수익률이고, '지수 대비'는 그 수익률에서 ${m.index.name} 수익률을 뺀 값입니다. 표의 제목을 누르면 정렬되고, 행을 누르면 해당 종목 차트로 이동합니다.${m.missing.length ? ` 데이터 없음: ${m.missing.join(', ')}` : ''}</div>
+    </section>
+    <h2>종목별 차트</h2>
+    <div id="list"></div>`;
+
+  main.querySelectorAll('th').forEach(th => th.onclick = () => {
+    const k = th.dataset.k;
+    if (k === 'rank') return;
+    sortDir = sortKey === k ? -sortDir : (k === 'name' ? 1 : -1);
+    sortKey = k; renderTable(m);
+  });
+  renderTable(m);
+
+  const list = document.getElementById('list');
+  list.innerHTML = m.rows.map(r => `
+    <article class="card stock" id="s-${r.i}" data-i="${r.i}">
+      <h3>${r.s.name}${r.s.name !== r.s.ticker ? `<span class="tk">${r.s.ticker}</span>` : ''}</h3>
+      <div class="meta">${fmtPrice(r.last, m.currency)} · 1일 ${fmtPct(r.d1)} · 기간 ${fmtPct(r.all)} · 지수 대비 ${fmtPp(r.excess)}</div>
+      <div class="charts">
+        <div class="chart-box">
+          <div class="legend"><span>캔들 (오른쪽 축)</span><span><i style="background:var(--index)"></i>${m.index.name} (왼쪽 축)</span></div>
+          <div class="chart c1"></div>
+        </div>
+        <div class="chart-box">
+          <div class="legend"><span><i style="background:var(--stock)"></i>${r.s.name}</span><span><i style="background:var(--index)"></i>${m.index.name}</span><span>기준일 대비 %</span></div>
+          <div class="chart c2"></div>
+        </div>
+      </div>
+    </article>`).join('');
+
+  observer = new IntersectionObserver(entries => entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    observer.unobserve(e.target);
+    drawStock(m, m.stocks[+e.target.dataset.i], e.target);
+  }), { rootMargin: '400px' });
+  list.querySelectorAll('.stock').forEach(el => observer.observe(el));
+}
+
+function renderTable(m) {
+  const rows = [...m.rows].sort((a, b) => {
+    const x = sortKey === 'name' ? a.s.name : a[sortKey], y = sortKey === 'name' ? b.s.name : b[sortKey];
+    if (x == null) return 1; if (y == null) return -1;
+    return (x > y ? 1 : x < y ? -1 : 0) * sortDir;
+  });
+  document.querySelectorAll('th').forEach(th => th.dataset.k === sortKey ? th.dataset.dir = sortDir > 0 ? '▲' : '▼' : delete th.dataset.dir);
+  const tb = document.getElementById('tbody');
+  tb.innerHTML = rows.map((r, n) => `
+    <tr data-i="${r.i}">
+      <td>${n + 1}</td>
+      <td>${r.s.name}${r.s.name !== r.s.ticker ? `<span class="tk">${r.s.ticker.replace(/\.KS$/, '')}</span>` : ''}</td>
+      <td>${fmtPrice(r.last, m.currency)}</td>
+      <td>${fmtPct(r.d1)}</td><td>${fmtPct(r.m1)}</td><td>${fmtPct(r.all)}</td><td>${fmtPp(r.excess)}</td>
+    </tr>`).join('');
+  tb.querySelectorAll('tr').forEach(tr => tr.onclick = () =>
+    document.getElementById('s-' + tr.dataset.i).scrollIntoView({ behavior: 'smooth', block: 'start' }));
+}
+
+function baseOptions(leftVisible) {
+  return {
+    autoSize: true,
+    layout: { background: { color: css('--card') }, textColor: css('--muted'), fontFamily: 'Noto Sans KR, system-ui, sans-serif' },
+    grid: { vertLines: { color: css('--line') }, horzLines: { color: css('--line') } },
+    rightPriceScale: { borderColor: css('--line') },
+    leftPriceScale: { visible: leftVisible, borderColor: css('--line') },
+    timeScale: { borderColor: css('--line') },
+    handleScroll: false, handleScale: false,
+    localization: { dateFormat: 'yyyy-MM-dd' },
+  };
+}
+
+function drawStock(m, s, el) {
+  const up = css('--up'), down = css('--down'), idxColor = css('--index'), stockColor = css('--stock');
+
+  const c1 = LWC.createChart(el.querySelector('.c1'), baseOptions(true));
+  const candles = c1.addCandlestickSeries({ upColor: up, downColor: down, wickUpColor: up, wickDownColor: down, borderVisible: false });
+  candles.setData(m.dates.map((t, i) => s.c[i] == null ? { time: t } : { time: t, open: s.o[i], high: s.h[i], low: s.l[i], close: s.c[i] }));
+  const idxLine = c1.addLineSeries({ priceScaleId: 'left', color: idxColor, lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+  idxLine.setData(line(m.dates, m.index.c));
+  c1.timeScale().fitContent();
+
+  const pctFmt = { type: 'custom', formatter: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%', minMove: 0.01 };
+  const c2 = LWC.createChart(el.querySelector('.c2'), baseOptions(false));
+  const iBase = firstValid(m.index.c), sBase = firstValid(s.c);
+  const pIdx = c2.addLineSeries({ color: idxColor, lineWidth: 2, priceFormat: pctFmt, priceLineVisible: false });
+  pIdx.setData(line(m.dates, m.index.c.map(v => pct(v, iBase))));
+  const pStock = c2.addLineSeries({ color: stockColor, lineWidth: 2, priceFormat: pctFmt, priceLineVisible: false });
+  pStock.setData(line(m.dates, s.c.map(v => pct(v, sBase))));
+  pStock.createPriceLine({ price: 0, color: css('--muted'), lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
+  c2.timeScale().fitContent();
+
+  charts.push(c1, c2);
+}
+
+const line = (dates, vals) => dates.map((t, i) => vals[i] == null ? { time: t } : { time: t, value: vals[i] });
+
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (current) { const m = current; current = null; render(m); current = m; } });
+
+init().catch(e => { document.getElementById('updated').textContent = '데이터를 불러오지 못했습니다: ' + e.message; });
+</script>
+</body>
+</html>
