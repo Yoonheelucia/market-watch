@@ -14,6 +14,7 @@ from pathlib import Path
 import pandas as pd
 import yfinance as yf
 
+from breadth import build_breadth
 from earnings import build_earnings
 from segments import build_segments
 
@@ -242,6 +243,9 @@ def main():
     earnings = {'updated': data['updated'], 'stocks': build_earnings(names, download, EARNINGS_OUT)}
     EARNINGS_OUT.write_text(json.dumps(earnings, ensure_ascii=False, separators=(',', ':')))
     print(f'저장: {EARNINGS_OUT} ({EARNINGS_OUT.stat().st_size // 1024} KB)')
+
+    # 시장 체력 (S&P 500 전체 종목)
+    build_breadth(download, US_NAMES)
 
     # 미국 종목 사업부별 분기 매출 (SEC 공시)
     build_segments(sorted(t for t in names if not t.endswith(('.KS', '.KQ'))))

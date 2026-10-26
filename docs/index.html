@@ -146,6 +146,15 @@ h4 { font-size: 14px; margin: 20px 0 8px; }
 .score-table th, .score-table tbody tr { cursor: default; }
 .score-table tr.hit td { background: var(--row-hover); font-weight: 700; }
 .seg-table td, .seg-table th { padding: 6px 8px; font-size: 12px; }
+.br-table td, .br-table th { text-align: center !important; }
+.br-table th, .br-table tbody tr { cursor: default; }
+.br-table td:first-child, .br-table th:first-child { text-align: left !important; }
+.br-cell { font-weight: 700; border-radius: 4px; }
+.guide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+@media (max-width: 760px) { .guide { grid-template-columns: minmax(0, 1fr); } }
+.guide div { background: var(--bg); border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.6; }
+.guide b { display: block; margin-bottom: 2px; }
+.adv-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 8px 0 6px; }
 .to-top { position: fixed; right: 20px; bottom: 20px; z-index: 10; padding: 10px 16px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 500;
   box-shadow: 0 4px 14px rgb(0 0 0 / .15); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -220,6 +229,10 @@ async function init() {
     b.onclick = () => { location.hash = m.id; };
     tabs.appendChild(b);
   });
+  const bt = document.createElement('button');
+  bt.className = 'tab'; bt.textContent = '시장 체력'; bt.role = 'tab'; bt.dataset.id = 'breadth';
+  bt.onclick = () => { location.hash = 'breadth'; };
+  tabs.appendChild(bt);
   const et = document.createElement('button');
   et.className = 'tab'; et.textContent = '실적 조회'; et.role = 'tab'; et.dataset.id = 'earnings';
   et.onclick = () => { location.hash = 'earnings' + (erTicker ? '/' + erTicker : ''); };
@@ -230,6 +243,12 @@ async function init() {
 
 function route() {
   const id = location.hash.slice(1);
+  if (id === 'breadth') {
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.id === 'breadth'));
+    current = null;
+    renderBreadth();
+    return;
+  }
   if (id.startsWith('earnings')) {
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.id === 'earnings'));
     current = null;
@@ -373,6 +392,100 @@ addEventListener('scroll', () => {
   const list = document.getElementById('list');
   toTop.classList.toggle('show', !!list && list.getBoundingClientRect().top < innerHeight / 2);
 }, { passive: true });
+
+// ───── 시장 체력 탭 ─────
+let BR;
+const brColor = v => {
+  const c = v >= 50 ? 'var(--up)' : 'var(--down)', a = Math.min(Math.abs(v - 50) * 1.4, 60);
+  return `background: color-mix(in srgb, ${c} ${a.toFixed(0)}%, transparent)`;
+};
+const brMood = v => v >= 80 ? '과열권' : v >= 60 ? '강한 편' : v > 40 ? '중립' : v > 20 ? '약한 편' : '과매도권';
+
+async function renderBreadth() {
+  charts.forEach(c => c.remove()); charts = [];
+  if (observer) observer.disconnect();
+  const main = document.getElementById('main');
+  if (!BR) {
+    main.innerHTML = '<section class="card">불러오는 중…</section>';
+    try { BR = await (await fetch('breadth.json', { cache: 'no-cache' })).json(); }
+    catch (e) { main.innerHTML = `<section class="card">시장 체력 데이터를 불러오지 못했습니다: ${esc(e.message)}</section>`; return; }
+  }
+  const b = BR, t0 = b.table['오늘'], a = b.advance, tot = a.up + a.flat + a.down;
+  const lead = b.leaders.map((l, i) => `<tr data-t="${esc(l.ticker)}">
+      <td>${i + 1}</td><td>${esc(l.name)}${tickerLink(l.ticker)}</td><td>$${l.price.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+      <td>${fmtPct(l.chg)}</td><td>${(l.volume / 1e6).toFixed(1)}M주</td><td><b>${fmtM(l.pv)}</b></td></tr>`).join('');
+  main.innerHTML = `
+    <section class="card">
+      <div class="formula">지금 미국 시장은 얼마나 튼튼할까?</div>
+      <p class="lead" style="margin:4px 0 0">지수만 보면 대형주 몇 개 때문에 오르는지, 시장 전체가 같이 오르는지 알기 어려워요.
+        그래서 <b>S&P 500 종목 ${b.count}개 가운데 몇 %가 자기 이동평균선 위에 있는지</b>를 세요. 많을수록 시장 전체가 튼튼하다는 뜻이에요.</p>
+      <div class="kpis" style="margin-top:14px">
+        <div class="kpi"><div class="k">50일선 위 종목 (중기)</div><div class="v">${t0['50']}%</div><div class="s">${brMood(t0['50'])}</div></div>
+        <div class="kpi"><div class="k">200일선 위 종목 (장기)</div><div class="v">${t0['200']}%</div><div class="s">${brMood(t0['200'])}</div></div>
+        <div class="kpi"><div class="k">오늘 오른 종목</div><div class="v">${a.up}개</div><div class="s">내린 종목 ${a.down}개 · 보합 ${a.flat}개</div></div>
+        <div class="kpi"><div class="k">52주 신고가 · 신저가</div><div class="v">${b.highsLows.find(h => h.label === '52주').highs} · ${b.highsLows.find(h => h.label === '52주').lows}개</div><div class="s">1년 중 최고가·최저가를 새로 쓴 종목</div></div>
+      </div>
+      <div class="adv-bar"><span style="width:${a.up / tot * 100}%;background:var(--up)"></span><span style="width:${a.flat / tot * 100}%;background:var(--muted)"></span><span style="width:${a.down / tot * 100}%;background:var(--down)"></span></div>
+      <div class="note">기준일 ${esc(b.date)} (미국 시간) · Barchart의 Market Performance Indicator와 같은 방식이에요. Barchart는 미국 주식 약 4,800개로 계산하고, 여기는 S&P 500 대형주로 계산해서 숫자가 조금 달라요.</div>
+    </section>
+
+    <section class="card">
+      <div class="formula">이동평균선 위에 있는 종목 비율</div>
+      <div class="note" style="margin:0 0 10px">이동평균선은 최근 N일 종가의 평균이에요. 주가가 그 위에 있으면 "최근 N일 동안 산 사람들이 평균적으로 이익"이라 그 기간 추세가 위쪽이라는 뜻이에요.</div>
+      <div class="table-wrap"><table class="br-table">
+        <thead><tr><th></th>${['5일선', '20일선', '50일선', '100일선', '150일선', '200일선'].map(x => `<th>${x}</th>`).join('')}</tr></thead>
+        <tbody>${Object.entries(b.table).map(([k, row]) => `<tr><td>${k}</td>${['5', '20', '50', '100', '150', '200'].map(n => `<td><span class="br-cell" style="${brColor(row[n])};padding:2px 8px">${row[n].toFixed(1)}%</span></td>`).join('')}</tr>`).join('')}</tbody>
+      </table></div>
+      <div class="guide">
+        <div><b>짧은 선 (5·20일)</b>최근 며칠~한 달 분위기예요. 빨리 변하고, 단기 반등·조정을 보여 줘요.</div>
+        <div><b>긴 선 (50·200일)</b>중장기 추세예요. 200일선 위 종목이 절반을 넘으면 큰 흐름이 상승장이라고 봐요.</div>
+        <div><b>읽는 법</b>80% 이상은 과열(너무 많이 오름), 20% 이하는 과매도(바닥권)로 봐요. 지수는 오르는데 이 비율이 낮으면 소수 대형주만 오르는 "좁은 장"이에요.</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="formula">1년 추이: 이동평균선 위 종목 비율과 S&P 500 지수</div>
+      <div class="chart-box"><div class="legend"><span><i style="background:var(--c1)"></i>50일선 위 비율 (왼쪽 축)</span><span><i style="background:var(--c3)"></i>200일선 위 비율 (왼쪽 축)</span><span><i style="background:var(--index)"></i>S&P 500 (오른쪽 축)</span></div>
+      <div class="chart" id="brChart" style="height:300px"></div></div>
+      <div class="note">점선은 80%(과열)와 20%(과매도) 기준선이에요. 비율 선이 20% 근처까지 내려갔다가 올라올 때 지수 바닥이 자주 나왔고, 지수가 새 고점을 찍는데 비율 선은 고점이 낮아지면 상승 힘이 약해지는 신호로 봐요.</div>
+    </section>
+
+    <section class="card">
+      <div class="formula">기간별 신고가 · 신저가 종목 수</div>
+      <div class="note" style="margin:0 0 10px">오늘 주가가 그 기간 안에서 가장 높았던(신고가) 또는 가장 낮았던(신저가) 종목 수예요. 신고가가 신저가보다 많으면 오르는 종목이 시장을 이끌고 있다는 뜻이에요.</div>
+      <div class="table-wrap"><table class="br-table">
+        <thead><tr><th></th>${b.highsLows.map(h => `<th>${h.label}</th>`).join('')}</tr></thead>
+        <tbody>
+          <tr><td>신고가</td>${b.highsLows.map(h => `<td class="up">${h.highs}개 <span style="color:var(--muted);font-size:11px">(${(h.highs / b.count * 100).toFixed(0)}%)</span></td>`).join('')}</tr>
+          <tr><td>신저가</td>${b.highsLows.map(h => `<td class="down">${h.lows}개 <span style="color:var(--muted);font-size:11px">(${(h.lows / b.count * 100).toFixed(0)}%)</span></td>`).join('')}</tr>
+          <tr><td>차이</td>${b.highsLows.map(h => `<td><b class="${h.highs >= h.lows ? 'up' : 'down'}">${h.highs - h.lows > 0 ? '+' : ''}${h.highs - h.lows}</b></td>`).join('')}</tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="card">
+      <div class="formula">거래대금 상위 종목 (Stock Market Leaders)</div>
+      <div class="note" style="margin:0 0 10px">거래대금 = 주가 × 거래량. 그날 돈이 가장 많이 오간 종목 순서라 시장의 관심이 어디에 몰렸는지 보여 줘요. 거래량(주식 수)만 보면 싼 주식이 위로 오지만, 거래대금은 실제로 큰돈이 움직인 종목이 위로 와요.</div>
+      <div class="table-wrap"><table class="er-table">
+        <thead><tr><th>#</th><th>종목</th><th>종가</th><th>등락률</th><th>거래량</th><th>거래대금</th></tr></thead>
+        <tbody>${lead}</tbody>
+      </table></div>
+      <div class="note">S&P 500 종목 안에서의 순위예요. Barchart 목록에는 S&P 500 밖의 종목(예: 신규 상장주)도 섞여 있어요.</div>
+    </section>`;
+
+  const h = b.history;
+  const c = LWC.createChart(document.getElementById('brChart'), { ...baseOptions(true), handleScroll: false });
+  const pctFmt = { type: 'custom', formatter: v => v.toFixed(0) + '%', minMove: 0.1 };
+  const s50 = c.addLineSeries({ priceScaleId: 'left', color: css('--c1'), lineWidth: 2, priceFormat: pctFmt, priceLineVisible: false });
+  s50.setData(line(h.dates, h['50']));
+  const s200 = c.addLineSeries({ priceScaleId: 'left', color: css('--c3'), lineWidth: 2, priceFormat: pctFmt, priceLineVisible: false });
+  s200.setData(line(h.dates, h['200']));
+  [80, 20].forEach(v => s50.createPriceLine({ price: v, color: css('--muted'), lineWidth: 1, lineStyle: 2, axisLabelVisible: true }));
+  const si = c.addLineSeries({ color: css('--index'), lineWidth: 1, priceLineVisible: false });
+  si.setData(line(h.dates, h.index));
+  c.timeScale().fitContent();
+  charts.push(c);
+}
 
 // ───── 실적 조회 탭 ─────
 let ER, BIZ = {}, SEG = {}, erTicker = '', erMode = 'q';
