@@ -51,10 +51,12 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; cursor: pointer; us
 th[data-dir]::after { content: attr(data-dir); margin-left: 4px; }
 tbody tr { cursor: pointer; }
 tbody tr:hover { background: var(--row-hover); }
-td .tk { color: var(--muted); font-size: 12px; margin-left: 6px; }
+a.tk { color: var(--accent); font-size: 12px; margin-left: 6px; text-decoration: none; }
+a.tk:hover { text-decoration: underline; }
+a.tk::after { content: ' ↗'; font-size: 10px; }
 h2 { font-size: 16px; margin: 32px 0 12px; }
 .stock h3 { font-size: 15px; margin: 0 0 4px; }
-.stock h3 .tk { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 6px; }
+.stock h3 .tk { font-weight: 400; }
 .stock .meta { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
 .charts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 .chart-box { min-width: 0; }
@@ -68,7 +70,6 @@ h2 { font-size: 16px; margin: 32px 0 12px; }
   .idx { gap: 4px 16px; }
   th, td { padding: 8px 6px; }
   th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5) { display: none; }
-  td .tk { display: none; }
 }
 </style>
 </head>
@@ -93,6 +94,13 @@ const lastValid = (arr, skip = 0) => { let n = 0; for (let i = arr.length - 1; i
 const fmtPct = v => v == null ? '–' : `<span class="${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : ''}${v.toFixed(2)}%</span>`;
 const fmtPp = v => v == null ? '–' : `<span class="${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%p</span>`;
 const fmtPrice = (v, cur) => v == null ? '–' : cur === 'KRW' ? v.toLocaleString('ko-KR') + '원' : '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// 코스피는 네이버 증권, 미국 종목은 야후 파이낸스 상세 페이지로 연결
+const tickerLink = t => {
+  const code = t.replace(/\.KS$/, '');
+  const url = t.endsWith('.KS') ? `https://finance.naver.com/item/main.naver?code=${code}` : `https://finance.yahoo.com/quote/${code}`;
+  return `<a class="tk" href="${url}" target="_blank" rel="noopener" title="${code} 상세 정보 보기">${code}</a>`;
+};
 
 function stats(closes) {
   const last = lastValid(closes);
@@ -169,7 +177,7 @@ function render(m) {
   const list = document.getElementById('list');
   list.innerHTML = m.rows.map(r => `
     <article class="card stock" id="s-${r.i}" data-i="${r.i}">
-      <h3>${r.s.name}${r.s.name !== r.s.ticker ? `<span class="tk">${r.s.ticker}</span>` : ''}</h3>
+      <h3>${r.s.name}${tickerLink(r.s.ticker)}</h3>
       <div class="meta">${fmtPrice(r.last, m.currency)} · 1일 ${fmtPct(r.d1)} · 기간 ${fmtPct(r.all)} · 지수 대비 ${fmtPp(r.excess)}</div>
       <div class="charts">
         <div class="chart-box">
@@ -202,11 +210,11 @@ function renderTable(m) {
   tb.innerHTML = rows.map((r, n) => `
     <tr data-i="${r.i}">
       <td>${n + 1}</td>
-      <td>${r.s.name}${r.s.name !== r.s.ticker ? `<span class="tk">${r.s.ticker.replace(/\.KS$/, '')}</span>` : ''}</td>
+      <td>${r.s.name}${tickerLink(r.s.ticker)}</td>
       <td>${fmtPrice(r.last, m.currency)}</td>
       <td>${fmtPct(r.d1)}</td><td>${fmtPct(r.m1)}</td><td>${fmtPct(r.all)}</td><td>${fmtPp(r.excess)}</td>
     </tr>`).join('');
-  tb.querySelectorAll('tr').forEach(tr => tr.onclick = () =>
+  tb.querySelectorAll('tr').forEach(tr => tr.onclick = e => !e.target.closest('a') &&
     document.getElementById('s-' + tr.dataset.i).scrollIntoView({ behavior: 'smooth', block: 'start' }));
 }
 

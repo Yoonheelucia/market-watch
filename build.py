@@ -49,16 +49,39 @@ SP500 = [
     'TXN', 'NKE', 'WFC', 'PM', 'HON', 'ORCL', 'MS', 'INTC', 'AMD', 'UPS', 'LOW',
 ]
 
+US_NAMES = {
+    'AAPL': '애플', 'MSFT': '마이크로소프트', 'NVDA': '엔비디아', 'AMZN': '아마존',
+    'META': '메타', 'TSLA': '테슬라', 'GOOG': '알파벳(구글)', 'AVGO': '브로드컴',
+    'PEP': '펩시코', 'COST': '코스트코', 'ADBE': '어도비', 'CSCO': '시스코',
+    'AMD': 'AMD', 'NFLX': '넷플릭스', 'TMUS': 'T모바일 US', 'TXN': '텍사스인스트루먼트',
+    'HON': '하니웰', 'QCOM': '퀄컴', 'INTC': '인텔', 'AMGN': '암젠',
+    'AMAT': '어플라이드머티리얼즈', 'INTU': '인튜이트', 'SBUX': '스타벅스', 'ADI': '아날로그디바이스',
+    'MU': '마이크론', 'MDLZ': '몬델리즈', 'GILD': '길리어드', 'ISRG': '인튜이티브서지컬',
+    'BKNG': '부킹홀딩스', 'ADP': 'ADP', 'REGN': '리제네론', 'VRTX': '버텍스',
+    'LRCX': '램리서치', 'MRNA': '모더나', 'PANW': '팔로알토네트웍스', 'SNPS': '시놉시스',
+    'ASML': 'ASML', 'KLAC': 'KLA', 'FTNT': '포티넷', 'CSX': 'CSX',
+    'MELI': '메르카도리브레', 'MRVL': '마벨테크놀로지', 'NXPI': 'NXP반도체', 'PAYX': '페이첵스',
+    'LULU': '룰루레몬', 'ROST': '로스스토어스', 'KDP': '큐리그닥터페퍼', 'CDNS': '케이던스',
+    'UNH': '유나이티드헬스', 'JNJ': '존슨앤드존슨', 'XOM': '엑슨모빌', 'JPM': 'JP모건',
+    'V': '비자', 'PG': 'P&G', 'LLY': '일라이릴리', 'MA': '마스터카드',
+    'HD': '홈디포', 'CVX': '셰브론', 'MRK': '머크', 'ABBV': '애브비',
+    'KO': '코카콜라', 'MCD': '맥도날드', 'TMO': '써모피셔', 'WMT': '월마트',
+    'BAC': '뱅크오브아메리카', 'PFE': '화이자', 'DIS': '디즈니', 'ABT': '애보트',
+    'CRM': '세일즈포스', 'DHR': '다나허', 'LIN': '린데', 'ACN': '액센츄어',
+    'VZ': '버라이즌', 'NEE': '넥스트에라에너지', 'NKE': '나이키', 'WFC': '웰스파고',
+    'PM': '필립모리스', 'ORCL': '오라클', 'MS': '모건스탠리', 'UPS': 'UPS', 'LOW': '로우스',
+}
+
 MARKETS = [
     {'id': 'kospi', 'label': '코스피', 'currency': 'KRW',
      'index': ('^KS11', 'KOSPI'),
      'stocks': [(f'{code}.KS', name) for code, name in KOSPI_NAMES.items()]},
     {'id': 'nasdaq', 'label': '나스닥', 'currency': 'USD',
      'index': ('^IXIC', 'NASDAQ'),
-     'stocks': [(s, s) for s in NASDAQ]},
+     'stocks': [(s, US_NAMES.get(s, s)) for s in NASDAQ]},
     {'id': 'sp500', 'label': 'S&P 500', 'currency': 'USD',
      'index': ('^GSPC', 'S&P 500'),
-     'stocks': [(s, s) for s in SP500]},
+     'stocks': [(s, US_NAMES.get(s, s)) for s in SP500]},
 ]
 
 OUT = Path(__file__).parent / 'docs' / 'data.json'
