@@ -1,4 +1,4 @@
-"""코스피 / 나스닥 / S&P500 상위 종목 데이터를 받아 docs/data.json 으로 저장한다.
+"""S&P500 / 나스닥 / 코스피 / 코스닥 / 다우 상위 종목 데이터를 받아 docs/data.json 으로 저장한다.
 
 GitHub Actions 가 매일 아침 이 스크립트를 실행하고, docs/index.html 이 data.json 을 읽어 차트를 그린다.
 종목을 바꾸고 싶으면 아래 MARKETS 의 목록만 수정하면 된다.
@@ -31,6 +31,19 @@ KOSPI_NAMES = {
     '005490': 'POSCO홀딩스', '373220': 'LG에너지솔루션', '011790': 'SKC',
     '024110': '기업은행', '004020': '현대제철', '003490': '대한항공',
     '001040': 'CJ', '267250': 'HD현대',
+}
+
+KOSDAQ_NAMES = {
+    '196170': '알테오젠', '247540': '에코프로비엠', '086520': '에코프로',
+    '028300': 'HLB', '277810': '레인보우로보틱스', '141080': '리가켐바이오',
+    '000250': '삼천당제약', '145020': '휴젤', '214150': '클래시스',
+    '214450': '파마리서치', '087010': '펩트론', '298380': '에이비엘바이오',
+    '950160': '코오롱티슈진', '058470': '리노공업', '039030': '이오테크닉스',
+    '257720': '실리콘투', '310210': '보로노이', '068760': '셀트리온제약',
+    '348370': '엔켐', '357780': '솔브레인', '403870': 'HPSP',
+    '240810': '원익IPS', '095340': 'ISC', '036930': '주성엔지니어링',
+    '005290': '동진쎄미켐', '214370': '케어젠', '263750': '펄어비스',
+    '293490': '카카오게임즈', '035900': 'JYP Ent.', '041510': '에스엠',
 }
 
 NASDAQ = [
@@ -70,18 +83,32 @@ US_NAMES = {
     'CRM': '세일즈포스', 'DHR': '다나허', 'LIN': '린데', 'ACN': '액센츄어',
     'VZ': '버라이즌', 'NEE': '넥스트에라에너지', 'NKE': '나이키', 'WFC': '웰스파고',
     'PM': '필립모리스', 'ORCL': '오라클', 'MS': '모건스탠리', 'UPS': 'UPS', 'LOW': '로우스',
+    'AXP': '아메리칸익스프레스', 'BA': '보잉', 'CAT': '캐터필러', 'GS': '골드만삭스',
+    'IBM': 'IBM', 'MMM': '3M', 'SHW': '셔윈윌리엄스', 'TRV': '트래블러스',
 }
 
+DOW = [
+    'AAPL', 'AMGN', 'AMZN', 'AXP', 'BA', 'CAT', 'CRM', 'CSCO', 'CVX', 'DIS',
+    'GS', 'HD', 'HON', 'IBM', 'JNJ', 'JPM', 'KO', 'MCD', 'MMM', 'MRK',
+    'MSFT', 'NKE', 'NVDA', 'PG', 'SHW', 'TRV', 'UNH', 'V', 'VZ', 'WMT',
+]
+
 MARKETS = [
-    {'id': 'kospi', 'label': '코스피', 'currency': 'KRW',
-     'index': ('^KS11', 'KOSPI'),
-     'stocks': [(f'{code}.KS', name) for code, name in KOSPI_NAMES.items()]},
-    {'id': 'nasdaq', 'label': '나스닥', 'currency': 'USD',
-     'index': ('^IXIC', 'NASDAQ'),
-     'stocks': [(s, US_NAMES.get(s, s)) for s in NASDAQ]},
     {'id': 'sp500', 'label': 'S&P 500', 'currency': 'USD',
      'index': ('^GSPC', 'S&P 500'),
      'stocks': [(s, US_NAMES.get(s, s)) for s in SP500]},
+    {'id': 'nasdaq', 'label': '나스닥', 'currency': 'USD',
+     'index': ('^IXIC', 'NASDAQ'),
+     'stocks': [(s, US_NAMES.get(s, s)) for s in NASDAQ]},
+    {'id': 'kospi', 'label': '코스피', 'currency': 'KRW',
+     'index': ('^KS11', 'KOSPI'),
+     'stocks': [(f'{code}.KS', name) for code, name in KOSPI_NAMES.items()]},
+    {'id': 'kosdaq', 'label': '코스닥', 'currency': 'KRW',
+     'index': ('^KQ11', 'KOSDAQ'),
+     'stocks': [(f'{code}.KQ', name) for code, name in KOSDAQ_NAMES.items()]},
+    {'id': 'dow', 'label': '다우', 'currency': 'USD',
+     'index': ('^DJI', 'Dow Jones'),
+     'stocks': [(s, US_NAMES.get(s, s)) for s in DOW]},
 ]
 
 OUT = Path(__file__).parent / 'docs' / 'data.json'

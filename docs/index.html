@@ -95,10 +95,10 @@ const fmtPct = v => v == null ? '–' : `<span class="${v >= 0 ? 'up' : 'down'}"
 const fmtPp = v => v == null ? '–' : `<span class="${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%p</span>`;
 const fmtPrice = (v, cur) => v == null ? '–' : cur === 'KRW' ? v.toLocaleString('ko-KR') + '원' : '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// 코스피는 네이버 증권, 미국 종목은 야후 파이낸스 상세 페이지로 연결
+// 코스피·코스닥은 네이버 증권, 미국 종목은 야후 파이낸스 상세 페이지로 연결
 const tickerLink = t => {
-  const code = t.replace(/\.KS$/, '');
-  const url = t.endsWith('.KS') ? `https://finance.naver.com/item/main.naver?code=${code}` : `https://finance.yahoo.com/quote/${code}`;
+  const kr = /\.K[SQ]$/.test(t), code = t.replace(/\.K[SQ]$/, '');
+  const url = kr ? `https://finance.naver.com/item/main.naver?code=${code}` : `https://finance.yahoo.com/quote/${code}`;
   return `<a class="tk" href="${url}" target="_blank" rel="noopener" title="${code} 상세 정보 보기">${code}</a>`;
 };
 
