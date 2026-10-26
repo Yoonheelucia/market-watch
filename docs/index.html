@@ -155,6 +155,19 @@ h4 { font-size: 14px; margin: 20px 0 8px; }
 .guide div { background: var(--bg); border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.6; }
 .guide b { display: block; margin-bottom: 2px; }
 .adv-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 8px 0 6px; }
+.tabs { overflow-x: auto; scrollbar-width: none; }
+.tab { white-space: nowrap; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px; }
+.toc a { border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 13px; color: var(--text); text-decoration: none; }
+.toc a:hover { border-color: var(--accent); color: var(--accent); }
+.gl h3 { font-size: 17px; margin: 0 0 4px; }
+.gl .one { font-size: 15px; font-weight: 500; color: var(--accent); margin: 0 0 12px; }
+.gl p { line-height: 1.75; margin: 0 0 10px; }
+.gl .ex { background: var(--bg); border-radius: 8px; padding: 10px 14px; margin: 10px 0; line-height: 1.75; font-size: 13.5px; }
+.gl .ex b { color: var(--text); }
+.gl table { margin: 8px 0; }
+.gl td, .gl th { text-align: left !important; white-space: normal; vertical-align: top; }
+.gl th, .gl tbody tr { cursor: default; }
 .to-top { position: fixed; right: 20px; bottom: 20px; z-index: 10; padding: 10px 16px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 500;
   box-shadow: 0 4px 14px rgb(0 0 0 / .15); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -237,12 +250,22 @@ async function init() {
   et.className = 'tab'; et.textContent = '실적 조회'; et.role = 'tab'; et.dataset.id = 'earnings';
   et.onclick = () => { location.hash = 'earnings' + (erTicker ? '/' + erTicker : ''); };
   tabs.appendChild(et);
+  const gt = document.createElement('button');
+  gt.className = 'tab'; gt.textContent = '용어 설명'; gt.role = 'tab'; gt.dataset.id = 'glossary';
+  gt.onclick = () => { location.hash = 'glossary'; };
+  tabs.appendChild(gt);
   window.addEventListener('hashchange', route);
   route();
 }
 
 function route() {
   const id = location.hash.slice(1);
+  if (id.startsWith('glossary')) {
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.id === 'glossary'));
+    current = null;
+    renderGlossary(id.split('/')[1]);
+    return;
+  }
   if (id === 'breadth') {
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.id === 'breadth'));
     current = null;
@@ -392,6 +415,96 @@ addEventListener('scroll', () => {
   const list = document.getElementById('list');
   toTop.classList.toggle('show', !!list && list.getBoundingClientRect().top < innerHeight / 2);
 }, { passive: true });
+
+// ───── 용어 설명 탭 ─────
+const GLOSSARY = [
+  { id: 'eps', t: 'EPS (주당순이익)', one: '주식 1주가 1년 동안 번 돈', body: `
+    <p><b>EPS = 회사의 1년 순이익 ÷ 주식 수</b>예요. 회사가 세금까지 다 내고 남은 순이익을 주식 수로 나눈 값으로, "내 주식 1주 몫으로 회사가 얼마를 벌었나"를 보여 줘요.</p>
+    <div class="ex">예) 애플: 1년 순이익 약 1,300억 달러 ÷ 주식 약 150억 주 ≈ <b>EPS $8.7</b></div>
+    <p>회사마다 주식 수가 달라서 순이익만으로는 비교가 어려워요. 또 회사가 자사주를 사서 없애면, 순이익이 같아도 주식 수가 줄어 EPS가 올라가요. 주주 1명의 진짜 몫이 늘어난 거라 EPS를 봐요.</p>
+    <p>장기적으로 주가를 끌어올리는 건 결국 EPS 성장이에요. <b>EPS는 "주식 1주의 1년 성적표"</b>예요.</p>` },
+  { id: 'eps-kind', t: '최근 1년 EPS · 예상 EPS · 희석 EPS · 조정 EPS', one: '같은 회사라도 EPS가 여러 개인 이유', body: `
+    <table class="er-table"><thead><tr><th>이름</th><th>뜻</th></tr></thead><tbody>
+      <tr><td><b>최근 1년 EPS</b> (TTM)</td><td>최근에 발표한 4개 분기 EPS를 더한 값. 실제로 번 돈이에요.</td></tr>
+      <tr><td><b>예상 EPS</b> (컨센서스)</td><td>애널리스트들이 예상한 앞으로의 EPS 평균이에요.</td></tr>
+      <tr><td><b>희석 EPS</b></td><td>회계 기준대로 공시한 EPS예요. 스톡옵션처럼 나중에 주식이 될 수 있는 것까지 주식 수에 넣어서 조금 보수적으로 계산해요.</td></tr>
+      <tr><td><b>조정 EPS</b></td><td>벌금·구조조정비 같은 일회성 비용을 뺀 EPS예요. 미국 회사들이 실적 발표 때 주로 쓰고, 컨센서스도 대부분 이 기준이에요.</td></tr>
+    </tbody></table>
+    <p>그래서 사이트마다 EPS가 조금씩 다르게 보일 수 있어요. 예를 들어 애플 FY2024 희석 EPS는 $6.08인데, 유럽 세금 과징금 같은 일회성 비용을 빼면 더 높아요.</p>` },
+  { id: 'per', t: 'PER (주가수익비율)', one: '1년에 버는 돈의 몇 배 값에 주식이 거래되나', body: `
+    <p><b>PER = 주가 ÷ EPS</b> (= 시총 ÷ 순이익). 거꾸로 쓰면 <b>주가 = EPS × PER</b>이에요.</p>
+    <div class="ex">예) 애플: 주가 $344 ÷ EPS $8.72 = <b>PER 39배</b> → 지금 이익이 그대로라면 주가만큼 벌어들이는 데 39년이 걸린다는 뜻이에요.</div>
+    <p>PER이 높으면 "비싸다" 또는 "앞으로 많이 클 거라는 기대가 크다", 낮으면 "싸다" 또는 "성장 기대가 작다"는 뜻이에요. 그래서 같은 업종끼리, 또는 같은 회사의 과거와 비교해서 봐요.</p>
+    <p>주가가 오르는 길은 두 가지예요. <b>① EPS가 커지거나</b>(회사가 더 번다) <b>② PER이 커지거나</b>(시장이 더 비싸게 쳐준다).</p>` },
+  { id: 'fper', t: '선행 PER (포워드 PER)', one: '앞으로 벌 돈 기준의 PER', body: `
+    <p>지금 PER은 이미 번 돈(최근 1년 EPS)으로 나누고, 선행 PER은 <b>앞으로 벌 것으로 예상되는 EPS</b>로 나눠요.</p>
+    <div class="ex">예) 엔비디아: 주가 $216 ÷ 향후 12개월 예상 EPS $14.2 = <b>선행 PER 15배</b> (지금 PER은 31배)</div>
+    <p>이익이 빠르게 늘 것으로 예상되는 회사는 선행 PER이 지금 PER보다 많이 낮아요. 둘 차이가 클수록 "이익 성장 기대가 크다"는 뜻이에요.</p>
+    <p>이 페이지는 <b>향후 12개월</b> 기준으로 계산하고, 회사 결산 기준 <b>다음 회계연도</b> 값도 작은 글씨로 같이 보여 줘요. 어느 쪽이든 1년치 EPS예요.</p>` },
+  { id: 'cap', t: '시가총액 (시총)', one: '회사 전체의 몸값', body: `
+    <p><b>시총 = 주가 × 주식 수</b>. 지금 주가로 회사 주식을 전부 사려면 드는 돈이에요.</p>
+    <div class="ex">예) 애플 시총 $5.0조(T) ≈ 약 6,600조원 (1T = 1조 달러)</div>
+    <p>시총이 클수록 지수에 미치는 영향이 커요. S&P 500·코스피 같은 지수는 시총이 큰 종목일수록 비중이 커요.</p>` },
+  { id: 'consensus', t: '컨센서스 · 서프라이즈 · 상회/하회', one: '애널리스트 예상과 실제 실적의 차이', body: `
+    <p><b>컨센서스</b>는 여러 증권사 애널리스트 예상치의 평균이에요. 실적 발표 때 실제 EPS가 이보다 높으면 <b>상회(어닝 서프라이즈)</b>, 낮으면 <b>하회(어닝 쇼크)</b>라고 해요.</p>
+    <div class="ex">서프라이즈 = (실제 EPS − 예상 EPS) ÷ 예상 EPS<br>예) 예상 $2.09, 실제 $2.22 → <b>+6.2% 상회</b></div>
+    <p>주가는 실적이 좋고 나쁨보다 <b>예상보다 좋았나 나빴나</b>에 더 크게 반응해요. 그래서 실적이 좋아도 기대에 못 미치면 주가가 떨어지기도 해요.</p>` },
+  { id: 'reaction', t: '발표 반응 (D · D+1 · D+2)', one: '실적 발표 뒤 주가가 어떻게 움직였나', body: `
+    <p><b>D</b>는 실적 발표 후 처음 열린 거래일이에요. 미국 회사는 대부분 장이 끝난 뒤(장후)에 발표해서, 다음 날이 D예요. 장 시작 전(장전)에 발표하면 그날이 D예요.</p>
+    <p>D, D+1, D+2는 각각 그날 하루 등락률이고, <b>3일 누적</b>은 세 날을 합친 수익률이에요. "발표 반응 평균 크기"는 D의 등락률을 부호 없이 평균 낸 값으로, 실적 발표 때 주가가 보통 얼마나 크게 흔들리는지 보여 줘요.</p>` },
+  { id: 'fy', t: '회계연도 (FY) · 결산월', one: '회사가 1년을 세는 기준', body: `
+    <p>회사마다 1년의 끝(결산월)이 달라요. 대부분 12월이지만 애플은 9월, 엔비디아는 1월, 마이크로소프트는 6월이에요.</p>
+    <div class="ex">예) 엔비디아 FY2027 = 2026년 2월 ~ 2027년 1월<br>예) 애플 FY2026 = 2025년 10월 ~ 2026년 9월</div>
+    <p>그래서 "2분기"라고 해도 회사마다 실제 달이 달라요. 이 페이지 표의 'Q1·Q2'는 그 회사 회계연도 기준이에요.</p>` },
+  { id: 'segment', t: '사업부 · 매출 비중', one: '회사 매출이 어떤 사업에서 나오나', body: `
+    <p>회사는 매출을 사업별(예: 애플의 아이폰·서비스·맥)로 나눠서 공시해요. 비중이 큰 사업이 회사 실적을 좌우해서, 그 사업이 커지는지 줄어드는지를 보는 게 중요해요.</p>
+    <p>"전년 대비"는 1년 전 같은 분기와 비교한 성장률이에요. 계절 영향(예: 4분기 연말 쇼핑)을 빼고 보기 위해 바로 전 분기 대신 작년 같은 분기와 비교해요.</p>` },
+  { id: 'peg', t: '성장률로 보는 적정주가 (PEG)', one: '성장률만큼 PER을 쳐주자는 방법', body: `
+    <p>"EPS가 매년 30% 크는 회사라면 PER 30배 정도는 적당하다"는 생각이에요. 이렇게 <b>PER ÷ 성장률</b>을 PEG라고 하고, 1 안팎이면 적당하다고 봐요.</p>
+    <div class="ex">적정주가 = 향후 1년 EPS × 적정배수<br>적정배수(보통) = 성장률 × 1 ~ 2배, (강세장) = 성장률 × 1.5 ~ 2.5배<br>예) 성장률 30%, 향후 1년 EPS $5 → 적정주가 $150 ~ $300</div>
+    <p>빨리 크는 성장주에 잘 맞아요. 성장은 느리지만 이익이 안정적이고 배당·자사주 매입이 많은 회사(애플, 코카콜라 등)는 늘 "비싸다"로 나오는 한계가 있어요.</p>` },
+  { id: 'cagr', t: '연평균 성장률 (CAGR)', one: '여러 해 동안 매년 평균 몇 %씩 컸나', body: `
+    <p>들쭉날쭉한 성장을 "매년 같은 비율로 컸다면 몇 %였나"로 바꾼 값이에요.</p>
+    <div class="ex">예) EPS가 3년 동안 $1 → $2가 됐다면 CAGR ≈ <b>26%</b> (1.26 × 1.26 × 1.26 ≈ 2)</div>
+    <p>단순 평균과 달라요. +100%, −50%면 단순 평균은 +25%지만 실제로는 제자리(CAGR 0%)예요.</p>` },
+  { id: 'ma', t: '이동평균선 (5일선 · 50일선 · 200일선)', one: '최근 N일 종가의 평균을 이은 선', body: `
+    <p>50일선은 최근 50거래일 종가의 평균이에요. 주가가 이 선 위에 있으면 최근 50일 동안 산 사람들이 평균적으로 이익이라, 그 기간의 추세가 위쪽이라는 뜻이에요.</p>
+    <p>짧은 선(5·20일)은 단기 분위기, 긴 선(50·200일)은 중장기 추세를 보여 줘요. 특히 <b>200일선</b>은 "큰 흐름이 상승장인가 하락장인가"를 가르는 기준으로 많이 써요.</p>` },
+  { id: 'breadth', t: '시장 체력 (브레드스)', one: '시장 전체가 같이 오르나, 몇 종목만 오르나', body: `
+    <p>S&P 500 종목 중 <b>몇 %가 자기 이동평균선 위에 있는지</b>를 세요. 지수만 보면 대형주 몇 개 때문에 오르는지 알기 어려워서 보는 지표예요.</p>
+    <table class="er-table"><thead><tr><th>비율</th><th>뜻</th></tr></thead><tbody>
+      <tr><td>80% 이상</td><td>과열권. 너무 많은 종목이 한꺼번에 올라서 쉬어갈 수 있어요.</td></tr>
+      <tr><td>60~80%</td><td>강한 편. 시장 전체가 튼튼하게 오르는 중이에요.</td></tr>
+      <tr><td>40~60%</td><td>중립</td></tr>
+      <tr><td>20~40%</td><td>약한 편</td></tr>
+      <tr><td>20% 이하</td><td>과매도권. 바닥이 자주 나오는 구간이에요.</td></tr>
+    </tbody></table>
+    <p>지수는 오르는데 이 비율이 낮으면 소수 대형주만 오르는 <b>"좁은 장"</b>이라는 신호예요.</p>` },
+  { id: 'highlow', t: '신고가 · 신저가', one: '그 기간 중 가장 높은(낮은) 가격을 새로 쓴 종목', body: `
+    <p>52주 신고가는 "최근 1년 중 가장 높은 가격을 오늘 새로 썼다"는 뜻이에요. 신고가 종목이 신저가 종목보다 많으면 오르는 종목이 시장을 이끌고 있다는 신호예요.</p>` },
+  { id: 'pv', t: '거래량 · 거래대금', one: '얼마나 많이 사고팔았나', body: `
+    <p><b>거래량</b>은 사고판 주식 수, <b>거래대금</b>은 사고판 돈의 크기(주가 × 거래량)예요.</p>
+    <p>거래량만 보면 1~2달러짜리 싼 주식이 위로 올라오지만, 거래대금은 실제로 큰돈이 움직인 종목이 위로 와요. 그래서 거래대금 순위는 "오늘 시장의 돈과 관심이 어디로 몰렸나"를 보여 줘요.</p>` },
+  { id: 'excess', t: '지수 대비 (초과 수익률)', one: '그 종목이 시장보다 얼마나 더 올랐나', body: `
+    <p>종목 수익률에서 지수 수익률을 뺀 값이에요. 지수가 +5%, 종목이 +12%면 <b>지수 대비 +7%p</b>예요. 시장 전체가 오를 때 같이 오른 것인지, 그 종목만의 힘으로 오른 것인지 구분할 수 있어요.</p>
+    <p><b>%p(퍼센트포인트)</b>는 퍼센트끼리의 차이를 말할 때 써요. 5%에서 12%가 되면 "7%p 높다"고 해요.</p>` },
+  { id: 'etf', t: '지수 PER은 왜 ETF 기준인가요?', one: '지수 자체의 PER은 무료 데이터에 없어서', body: `
+    <p>S&P 500 같은 지수의 PER은 무료 데이터에서 바로 받을 수 없어요. 그래서 지수를 그대로 따라가는 ETF(S&P 500 → SPY, 나스닥 → ONEQ, 다우 → DIA)의 PER을 써요. 거의 같은 값이에요.</p>` },
+];
+
+function renderGlossary(focus) {
+  charts.forEach(c => c.remove()); charts = [];
+  if (observer) observer.disconnect();
+  const main = document.getElementById('main');
+  main.innerHTML = `
+    <section class="card">
+      <div class="formula">용어 설명</div>
+      <p class="lead" style="margin:4px 0 12px">이 페이지에 나오는 주식 용어를 쉽게 풀었어요. 궁금한 용어를 누르면 바로 이동해요.</p>
+      <nav class="toc">${GLOSSARY.map(g => `<a href="#glossary/${g.id}">${esc(g.t.split(' (')[0])}</a>`).join('')}</nav>
+    </section>
+    ${GLOSSARY.map(g => `<section class="card gl" id="gl-${g.id}"><h3>${esc(g.t)}</h3><p class="one">${esc(g.one)}</p>${g.body}</section>`).join('')}`;
+  if (focus) document.getElementById('gl-' + focus)?.scrollIntoView({ block: 'start' });
+}
 
 // ───── 시장 체력 탭 ─────
 let BR;
