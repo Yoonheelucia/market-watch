@@ -256,7 +256,7 @@ function stats(closes) {
 
 async function init() {
   DATA = await (await fetch('data.json', { cache: 'no-cache' })).json();
-  document.getElementById('updated').textContent = `업데이트 ${DATA.updated} · 기준일 ${DATA.start}`;
+  document.getElementById('updated').textContent = `업데이트 ${DATA.updated} · 차트 기간 ${DATA.start} ~ ${DATA.markets[0].dates.at(-1)} (최근 90일)`;
   const tabs = document.getElementById('tabs');
   DATA.markets.forEach(m => {
     const b = document.createElement('button');
@@ -336,7 +336,7 @@ function render(m) {
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table></div>
-      <div class="note">'기간'은 기준일 이후 수익률이고, '지수 대비'는 그 수익률에서 ${m.index.name} 수익률을 뺀 값이고, '순위'는 이 목록 안에서의 시총 순위입니다. 표의 제목을 누르면 정렬되고, 행을 누르면 해당 종목 차트로 이동합니다.${m.missing.length ? ` 데이터 없음: ${m.missing.join(', ')}` : ''}</div>
+      <div class="note">'기간'은 차트 시작일(${DATA.start}) 이후 수익률이고, '지수 대비'는 그 수익률에서 ${m.index.name} 수익률을 뺀 값이고, '순위'는 이 목록 안에서의 시총 순위입니다. 표의 제목을 누르면 정렬되고, 행을 누르면 해당 종목 차트로 이동합니다.${m.missing.length ? ` 데이터 없음: ${m.missing.join(', ')}` : ''}</div>
     </section>
     <h2>종목별 차트</h2>
     <div id="list"></div>`;
