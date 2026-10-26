@@ -1,20 +1,20 @@
 {
   "asOf": "2026-10-27",
-  "summary": "물가와 금리 걱정(유가 급등 → 물가 3.7% → 12월 금리 인상 가능성)이 가장 큰 부담이고, 빅테크 실적과 AI 기대감이 시장을 받치고 있어요. 이번 주는 FOMC와 빅테크 실적, 다음 주는 미국 중간선거가 큰 고비예요.",
+  "summary": "물가와 금리 걱정(유가 급등 → 물가 3.7% → 12월 금리 인상 가능성)이 가장 큰 부담이지만, 앤트로픽 상장 서류 공개로 26일 미국 증시가 올라 AI 기대감이 시장을 받치고 있어요. 이번 주는 FOMC와 빅테크 실적, 다음 주는 미국 중간선거가 큰 고비예요.",
   "factors": [
     {
       "title": "미국-이란 전쟁과 호르무즈 해협 봉쇄",
       "sign": "-",
       "head": "유가를 끌어올려 물가와 금리를 자극하는 가장 큰 악재",
-      "detail": "2월 말 시작된 미국-이란 전쟁으로 세계 원유 수송로인 호르무즈 해협이 7개월 넘게 막히거나 차질을 빚고 있어요. 4월 8일~7월 8일 휴전이 있었지만 다시 싸움이 시작됐고, 미국이 이란 항구를 봉쇄하고 있어요. 브렌트유는 배럴당 약 115달러로 7월 저점보다 30% 정도 올랐어요.",
-      "status": "60일 협상 시한이 합의 없이 끝났고, 이란의 '6일째 해협 개방, 7일째 협상' 제안을 트럼프가 거절했어요. 26일에는 긴장 완화 기대로 유가가 조금 내렸어요. 중간선거(11월 3일)가 평화협상의 비공식 마감처럼 여겨지고 있어서, 합의가 나오면 큰 호재가 될 수 있어요."
+      "detail": "2월 말 시작된 미국-이란 전쟁으로 세계 원유 수송로인 호르무즈 해협이 7개월 넘게 막히거나 차질을 빚고 있어요. 4월 8일~7월 8일 휴전이 있었지만 다시 싸움이 시작됐고, 미국이 이란 항구를 봉쇄하고 있어요. 브렌트유는 배럴당 114달러대(26일 장중 114.51달러, WTI는 약 101달러)로 7월 저점보다 크게 올랐어요.",
+      "status": "60일 협상 시한이 합의 없이 끝났고, 이란의 '6일째 해협 개방, 7일째 협상' 제안을 트럼프가 거절했어요. 지난 금요일 예멘 후티 반군이 사우디를 공격해 유가가 뛰었다가, 26일에는 긴장 완화 기대로 약 2% 내렸어요. 중간선거(11월 3일)가 평화협상의 비공식 마감처럼 여겨지고 있어서, 합의가 나오면 큰 호재가 될 수 있어요."
     },
     {
       "title": "연준 금리 인상 (12월 추가 인상 가능성)",
       "sign": "-",
       "head": "금리가 오르면 주식, 특히 비싼 성장주에 부담",
       "detail": "연준은 물가가 다시 오르자 9월 16일 금리를 0.25%p 올려 3.75~4.00%로 만들었어요. 5월부터 케빈 워시가 연준 의장을 맡고 있어요.",
-      "status": "이번 주 10월 27~28일 회의는 '동결' 가능성이 약 90%예요. 하지만 12월 9일 회의에서 한 번 더 올릴 가능성이 약 80%로 보고 있어서, 이번 회의에서 12월 인상을 얼마나 강하게 시사하는지가 관건이에요. 윌리엄스 뉴욕연은 총재는 연내 한 번 더 인상이 적절할 수 있다고, 제퍼슨 부의장과 월러 이사는 서두를 필요 없다고 말했어요."
+      "status": "이번 주 10월 27~28일 회의는 '동결' 가능성이 약 90%(인상 약 10%)예요. 하지만 12월 9일 회의에서 한 번 더 올릴 가능성이 약 80%로 보고 있어서, 이번 회의에서 12월 인상을 얼마나 강하게 시사하는지가 관건이에요. 윌리엄스 뉴욕연은 총재는 연내 한 번 더 인상이 적절할 수 있다고, 제퍼슨 부의장과 월러 이사는 서두를 필요 없다고 말했어요."
     },
     {
       "title": "물가 재상승",
@@ -42,14 +42,14 @@
       "sign": "+",
       "head": "올해 주가를 받쳐 온 가장 큰 힘",
       "detail": "올해 미국 기업 이익이 탄탄하게 늘면서 주가를 받쳐 왔어요. 이번 주 S&P 500 기업의 약 3분의 1이 실적을 발표하고, 마이크로소프트·알파벳·아마존(시총 합계 약 10.5조 달러)이 핵심이에요.",
-      "status": "시장은 AI 데이터센터 투자(설비투자)를 계속 늘리는지, 그 투자가 실제 매출로 돌아오는지를 봐요. 기대가 높아서 조금만 실망해도 크게 흔들릴 수 있어요."
+      "status": "26일 앤트로픽 상장 소식에 S&P 500과 나스닥이 한 달여 만에 가장 크게 올랐어요. 시장은 AI 데이터센터 투자(설비투자)를 계속 늘리는지, 그 투자가 실제 매출로 돌아오는지를 봐요. 기대가 높아서 조금만 실망해도 크게 흔들릴 수 있어요."
     },
     {
       "title": "초대형 AI 기업 상장 (앤트로픽·SpaceX·오픈AI)",
       "sign": "±",
       "head": "AI 열기를 보여 주는 호재이면서, 거품 걱정과 수급 부담",
-      "detail": "앤트로픽이 26일 상장 서류를 공개 제출했어요(티커 ANT). 기업가치 약 2조 달러, 조달 금액 최대 1,000억 달러로 역대 최대 규모가 될 수 있어요. 소식에 26일 나스닥이 1% 넘게 올랐어요. SpaceX는 이미 상장했고(상장 시 1.77조 달러), 오픈AI는 내년 초 상장이 예상돼요.",
-      "status": "11월 9일 주부터 투자자 모집(로드쇼)이 시작될 예정이에요. 공모가 흥행하면 AI 투자심리에 호재이지만, 큰돈이 신규 상장주로 몰리면서 기존 기술주에서 자금이 빠질 수 있다는 걱정도 있어요."
+      "detail": "앤트로픽이 26일 상장 서류를 공개 제출했어요(티커 ANT). 기업가치 약 2조 달러, 조달 금액 최대 1,000억 달러로 역대 최대 규모가 될 수 있어요. 올해 상반기 매출은 163억 달러로 1년 전(12억 달러)보다 크게 늘었고, 소식에 26일 미국 증시가 올랐어요. SpaceX는 이미 상장했고(상장 시 1.77조 달러), 오픈AI는 내년 초 상장이 예상돼요.",
+      "status": "11월 9일 주부터 투자자 모집(로드쇼)이 시작되고, 빠르면 11월 16일 거래가 시작될 수 있어요. 공모가 흥행하면 AI 투자심리에 호재이지만, 큰돈이 신규 상장주로 몰리면서 기존 기술주에서 자금이 빠질 수 있다는 걱정도 있어요."
     },
     {
       "title": "미중 무역 관계",
@@ -74,54 +74,188 @@
     }
   ],
   "week": [
-    { "date": "10/27 (화)", "items": [
-      "🇰🇷 SK하이닉스·셀트리온·신한지주·LG이노텍 실적",
-      "🇺🇸 비자·코카콜라·보잉·UPS 실적",
-      "🇺🇸 FOMC 회의 시작 (27~28일)"
-    ]},
-    { "date": "10/28 (수)", "items": [
-      "🇰🇷 삼성전자·LG전자·HD한국조선해양·삼성물산 실적",
-      "🇺🇸 마이크로소프트·알파벳 실적 (장 마감 후 → 한국시간 29일 새벽)"
-    ]},
-    { "date": "10/29 (목)", "items": [
-      "🇺🇸 새벽 3시(한국시간) FOMC 금리 결정 + 워시 의장 기자회견 — 동결 예상, 12월 인상 힌트에 주목",
-      "🇰🇷 현대차·KB금융·삼성SDI·SK이노베이션 실적",
-      "🇺🇸 일라이릴리·마스터카드·머크·캐터필러 실적 (장 시작 전)",
-      "🇺🇸 아마존·인텔·스타벅스 실적 (장 마감 후 → 한국시간 30일 새벽)"
-    ]},
-    { "date": "10/30 (금)", "items": [
-      "🇰🇷 현대모비스·현대제철 실적",
-      "🇺🇸 엑슨모빌·셰브론·애브비 실적"
-    ]}
+    {
+      "date": "10/27 (화)",
+      "items": [
+        "🇰🇷 SK하이닉스·셀트리온·신한지주·LG이노텍 실적",
+        "🇺🇸 비자·코카콜라·보잉·UPS 실적",
+        "🇺🇸 FOMC 회의 시작 (27~28일)"
+      ]
+    },
+    {
+      "date": "10/28 (수)",
+      "items": [
+        "🇰🇷 삼성전자·LG전자·HD한국조선해양·삼성물산 실적",
+        "🇺🇸 마이크로소프트·알파벳 실적 (장 마감 후 → 한국시간 29일 새벽)"
+      ]
+    },
+    {
+      "date": "10/29 (목)",
+      "items": [
+        "🇺🇸 새벽 3시(한국시간) FOMC 금리 결정 + 워시 의장 기자회견 — 동결 예상, 12월 인상 힌트에 주목",
+        "🇰🇷 현대차·KB금융·삼성SDI·SK이노베이션 실적",
+        "🇺🇸 일라이릴리·마스터카드·머크·캐터필러 실적 (장 시작 전)",
+        "🇺🇸 아마존·인텔·스타벅스 실적 (장 마감 후 → 한국시간 30일 새벽)"
+      ]
+    },
+    {
+      "date": "10/30 (금)",
+      "items": [
+        "🇰🇷 현대모비스·현대제철 실적",
+        "🇺🇸 엑슨모빌·셰브론·애브비 실적"
+      ]
+    }
   ],
   "month": [
-    { "date": "11/1 (일)", "items": ["🇺🇸 미국 서머타임 종료 — 미국장 시간이 한국시간 밤 11시 30분 ~ 새벽 6시로 바뀌어요"] },
-    { "date": "11/2 (월)", "items": ["🇺🇸 애플 실적 (장 마감 후 → 한국시간 3일 새벽)", "🇰🇷 POSCO홀딩스·S-Oil 실적"] },
-    { "date": "11/3 (화)", "items": ["🇺🇸 미국 중간선거", "🇺🇸 AMD·암젠·화이자 실적", "🇰🇷 LG에너지솔루션 실적"] },
-    { "date": "11/4~5", "items": ["🇺🇸 퀄컴·맥도날드 실적", "🇰🇷 SK텔레콤·LG화학·에코프로비엠 실적"] },
-    { "date": "11/6 (금)", "items": ["🇺🇸 10월 고용보고서 (한국시간 밤 10시 30분)", "🇰🇷 카카오 실적"] },
-    { "date": "11/9 주", "items": ["🇺🇸 앤트로픽 상장 투자자 모집 시작 예정 (11월 중 상장 예상)"] },
-    { "date": "11/10 (화)", "items": ["🇺🇸 10월 소비자물가(CPI) (한국시간 밤 10시 30분)", "🇰🇷 엔씨소프트·LG생활건강 실적"] },
-    { "date": "11/12 (목)", "items": ["🇰🇷 NAVER·한국전력·삼성생명 실적", "🇺🇸 어플라이드머티리얼즈·시스코 실적"] },
-    { "date": "11/17 (화)", "items": ["🇺🇸 엔비디아 실적 (장 마감 후 → 한국시간 18일 새벽) — AI 투자 흐름의 가장 큰 이벤트", "🇺🇸 홈디포·디즈니 실적"] },
-    { "date": "11/19 (목)", "items": ["🇺🇸 월마트·팔로알토네트웍스 실적"] },
-    { "date": "11/26 (목)", "items": ["🇺🇸 추수감사절 휴장 (27일은 오후 1시 조기 폐장, 블랙프라이데이)"] },
-    { "date": "12월 초", "items": ["🇺🇸 12/4 11월 고용보고서, 12/9 FOMC (금리 인상 가능성 약 80%), 12/10 11월 물가"] }
+    {
+      "date": "11/1 (일)",
+      "items": [
+        "🇺🇸 미국 서머타임 종료 — 미국장 시간이 한국시간 밤 11시 30분 ~ 새벽 6시로 바뀌어요"
+      ]
+    },
+    {
+      "date": "11/2 (월)",
+      "items": [
+        "🇺🇸 애플 실적 (장 마감 후 → 한국시간 3일 새벽)",
+        "🇰🇷 POSCO홀딩스·S-Oil 실적"
+      ]
+    },
+    {
+      "date": "11/3 (화)",
+      "items": [
+        "🇺🇸 미국 중간선거",
+        "🇺🇸 AMD·암젠·화이자 실적",
+        "🇰🇷 LG에너지솔루션 실적"
+      ]
+    },
+    {
+      "date": "11/4~5",
+      "items": [
+        "🇺🇸 퀄컴·맥도날드 실적",
+        "🇰🇷 SK텔레콤·LG화학·에코프로비엠 실적"
+      ]
+    },
+    {
+      "date": "11/6 (금)",
+      "items": [
+        "🇺🇸 10월 고용보고서 (한국시간 밤 10시 30분)",
+        "🇰🇷 카카오 실적"
+      ]
+    },
+    {
+      "date": "11/9 주",
+      "items": [
+        "🇺🇸 앤트로픽 상장 투자자 모집 시작 예정 (빠르면 11/16 거래 시작)"
+      ]
+    },
+    {
+      "date": "11/10 (화)",
+      "items": [
+        "🇺🇸 10월 소비자물가(CPI) (한국시간 밤 10시 30분)",
+        "🇰🇷 엔씨소프트·LG생활건강 실적"
+      ]
+    },
+    {
+      "date": "11/12 (목)",
+      "items": [
+        "🇰🇷 NAVER·한국전력·삼성생명 실적",
+        "🇺🇸 어플라이드머티리얼즈·시스코 실적"
+      ]
+    },
+    {
+      "date": "11/17 (화)",
+      "items": [
+        "🇺🇸 엔비디아 실적 (장 마감 후 → 한국시간 18일 새벽) — AI 투자 흐름의 가장 큰 이벤트",
+        "🇺🇸 홈디포·디즈니 실적"
+      ]
+    },
+    {
+      "date": "11/19 (목)",
+      "items": [
+        "🇺🇸 월마트·팔로알토네트웍스 실적"
+      ]
+    },
+    {
+      "date": "11/26 (목)",
+      "items": [
+        "🇺🇸 추수감사절 휴장 (27일은 오후 1시 조기 폐장, 블랙프라이데이)"
+      ]
+    },
+    {
+      "date": "12월 초",
+      "items": [
+        "🇺🇸 12/4 11월 고용보고서, 12/9 FOMC (금리 인상 가능성 약 80%), 12/10 11월 물가"
+      ]
+    }
   ],
   "sources": [
-    { "name": "CNBC 10/26 시황", "url": "https://www.cnbc.com/2026/10/25/stock-market-today-live-updates.html" },
-    { "name": "Forbes FOMC 프리뷰", "url": "https://www.forbes.com/sites/simonmoore/2026/10/19/what-to-look-for-from-the-feds-october-meeting/" },
-    { "name": "CNBC 9월 CPI", "url": "https://www.cnbc.com/2026/10/14/cpi-inflation-report-september-2026.html" },
-    { "name": "CNBC 9월 고용", "url": "https://www.cnbc.com/2026/10/02/jobs-report-september-2026.html" },
-    { "name": "Bloomberg 중간선거와 월가", "url": "https://www.bloomberg.com/news/articles/2026-10-22/us-midterm-elections-2026-what-results-could-mean-for-wall-street" },
-    { "name": "Morgan Stanley 중간선거", "url": "https://www.morganstanley.com/insights/articles/2026-us-midterm-elections-stock-market-impact" },
-    { "name": "CBS 이란 전쟁", "url": "https://www.cbsnews.com/live-updates/us-iran-war-deal-expired-strait-of-hormuz/" },
-    { "name": "Bessemer 유가 전망", "url": "https://www.bessemertrust.com/insights/oil-markets-in-five-pictures-whats-driving-prices-now" },
-    { "name": "NPR 앤트로픽 상장", "url": "https://www.npr.org/2026/10/26/nx-s1-6014772/anthropic-ai-ipo-could-break-records" },
-    { "name": "WSGR 미중 정상회담", "url": "https://wsgr.com/en/insights/us-china-washington-summit-2026-key-outcomes-and-unfinished-business.html" },
-    { "name": "Al Jazeera 러-우 에너지 휴전", "url": "https://www.aljazeera.com/amp/news/2026/10/11/trump-says-ukraine-russia-agree-to-energy-ceasefire-2" },
-    { "name": "한국일보 한은 동결", "url": "https://www.hankookilbo.com/news/article/A2026102216410004850" },
-    { "name": "뉴스핌 이번 주 코스피 전망", "url": "https://www.newspim.com/news/view/20261026000097" },
-    { "name": "BLS 발표 일정", "url": "https://www.bls.gov/schedule/news_release/current_year.asp" }
+    {
+      "name": "CNBC 10/26 시황",
+      "url": "https://www.cnbc.com/2026/10/25/stock-market-today-live-updates.html"
+    },
+    {
+      "name": "Forbes FOMC 프리뷰",
+      "url": "https://www.forbes.com/sites/simonmoore/2026/10/19/what-to-look-for-from-the-feds-october-meeting/"
+    },
+    {
+      "name": "CNBC 9월 CPI",
+      "url": "https://www.cnbc.com/2026/10/14/cpi-inflation-report-september-2026.html"
+    },
+    {
+      "name": "CNBC 9월 고용",
+      "url": "https://www.cnbc.com/2026/10/02/jobs-report-september-2026.html"
+    },
+    {
+      "name": "Bloomberg 중간선거와 월가",
+      "url": "https://www.bloomberg.com/news/articles/2026-10-22/us-midterm-elections-2026-what-results-could-mean-for-wall-street"
+    },
+    {
+      "name": "Morgan Stanley 중간선거",
+      "url": "https://www.morganstanley.com/insights/articles/2026-us-midterm-elections-stock-market-impact"
+    },
+    {
+      "name": "CBS 이란 전쟁",
+      "url": "https://www.cbsnews.com/live-updates/us-iran-war-deal-expired-strait-of-hormuz/"
+    },
+    {
+      "name": "Bessemer 유가 전망",
+      "url": "https://www.bessemertrust.com/insights/oil-markets-in-five-pictures-whats-driving-prices-now"
+    },
+    {
+      "name": "NPR 앤트로픽 상장",
+      "url": "https://www.npr.org/2026/10/26/nx-s1-6014772/anthropic-ai-ipo-could-break-records"
+    },
+    {
+      "name": "WSGR 미중 정상회담",
+      "url": "https://wsgr.com/en/insights/us-china-washington-summit-2026-key-outcomes-and-unfinished-business.html"
+    },
+    {
+      "name": "Al Jazeera 러-우 에너지 휴전",
+      "url": "https://www.aljazeera.com/amp/news/2026/10/11/trump-says-ukraine-russia-agree-to-energy-ceasefire-2"
+    },
+    {
+      "name": "한국일보 한은 동결",
+      "url": "https://www.hankookilbo.com/news/article/A2026102216410004850"
+    },
+    {
+      "name": "뉴스핌 이번 주 코스피 전망",
+      "url": "https://www.newspim.com/news/view/20261026000097"
+    },
+    {
+      "name": "BLS 발표 일정",
+      "url": "https://www.bls.gov/schedule/news_release/current_year.asp"
+    },
+    {
+      "name": "Quartz 앤트로픽 IPO 서류",
+      "url": "https://qz.com/anthropic-ipo-filing-nasdaq-ant-november-102626"
+    },
+    {
+      "name": "Yahoo Finance 10/26 시황",
+      "url": "https://finance.yahoo.com/markets/live/stock-market-today-monday-october-26-dow-sp-500-nasdaq-101153035.html"
+    },
+    {
+      "name": "TheStreet 10/26 시황",
+      "url": "https://www.thestreet.com/stock-market-today/stock-market-today-dow-jones-sp-500-nasdaq-updates-oct-26-2026"
+    }
   ]
 }
