@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
 <style>
 :root {
+  --c1: #2f5bea; --c2: #0ea5a4; --c3: #f59e0b; --c4: #e0314b; --c5: #8b5cf6; --c6: #64748b;
   --bg: #f6f7f9; --card: #ffffff; --text: #16181d; --muted: #6b7280; --line: #e5e7eb;
   --accent: #2f5bea; --up: #e0314b; --down: #2463eb; --index: #16181d; --stock: #e0314b;
   --row-hover: #f1f4fb;
@@ -104,6 +105,22 @@ h2 { font-size: 16px; margin: 32px 0 12px; }
 .formula { font-weight: 700; margin-bottom: 6px; }
 .matrix td.cell { font-weight: 500; }
 h4 { font-size: 14px; margin: 20px 0 8px; }
+.biz .lead { font-size: 15px; line-height: 1.6; margin: 0 0 14px; }
+.stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin-bottom: 14px; gap: 2px; }
+.stack span { display: block; height: 100%; min-width: 3px; }
+.seg-row { display: grid; grid-template-columns: 14px minmax(0, 1fr) 54px; gap: 4px 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.seg-row:last-child { border-bottom: 0; }
+.seg-row .dot { width: 10px; height: 10px; border-radius: 3px; align-self: center; }
+.seg-row .nm { font-weight: 500; }
+.seg-row .pc { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.seg-row .ds { grid-column: 2 / 4; color: var(--muted); font-size: 12px; }
+.biz-cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; }
+@media (max-width: 760px) { .biz-cols { grid-template-columns: minmax(0, 1fr); } }
+.new-item { background: var(--bg); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+.new-item b { display: block; margin-bottom: 2px; }
+.new-item span { color: var(--muted); font-size: 12px; }
+.note a { color: var(--accent); }
+.badge.ok { background: color-mix(in srgb, #16a34a 15%, transparent); color: #16a34a; }
 .to-top { position: fixed; right: 20px; bottom: 20px; z-index: 10; padding: 10px 16px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 500;
   box-shadow: 0 4px 14px rgb(0 0 0 / .15); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -332,7 +349,7 @@ addEventListener('scroll', () => {
 }, { passive: true });
 
 // ───── 실적 조회 탭 ─────
-let ER, erTicker = '', erMode = 'q';
+let ER, BIZ = {}, erTicker = '', erMode = 'q';
 try { erMode = localStorage.getItem('erMode') || 'q'; } catch (e) {}
 const POPULAR = ['NVDA', 'AAPL', 'MSFT', 'TSLA', '005930.KS', '000660.KS', '196170.KQ'];
 const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -359,7 +376,12 @@ async function renderEarnings(ticker) {
   const main = document.getElementById('main');
   if (!ER) {
     main.innerHTML = '<section class="card">실적 데이터를 불러오는 중…</section>';
-    try { ER = await (await fetch('earnings.json', { cache: 'no-cache' })).json(); }
+    try {
+      [ER, BIZ] = await Promise.all([
+        fetch('earnings.json', { cache: 'no-cache' }).then(r => r.json()),
+        fetch('business.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : {}).catch(() => ({})),
+      ]);
+    }
     catch (e) { main.innerHTML = `<section class="card">실적 데이터를 불러오지 못했습니다: ${esc(e.message)}</section>`; return; }
   }
   if (ticker && !ER.stocks[ticker]) ticker = findTicker(ticker) || '';
@@ -459,9 +481,38 @@ function drawEarnings(t) {
   const note = erMode === 'q'
     ? `D는 발표 후 첫 거래일입니다. 장후 발표는 다음 거래일이 D이고, 장전·장중 발표는 발표 당일이 D입니다. D·D+1·D+2는 각각 그날 하루 등락률이고, 3일 누적은 셋을 합친 수익률입니다. EPS는 야후 파이낸스 기준(미국은 대부분 조정 EPS)이고, PER은 D의 종가를 직전 4개 분기 EPS 합으로 나눈 값, 선행 PER은 같은 종가를 이후 4개 분기 컨센서스 EPS 합으로 나눈 값입니다.`
     : `연간 EPS와 컨센서스는 그 회계연도 4개 분기를 합친 값이고, 주가 반응은 4분기 실적 발표일 기준입니다. PER은 결산월 말 종가 / 연간 EPS, 선행 PER은 같은 종가 / 다음 회계연도 4개 분기 컨센서스 합입니다. 가장 최근 회계연도의 선행 PER은 진행 중인 회계연도의 현재 컨센서스를 씁니다.`;
-  document.getElementById('er').innerHTML = head + `<section class="card"><div class="table-wrap">${table}</div><div class="note">${note}</div></section>`
+  document.getElementById('er').innerHTML = head + bizCard(t) + `<section class="card"><div class="table-wrap">${table}</div><div class="note">${note}</div></section>`
     + `<section class="card" id="val"></section>`;
   drawValuation(s);
+}
+
+// ───── 사업 구성 ─────
+function bizCard(t) {
+  const b = BIZ[t];
+  if (!b) return '';
+  const color = i => `var(--c${i % 6 + 1})`;
+  return `
+    <section class="card biz">
+      <div class="formula">무슨 사업을 하나요?</div>
+      <p class="lead">${esc(b.summary)}</p>
+      <div class="biz-cols">
+        <div>
+          <div class="k" style="color:var(--muted);font-size:12px;margin-bottom:6px">매출 비중</div>
+          <div class="stack">${b.segments.map((g, i) => `<span style="width:${g.pct}%;background:${color(i)}" title="${esc(g.name)} ${g.pct}%"></span>`).join('')}</div>
+          ${b.segments.map((g, i) => `<div class="seg-row"><i class="dot" style="background:${color(i)}"></i><span class="nm">${esc(g.name)}</span><span class="pc">${g.pct}%</span>${g.desc ? `<span class="ds">${esc(g.desc)}</span>` : ''}</div>`).join('')}
+        </div>
+        <div>
+          <div class="k" style="color:var(--muted);font-size:12px;margin-bottom:6px">새로 키우는 사업</div>
+          ${b.new.map(n => `<div class="new-item"><b>${esc(n.name)}</b><span>${esc(n.desc)}</span></div>`).join('')}
+        </div>
+      </div>
+      <div class="note">
+        ${b.verified ? '<span class="badge ok">최근 IR 확인</span>' : '<span class="badge meet">사업보고서 기준</span>'}
+        ${esc(b.basis)}.${b.approx ? ' 회사가 따로 공개하지 않은 일부 비중은 추정치라서 대략적인 크기로 봐 주세요.' : ''}
+        ${b.verified ? '' : ' 최신 분기와는 다를 수 있어요.'}
+        ${b.src ? ` <a href="${esc(b.src)}" target="_blank" rel="noopener">회사 IR 페이지 ↗</a>` : ''}
+      </div>
+    </section>`;
 }
 
 // ───── 목표 주가 = 예상 EPS × 적정 PER ─────
