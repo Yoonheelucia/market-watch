@@ -168,6 +168,27 @@ h4 { font-size: 14px; margin: 20px 0 8px; }
 .gl table { margin: 8px 0; }
 .gl td, .gl th { text-align: left !important; white-space: normal; vertical-align: top; }
 .gl th, .gl tbody tr { cursor: default; }
+#brief details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-top: 16px; }
+#brief summary { cursor: pointer; padding: 14px 16px; list-style: none; }
+#brief summary::-webkit-details-marker { display: none; }
+#brief summary .t { font-weight: 700; font-size: 15px; }
+#brief summary .t::after { content: ' ▾'; color: var(--muted); }
+#brief details[open] summary .t::after { content: ' ▴'; }
+#brief summary .sm { color: var(--muted); font-size: 13px; margin-top: 4px; line-height: 1.6; }
+#brief .body { padding: 0 16px 16px; }
+#brief h4 { margin: 16px 0 8px; font-size: 14px; }
+.factor { border-top: 1px solid var(--line); padding: 12px 0; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; }
+.factor .sg { font-size: 18px; font-weight: 700; text-align: center; border-radius: 8px; padding: 6px 0; height: fit-content; }
+.factor .sg small { display: block; font-size: 10px; font-weight: 500; }
+.factor .ft { font-weight: 700; }
+.factor .fh { color: var(--muted); font-size: 13px; margin: 2px 0 6px; }
+.factor p { margin: 0 0 6px; font-size: 13.5px; line-height: 1.7; }
+.factor p.st { color: var(--muted); }
+.cal { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 0 12px; font-size: 13.5px; }
+.cal > div { padding: 7px 0; border-top: 1px solid var(--line); line-height: 1.6; }
+.cal .d { font-weight: 700; font-variant-numeric: tabular-nums; }
+.brief-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+@media (max-width: 760px) { .brief-cols { grid-template-columns: minmax(0, 1fr); } .cal { grid-template-columns: 72px minmax(0, 1fr); } }
 .to-top { position: fixed; right: 20px; bottom: 20px; z-index: 10; padding: 10px 16px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 500;
   box-shadow: 0 4px 14px rgb(0 0 0 / .15); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -190,6 +211,7 @@ h4 { font-size: 14px; margin: 20px 0 8px; }
     <h1>데일리 주식 차트</h1>
     <span class="updated" id="updated">불러오는 중…</span>
   </header>
+  <div id="brief"></div>
   <nav class="tabs" id="tabs" role="tablist"></nav>
   <main id="main"></main>
 </div>
@@ -256,6 +278,7 @@ async function init() {
   tabs.appendChild(gt);
   window.addEventListener('hashchange', route);
   route();
+  renderBrief();
 }
 
 function route() {
@@ -415,6 +438,39 @@ addEventListener('scroll', () => {
   const list = document.getElementById('list');
   toTop.classList.toggle('show', !!list && list.getBoundingClientRect().top < innerHeight / 2);
 }, { passive: true });
+
+// ───── 시장 브리핑 (영향 요인 · 일정) ─────
+async function renderBrief() {
+  let b;
+  try { b = await (await fetch('briefing.json', { cache: 'no-cache' })).json(); } catch (e) { return; }
+  let open = true;
+  try { open = localStorage.getItem('briefOpen') !== '0'; } catch (e) {}
+  const sign = f => {
+    const [c, lb] = f.sign === '+' ? ['var(--up)', '호재'] : f.sign === '-' ? ['var(--down)', '악재'] : ['var(--muted)', '혼재'];
+    return `<div class="sg" style="color:${c};background:color-mix(in srgb, ${c} 14%, transparent)">${f.sign === '±' ? '±' : f.sign === '+' ? '+' : '−'}<small>${lb}</small></div>`;
+  };
+  const cal = rows => `<div class="cal">${rows.map(r => `<div class="d">${esc(r.date)}</div><div>${r.items.map(esc).join('<br>')}</div>`).join('')}</div>`;
+  const cnt = s => b.factors.filter(f => f.sign === s).length;
+  const el = document.getElementById('brief');
+  el.innerHTML = `
+    <details ${open ? 'open' : ''}>
+      <summary><div class="t">시장 브리핑 · ${esc(b.asOf.slice(5).replace('-', '월 '))}일 기준</div>
+        <div class="sm">${esc(b.summary)} <span style="white-space:nowrap">(호재 ${cnt('+')} · 악재 ${cnt('-')} · 혼재 ${cnt('±')})</span></div></summary>
+      <div class="body">
+        <h4>지금 주가에 영향을 주는 요인</h4>
+        <div class="note" style="margin:0 0 6px">빨간 +는 주가에 좋은 요인(호재), 파란 −는 나쁜 요인(악재), 회색 ±는 양쪽으로 읽힐 수 있는 요인이에요.</div>
+        ${b.factors.map(f => `<div class="factor">${sign(f)}<div><div class="ft">${esc(f.title)}</div><div class="fh">${esc(f.head)}</div>
+          <p>${esc(f.detail)}</p><p class="st"><b>진행 상황:</b> ${esc(f.status)}</p></div></div>`).join('')}
+        <div class="brief-cols">
+          <div><h4>이번 주 주요 일정 (한국시간 기준)</h4>${cal(b.week)}</div>
+          <div><h4>앞으로 한 달 주요 일정</h4>${cal(b.month)}</div>
+        </div>
+        <div class="note" style="margin-top:12px">이 브리핑은 매일 자동으로 바뀌지 않고, 위 날짜에 뉴스를 모아 정리한 거예요. 실적 발표 시간은 회사 사정으로 바뀔 수 있어요.
+          출처: ${b.sources.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>`).join(' · ')}</div>
+      </div>
+    </details>`;
+  el.querySelector('details').addEventListener('toggle', e => { try { localStorage.setItem('briefOpen', e.target.open ? '1' : '0'); } catch (err) {} });
+}
 
 // ───── 용어 설명 탭 ─────
 const GLOSSARY = [
