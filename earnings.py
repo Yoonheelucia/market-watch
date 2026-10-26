@@ -172,12 +172,30 @@ def build_one(ticker, name, closes):
     except Exception:
         fwd_growth = None
     complete_years = [y for y in years if y['n'] == 4]
+
+    # 향후 12개월(NTM) 예상 EPS: 진행 중인 회계연도(0y)의 남은 기간 + 다음 회계연도(+1y) 앞부분을 기간 비율로 섞는다
+    if upcoming:
+        cur_fy_end = fiscal_year_end(quarter_end(upcoming['ts'], fy_month), fy_month)
+    elif periods:
+        cur_fy_end = fiscal_year_end(periods[-1] + pd.offsets.MonthEnd(3), fy_month)
+    else:
+        cur_fy_end = None
+    cur_eps = est_avg('0y')
+    ntm_eps = None
+    if cur_fy_end is not None and fwd_eps:
+        w = min(max((cur_fy_end - today.tz_localize(None).normalize()).days / 365.25, 0), 1)
+        if w == 0 or cur_eps is not None:
+            ntm_eps = num(w * (cur_eps or 0) + (1 - w) * fwd_eps)
+    next_fy = (f"{(cur_fy_end + pd.offsets.MonthBegin(1)).strftime('%Y.%m')}~{(cur_fy_end + pd.DateOffset(years=1)).strftime('%Y.%m')}"
+               if cur_fy_end is not None else None)
     return {
         'name': name, 'longName': info.get('longName') or info.get('shortName'),
         'currency': 'KRW' if korean else 'USD', 'fyMonth': fy_month,
         'price': last, 'priceDate': closes.index[-1].strftime('%Y-%m-%d'),
         'ttmEps': num(ttm), 'pe': num(last / ttm, 1) if ttm and ttm > 0 else None,
         'fwdEps': fwd_eps, 'fwdGrowth': fwd_growth, 'fpe': num(last / fwd_eps, 1) if fwd_eps and fwd_eps > 0 else None,
+        'fwdPeriod': next_fy, 'curEps': cur_eps,
+        'ntmEps': ntm_eps, 'ntmPe': num(last / ntm_eps, 1) if ntm_eps and ntm_eps > 0 else None,
         'next': {'date': upcoming['ts'].strftime('%Y-%m-%d'), 'when': timing(upcoming['ts'], korean), 'est': upcoming['est']} if upcoming else None,
         'quarters': quarters[-QUARTERS:],
         'years': complete_years[-YEARS:] + [y for y in years if y['n'] < 4 and y is years[-1]],

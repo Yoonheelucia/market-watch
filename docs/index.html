@@ -79,6 +79,7 @@ h2 { font-size: 16px; margin: 32px 0 12px; }
 .er-head .sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 760px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.krw { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 4px; }
 .eq-title { color: var(--muted); font-size: 12px; margin: 16px 0 8px; }
 .eq { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr) 24px minmax(0, 1fr); align-items: center; gap: 8px; margin-bottom: 8px; }
 .eq .op { text-align: center; font-size: 20px; font-weight: 700; color: var(--muted); }
@@ -173,7 +174,7 @@ const tickerLink = t => {
 
 const fmtCap = (v, cur) => {
   if (v == null) return '–';
-  if (cur === 'KRW') return v >= 1e12 ? (v / 1e12).toFixed(v >= 1e14 ? 0 : 1) + '조' : Math.round(v / 1e8).toLocaleString('ko-KR') + '억';
+  if (cur === 'KRW') return v >= 1e14 ? Math.round(v / 1e12).toLocaleString('ko-KR') + '조' : v >= 1e12 ? (v / 1e12).toFixed(1) + '조' : Math.round(v / 1e8).toLocaleString('ko-KR') + '억';
   return v >= 1e12 ? '$' + (v / 1e12).toFixed(2) + 'T' : '$' + Math.round(v / 1e9).toLocaleString('en-US') + 'B';
 };
 
@@ -437,8 +438,8 @@ function drawEarnings(t) {
       <div class="kpis">
         <div class="kpi"><div class="k">다음 실적발표</div><div class="v">${s.next ? fmtD(s.next.date) : '–'}</div>
           <div class="s">${s.next ? `${esc(s.next.when)} · 예상 EPS ${fmtEps(s.next.est, cur)}` : '일정 미정'}</div></div>
-        <div class="kpi"><div class="k">현재 시총</div><div class="v">${fmtCap(capInfo?.s.cap, cur)}</div>
-          <div class="s">${capInfo?.s.rank ? `${esc(capInfo.m.label)} 목록 ${capInfo.s.rank}위` : ''}</div></div>
+        <div class="kpi"><div class="k">현재 시총</div><div class="v">${fmtCap(capInfo?.s.cap, cur)}${cur === 'USD' && capInfo?.s.cap && DATA.usdkrw ? ` <span class="krw">약 ${fmtCap(capInfo.s.cap * DATA.usdkrw, 'KRW')}원</span>` : ''}</div>
+          <div class="s">${capInfo?.s.rank ? `${esc(capInfo.m.label)} 목록 ${capInfo.s.rank}위` : ''}${cur === 'USD' && DATA.usdkrw ? ` · 환율 ${Math.round(DATA.usdkrw).toLocaleString('ko-KR')}원` : ''}</div></div>
         <div class="kpi"><div class="k">컨센서스 상회</div><div class="v">${rated.length ? `${beats}/${rated.length}회` : '–'}</div><div class="s">최근 ${rated.length}개 분기</div></div>
         <div class="kpi"><div class="k">발표 반응(D) 평균 크기</div><div class="v">${avg == null ? '–' : '±' + avg.toFixed(1) + '%'}</div><div class="s">${avgR0.length}회 평균</div></div>
       </div>
@@ -453,9 +454,11 @@ function drawEarnings(t) {
       <div class="eq">
         <div class="kpi"><div class="k">현재가</div><div class="v">${fmtPrice(s.price, cur)}</div><div class="s">같은 주가</div></div>
         <div class="op">=</div>
-        <div class="kpi"><div class="k">예상 EPS (다음 회계연도)</div><div class="v">${fmtEps(s.fwdEps, cur)}</div><div class="s">애널리스트 컨센서스</div></div>
+        <div class="kpi"><div class="k">예상 EPS (${s.ntmEps != null ? '향후 12개월' : '다음 회계연도'})</div><div class="v">${fmtEps(s.ntmEps ?? s.fwdEps, cur)}</div>
+          <div class="s">${s.ntmEps != null ? `다음 회계연도${s.fwdPeriod ? `(${esc(s.fwdPeriod)})` : ''} 기준 ${fmtEps(s.fwdEps, cur)}` : '애널리스트 컨센서스'}</div></div>
         <div class="op">×</div>
-        <div class="kpi"><div class="k">선행 PER</div><div class="v">${fmtX(s.fpe)}</div><div class="s">주가 ÷ 예상 EPS</div></div>
+        <div class="kpi"><div class="k">선행 PER</div><div class="v">${fmtX(s.ntmPe ?? s.fpe)}</div>
+          <div class="s">${s.ntmPe != null ? `다음 회계연도 기준 ${fmtX(s.fpe)}` : '주가 ÷ 예상 EPS'}</div></div>
       </div>
     </section>`;
 
@@ -542,7 +545,7 @@ function drawValuation(s) {
   const last = ys[ys.length - 1], base3 = ys[ys.length - 4];
   const cagr = last && base3 && last.eps > 0 && base3.eps > 0 ? (Math.pow(last.eps / base3.eps, 1 / 3) - 1) * 100 : null;
   const medPe = median(ys.map(y => y.pe));
-  const eps0 = s.ttmEps;
+  const eps0 = s.ttmEps, fwdPe = s.ntmPe ?? s.fpe;
   if (eps0 == null || eps0 <= 0) {
     el.innerHTML = `<div class="formula">목표 주가 계산기</div><div class="note">최근 1년 EPS가 ${eps0 == null ? '없어서' : '적자라서'} 계산할 수 없어요.</div>`;
     return;
@@ -561,7 +564,7 @@ function drawValuation(s) {
       <span class="note" style="margin:0;align-self:center">PER</span>
       ${medPe != null ? `<button data-pe="${Math.round(medPe * 10) / 10}">최근 몇 년 가운데 값 ${fmtX(medPe)}</button>` : ''}
       ${s.pe != null ? `<button data-pe="${s.pe}">현재 PER ${fmtX(s.pe)}</button>` : ''}
-      ${s.fpe != null ? `<button data-pe="${s.fpe}" title="지금 주가 ÷ 다음 회계연도 예상 EPS">포워드 PER ${fmtX(s.fpe)}</button>` : ''}
+      ${fwdPe != null ? `<button data-pe="${fwdPe}" title="지금 주가 ÷ 향후 12개월 예상 EPS">포워드 PER ${fmtX(fwdPe)}</button>` : ''}
     </div>
     <div class="chips" style="margin:0 0 10px">
       <span class="note" style="margin:0;align-self:center">성장률</span>
@@ -617,7 +620,7 @@ function drawValuation(s) {
     const tag = {};
     [0.5, 0.75, 1, 1.25, 1.5].forEach(k => { tag[Math.round(st.pe * k * 10) / 10] ??= ''; });
     if (s.pe != null) tag[s.pe] = '현재';
-    if (s.fpe != null) tag[s.fpe] = tag[s.fpe] ? tag[s.fpe] + '·포워드' : '포워드';
+    if (fwdPe != null) tag[fwdPe] = tag[fwdPe] ? tag[fwdPe] + '·포워드' : '포워드';
     const pes = Object.keys(tag).map(Number).filter(v => v > 0).sort((a, b) => a - b);
     document.getElementById('mHead').innerHTML = `<tr><th>성장률 \\ PER</th>${pes.map(p => `<th>${tag[p] ? tag[p] + ' ' : ''}${+p.toFixed(1)}배</th>`).join('')}</tr>`;
     document.getElementById('mBody').innerHTML = STEPS.map(d => {

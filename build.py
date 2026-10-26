@@ -142,6 +142,16 @@ def download(tickers, start, **kw):
     return raw
 
 
+def usd_krw():
+    for attempt in range(2):
+        try:
+            v = yf.Ticker('KRW=X').history(period='5d')['Close'].dropna().iloc[-1]
+            return round(float(v), 2)
+        except Exception:
+            time.sleep(2)
+    return None
+
+
 def market_cap(ticker):
     for attempt in range(2):
         try:
@@ -209,6 +219,8 @@ def main():
         'markets': [build_market(m, start) for m in MARKETS],
     }
     add_market_caps(data['markets'])
+    data['usdkrw'] = usd_krw()
+    print(f"원/달러 환율: {data['usdkrw']}")
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(json.dumps(data, ensure_ascii=False, separators=(',', ':')))
     print(f'저장: {OUT} ({OUT.stat().st_size // 1024} KB)')
