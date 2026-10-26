@@ -470,7 +470,7 @@ async function renderBreadth() {
         <thead><tr><th>#</th><th>종목</th><th>종가</th><th>등락률</th><th>거래량</th><th>거래대금</th></tr></thead>
         <tbody>${lead}</tbody>
       </table></div>
-      <div class="note">S&P 500 종목 안에서의 순위예요. Barchart 목록에는 S&P 500 밖의 종목(예: 신규 상장주)도 섞여 있어요.</div>
+      <div class="note">${b.leadersScope === 'us' ? '미국에 상장된 주식 전체(주가 $2 이상, ETF 제외)에서의 순위예요.' : '오늘은 미국 전체 목록을 받지 못해서 S&P 500 종목 안에서의 순위예요.'}</div>
     </section>`;
 
   const h = b.history;

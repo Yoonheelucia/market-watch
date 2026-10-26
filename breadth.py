@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pandas as pd
 import requests
+import yfinance as yf
+from yfinance import EquityQuery as Q
 
 OUT = Path(__file__).parent / 'docs' / 'breadth.json'
 LIST_CACHE = Path(__file__).parent / 'sp500.csv'
@@ -32,6 +34,27 @@ def constituents():
     except Exception:
         df = pd.read_csv(LIST_CACHE)
     return {row['Symbol'].replace('.', '-'): row['Security'] for _, row in df.iterrows()}
+
+
+def market_leaders(korean_names, count=15):
+    """미국 상장 주식 전체에서 거래대금(주가 × 거래량) 상위 종목.
+    전체 5,000여 종목을 매일 받는 대신, 야후 종목 검색기로 거래량 상위 500개와 시총 상위 500개를 받아
+    그 안에서 거래대금 순으로 정렬한다. 거래대금 상위 종목은 거의 항상 이 두 묶음 안에 있다."""
+    q = Q('and', [Q('eq', ['region', 'us']), Q('gt', ['intradayprice', 2]),
+                  Q('is-in', ['exchange', 'NMS', 'NYQ', 'NGM', 'NCM', 'ASE', 'PCX', 'BTS'])])
+    rows = {}
+    for sort in ('dayvolume', 'intradaymarketcap'):
+        for offset in (0, 250):
+            for x in yf.screen(q, sortField=sort, sortAsc=False, size=250, offset=offset).get('quotes', []):
+                p, v = x.get('regularMarketPrice'), x.get('regularMarketVolume')
+                if x.get('quoteType') == 'EQUITY' and p and v:
+                    rows[x['symbol']] = x
+    top = sorted(rows.values(), key=lambda x: -x['regularMarketPrice'] * x['regularMarketVolume'])[:count]
+    return [{
+        'ticker': x['symbol'], 'name': korean_names.get(x['symbol']) or (x.get('shortName') or x['symbol']).strip(),
+        'price': round(x['regularMarketPrice'], 2), 'chg': round(x.get('regularMarketChangePercent') or 0, 2),
+        'volume': int(x['regularMarketVolume']), 'pv': round(x['regularMarketPrice'] * x['regularMarketVolume'] / 1e6),
+    } for x in top]
 
 
 def build_breadth(download, korean_names):
@@ -75,8 +98,14 @@ def build_breadth(download, korean_names):
     chg = close.iloc[-1] / close.iloc[-2] - 1
     adv = {'up': int((chg > 0).sum()), 'flat': int((chg == 0).sum()), 'down': int((chg < 0).sum())}
 
+    try:
+        leaders = market_leaders(korean_names)
+        leaders_scope = 'us'
+    except Exception as e:
+        print(f'거래대금 상위(미국 전체) 실패, S&P 500 으로 대신함: {e}')
+        leaders, leaders_scope = None, 'sp500'
     pv = (close.iloc[-1] * vol.iloc[-1]).dropna().sort_values(ascending=False).head(15)
-    leaders = [{
+    leaders = leaders or [{
         'ticker': t, 'name': korean_names.get(t) or names[t], 'en': names[t],
         'price': round(float(close[t].iloc[-1]), 2), 'chg': round(float(chg[t] * 100), 2),
         'volume': int(vol[t].iloc[-1]), 'pv': round(float(v) / 1e6),  # 백만 달러
@@ -85,7 +114,7 @@ def build_breadth(download, korean_names):
     hist = dates[-HISTORY:]
     data = {
         'date': dates[-1].strftime('%Y-%m-%d'), 'count': int(close.iloc[-1].notna().sum()),
-        'table': table, 'highsLows': hl, 'advance': adv, 'leaders': leaders,
+        'table': table, 'highsLows': hl, 'advance': adv, 'leaders': leaders, 'leadersScope': leaders_scope,
         'history': {
             'dates': [d.strftime('%Y-%m-%d') for d in hist],
             **{str(n): [None if pd.isna(v) else round(float(v), 1) for v in above[n].loc[hist]] for n in (20, 50, 200)},
