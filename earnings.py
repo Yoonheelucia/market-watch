@@ -79,6 +79,17 @@ def build_one(ticker, name, closes):
         est = t.earnings_estimate
     except Exception:
         est = None
+    # 연간 희석 EPS (공시 기준, 최근 4년)
+    diluted = []
+    try:
+        inc = t.income_stmt
+        if inc is not None and 'Diluted EPS' in inc.index:
+            for col, v in inc.loc['Diluted EPS'].items():
+                if num(v) is not None:
+                    fe = pd.Timestamp(col) + pd.offsets.MonthEnd(0)
+                    diluted.append({'fy': fy_label(fe), 'fyEnd': fe.strftime('%Y-%m-%d'), 'eps': num(v)})
+    except Exception:
+        pass
     est_avg = (lambda p: num(est.loc[p, 'avg']) if est is not None and 'avg' in est.columns and p in est.index else None)
 
     closes = closes.dropna()
@@ -195,6 +206,10 @@ def build_one(ticker, name, closes):
         'ttmEps': num(ttm), 'pe': num(last / ttm, 1) if ttm and ttm > 0 else None,
         'fwdEps': fwd_eps, 'fwdGrowth': fwd_growth, 'fpe': num(last / fwd_eps, 1) if fwd_eps and fwd_eps > 0 else None,
         'fwdPeriod': next_fy, 'curEps': cur_eps,
+        'curFy': fy_label(cur_fy_end) if cur_fy_end is not None else None,
+        'nextFy': fy_label(cur_fy_end + pd.DateOffset(years=1) + pd.offsets.MonthEnd(0)) if cur_fy_end is not None else None,
+        'diluted': [d for d in sorted(diluted, key=lambda d: d['fyEnd'])
+                    if cur_fy_end is None or d['fyEnd'] < cur_fy_end.strftime('%Y-%m-%d')][-4:],
         'ntmEps': ntm_eps, 'ntmPe': num(last / ntm_eps, 1) if ntm_eps and ntm_eps > 0 else None,
         'next': {'date': upcoming['ts'].strftime('%Y-%m-%d'), 'when': timing(upcoming['ts'], korean), 'est': upcoming['est']} if upcoming else None,
         'quarters': quarters[-QUARTERS:],

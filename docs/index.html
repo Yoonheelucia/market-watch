@@ -126,6 +126,25 @@ h4 { font-size: 14px; margin: 20px 0 8px; }
 .new-item span { color: var(--muted); font-size: 12px; }
 .note a { color: var(--accent); }
 .badge.ok { background: color-mix(in srgb, #16a34a 15%, transparent); color: #16a34a; }
+.fv-eps th, .fv-eps td { text-align: right; }
+.fv-eps th, .fv-eps tbody tr { cursor: default; }
+.fv-eps th:first-child, .fv-eps td:first-child { text-align: left; }
+.fv-eps .latest { color: var(--up); }
+.fv-eps .fut { background: var(--row-hover); }
+.fv-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 16px; }
+@media (max-width: 760px) { .fv-cols { grid-template-columns: minmax(0, 1fr); } }
+.fv-panel h4 { margin: 0 0 8px; }
+.fv-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 20px minmax(0, 1fr); gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums; align-items: baseline; }
+.fv-row > :nth-child(n+2) { text-align: right; }
+.fv-row > :nth-child(3) { text-align: center; color: var(--muted); }
+.fv-row .lb { color: var(--muted); }
+.fv-row b { font-weight: 700; }
+.verdict { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; margin-left: 4px; }
+.score-table { max-width: 360px; }
+.score-table th, .score-table td { text-align: center !important; }
+.score-table th, .score-table tbody tr { cursor: default; }
+.score-table tr.hit td { background: var(--row-hover); font-weight: 700; }
 .to-top { position: fixed; right: 20px; bottom: 20px; z-index: 10; padding: 10px 16px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 500;
   box-shadow: 0 4px 14px rgb(0 0 0 / .15); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -500,8 +519,9 @@ function drawEarnings(t) {
     ? `D는 발표 후 첫 거래일입니다. 장후 발표는 다음 거래일이 D이고, 장전·장중 발표는 발표 당일이 D입니다. D·D+1·D+2는 각각 그날 하루 등락률이고, 3일 누적은 셋을 합친 수익률입니다. EPS는 야후 파이낸스 기준(미국은 대부분 조정 EPS)이고, PER은 D의 종가를 직전 4개 분기 EPS 합으로 나눈 값, 선행 PER은 같은 종가를 이후 4개 분기 컨센서스 EPS 합으로 나눈 값입니다.`
     : `연간 EPS와 컨센서스는 그 회계연도 4개 분기를 합친 값이고, 주가 반응은 4분기 실적 발표일 기준입니다. PER은 결산월 말 종가 / 연간 EPS, 선행 PER은 같은 종가 / 다음 회계연도 4개 분기 컨센서스 합입니다. 가장 최근 회계연도의 선행 PER은 진행 중인 회계연도의 현재 컨센서스를 씁니다.`;
   document.getElementById('er').innerHTML = head + bizCard(t) + `<section class="card"><div class="table-wrap">${table}</div><div class="note">${note}</div></section>`
-    + `<section class="card" id="val"></section>`;
+    + `<section class="card" id="val"></section>` + `<section class="card" id="fv"></section>`;
   drawValuation(s);
+  drawFairValue(s);
 }
 
 // ───── 사업 구성 ─────
@@ -531,6 +551,98 @@ function bizCard(t) {
         ${b.src ? ` <a href="${esc(b.src)}" target="_blank" rel="noopener">회사 IR 페이지 ↗</a>` : ''}
       </div>
     </section>`;
+}
+
+// ───── 성장률로 보는 적정주가 (PEG 방식) ─────
+const SCORES = [[-Infinity, 0, 5, '적극 매도'], [0, 5, 4, '매도 검토'], [5, 10, 3, '중립'], [10, 20, 2, '매수 검토'], [20, Infinity, 1, '적극 매수']];
+const judge = up => SCORES.find(([lo, hi]) => up >= lo && up < hi);
+const verdict = up => { const j = judge(up); const c = j[2] <= 2 ? 'var(--up)' : j[2] >= 4 ? 'var(--down)' : 'var(--muted)';
+  return `<span class="verdict" style="color:${c};background:color-mix(in srgb, ${c} 14%, transparent)">${j[3]}</span>`; };
+
+function drawFairValue(s) {
+  const el = document.getElementById('fv'), cur = s.currency, price = s.price;
+  const past = s.diluted || [];
+  const e1 = s.curEps, e2 = s.fwdEps;
+  if (!past.length || e1 == null || e2 == null) {
+    el.innerHTML = `<div class="formula">성장률로 보는 적정주가</div><div class="note">과거 EPS나 향후 EPS 추정치가 없어서 계산할 수 없어요.</div>`;
+    return;
+  }
+  const cols = [...past.map((d, i) => ({ label: i === past.length - 1 ? '가장 최근' : `과거 ${past.length - 1 - i}년`, fy: d.fy, eps: d.eps, latest: i === past.length - 1 })),
+    { label: '향후 1년', fy: s.curFy, eps: e1, fut: true }, { label: '향후 2년', fy: s.nextFy, eps: e2, fut: true }];
+  cols.forEach((c, i) => { const p = cols[i - 1]; c.g = p && p.eps > 0 ? (c.eps / p.eps - 1) * 100 : null; });
+  const unstable = cols.some(c => c.g != null && (c.g < 0 || c.g >= 50));
+  const last = past[past.length - 1].eps;
+  const gBase = e1 > 0 ? (e2 / e1 - 1) * 100 : null;
+  const gAdj = last > 0 && e2 > 0 ? (Math.pow(e2 / last, 1 / 2) - 1) * 100 : null;
+  const curX = e1 > 0 ? price / e1 : null;
+  const money = v => fmtPrice(cur === 'KRW' ? Math.round(v) : v, cur);
+  const pct = v => `${v >= 0 ? '' : ''}${v.toFixed(1)}%`;
+  const upPct = v => `<span class="${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</span>`;
+
+  const panel = (title, g, color) => {
+    if (g == null || g <= 0 || e1 <= 0) return `<div class="fv-panel"><h4 style="color:${color}">${title}</h4><div class="note">성장률이 0 이하라 이 방식으로는 계산할 수 없어요.</div></div>`;
+    const lo = e1 * g, hi = e1 * g * 2, bull = e1 * g * 2.5;
+    const up1 = (hi / price - 1) * 100, up2 = (bull / price - 1) * 100;
+    const row = (lb, a, b, sep = '~') => `<div class="fv-row"><span class="lb">${lb}</span><span>${a}</span><span>${b === '' ? '' : sep}</span><span>${b}</span></div>`;
+    return `<div class="fv-panel"><h4 style="color:${color}">${title}</h4>
+      ${row('평균 성장률', `<b>${pct(g)}</b>`, '')}
+      ${row('적정배수 (보통)', `${g.toFixed(0)}배`, `${(g * 2).toFixed(0)}배`)}
+      ${row('적정배수 (강세장)', `${(g * 1.5).toFixed(0)}배`, `${(g * 2.5).toFixed(0)}배`)}
+      ${row('적정가격대', money(lo), money(hi))}
+      ${row('현재 주가', money(price), '')}
+      ${row('목표주가 (보통 · 강세)', `<b>${money(hi)}</b>`, `<b>${money(bull)}</b>`, '·')}
+      ${row('상승여력', `${upPct(up1)}`, `${upPct(up2)}`, '·')}
+      ${row('판단 (보통 기준)', verdict(up1), '')}
+      ${row('현재배수', `${curX.toFixed(1)}배`, '')}
+    </div>`;
+  };
+
+  el.innerHTML = `
+    <div class="formula">성장률로 보는 적정주가</div>
+    <div class="note" style="margin:0 0 12px; font-size:13px; line-height:1.7">
+      <b>적정주가 = 향후 1년 EPS × 적정배수</b>, 적정배수는 <b>성장률 숫자 그대로</b> 써요. 성장률 30%면 30배~60배(보통), 45배~75배(강세장)예요.<br>
+      보통은 성장률과 PER이 비슷하면 적당하다고 보지만, 호황·상승장에서는 프리미엄을 더 받는 경우도 있어요.
+    </div>
+    <div class="table-wrap"><table class="fv-eps">
+      <thead><tr><th></th>${cols.map(c => `<th class="${c.latest ? 'latest' : ''}">${c.label}<br><span style="font-weight:400">${esc(c.fy || '')}</span></th>`).join('')}</tr></thead>
+      <tbody>
+        <tr><td>희석 EPS</td>${cols.map(c => `<td class="${c.fut ? 'fut' : ''}">${fmtEps(c.eps, cur)}</td>`).join('')}</tr>
+        <tr><td>성장률</td>${cols.map(c => `<td class="${c.fut ? 'fut' : ''}">${c.g == null ? '' : `<span class="${c.g >= 0 ? 'up' : 'down'}">${c.g.toFixed(0)}%</span>`}</td>`).join('')}</tr>
+      </tbody>
+    </table></div>
+    <div class="note">과거는 공시된 희석 EPS, 향후 1·2년은 애널리스트 컨센서스예요(회계연도 기준).
+      ${unstable ? '<b style="color:var(--up)">역성장(마이너스)이나 50% 이상 급변한 해가 있어서 ② 보정값을 보는 걸 권해요.</b>' : '성장률이 비교적 안정적이라 ① 기본값을 봐도 돼요.'}</div>
+    <div class="fv-cols">
+      ${panel('① 기본값', gBase, 'var(--text)')}
+      ${panel('② 보정값', gAdj, 'var(--up)')}
+    </div>
+    <div class="note">① 기본값 성장률은 향후 1년 → 향후 2년 EPS 성장률이에요.
+      ② 보정값은 원래 3~5년 장기 성장률(CAGR)을 쓰는데, 자동으로 받을 수 있는 값이 없어서 가장 최근 실적(${esc(past[past.length - 1].fy)}) → 향후 2년(${esc(s.nextFy || '')}) 연평균 성장률로 대신했어요.
+      상승여력이 마이너스로 나오면, 주가가 미래 성장을 먼저 반영하고 있거나 월가 예상치가 보수적일 수 있어요.</div>
+    <div class="fv-cols">
+      <div>
+        <h4 style="margin:0 0 8px">③ 직접 계산</h4>
+        <div class="val-inputs" style="margin:0 0 8px"><label>적정배수 <input class="num" id="fvX" type="number" step="1" min="0" value="${Math.round(gBase > 0 ? gBase : (curX ?? 20))}"> 배</label></div>
+        <div id="fvOut"></div>
+      </div>
+      <div>
+        <h4 style="margin:0 0 8px">판단 기준 (상승여력)</h4>
+        <table class="score-table"><thead><tr><th>상승여력</th><th>점수</th><th>판단</th></tr></thead>
+          <tbody>${SCORES.slice().reverse().map(([lo, hi, sc, lb]) => `<tr data-sc="${sc}"><td>${lo === -Infinity ? '0% 미만' : hi === Infinity ? `${lo}% 이상` : `${lo}~${hi}%`}</td><td>${sc}</td><td>${lb}</td></tr>`).join('')}</tbody></table>
+      </div>
+    </div>`;
+
+  const out = () => {
+    const x = parseFloat(document.getElementById('fvX').value);
+    if (isNaN(x) || e1 <= 0) { document.getElementById('fvOut').innerHTML = ''; return; }
+    const tgt = e1 * x, up = (tgt / price - 1) * 100;
+    document.getElementById('fvOut').innerHTML = `
+      <div class="fv-row"><span class="lb">적정주가</span><span><b>${money(tgt)}</b></span><span></span><span></span></div>
+      <div class="fv-row"><span class="lb">상승여력</span><span>${upPct(up)}</span><span></span><span>${verdict(up)}</span></div>`;
+    el.querySelectorAll('.score-table tr[data-sc]').forEach(tr => tr.classList.toggle('hit', +tr.dataset.sc === judge(up)[2]));
+  };
+  document.getElementById('fvX').oninput = out;
+  out();
 }
 
 // ───── 목표 주가 = 예상 EPS × 적정 PER ─────
