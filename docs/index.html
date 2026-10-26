@@ -145,6 +145,7 @@ h4 { font-size: 14px; margin: 20px 0 8px; }
 .score-table th, .score-table td { text-align: center !important; }
 .score-table th, .score-table tbody tr { cursor: default; }
 .score-table tr.hit td { background: var(--row-hover); font-weight: 700; }
+.seg-table td, .seg-table th { padding: 6px 8px; font-size: 12px; }
 .to-top { position: fixed; right: 20px; bottom: 20px; z-index: 10; padding: 10px 16px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 500;
   box-shadow: 0 4px 14px rgb(0 0 0 / .15); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -259,6 +260,7 @@ function render(m) {
       <span class="stat">1일 <b>${fmtPct(idx.d1)}</b></span>
       <span class="stat">1개월 <b>${fmtPct(idx.m1)}</b></span>
       <span class="stat">${m.dates.length}거래일 <b>${fmtPct(idx.all)}</b></span>
+      ${m.index.pe?.value ? `<span class="stat" title="지수 PER은 지수를 그대로 따라가는 ETF(${esc(m.index.pe.etf)})의 PER(최근 1년 이익 기준)이에요">PER <b>${m.index.pe.value.toFixed(1)}배</b> <span style="font-size:11px">(${esc(m.index.pe.etf)} 기준)</span></span>` : ''}
     </section>
     <section class="card">
       <div class="table-wrap"><table class="mk">
@@ -373,7 +375,7 @@ addEventListener('scroll', () => {
 }, { passive: true });
 
 // ───── 실적 조회 탭 ─────
-let ER, BIZ = {}, erTicker = '', erMode = 'q';
+let ER, BIZ = {}, SEG = {}, erTicker = '', erMode = 'q';
 try { erMode = localStorage.getItem('erMode') || 'q'; } catch (e) {}
 const POPULAR = ['NVDA', 'AAPL', 'MSFT', 'TSLA', '005930.KS', '000660.KS', '196170.KQ'];
 const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -401,9 +403,10 @@ async function renderEarnings(ticker) {
   if (!ER) {
     main.innerHTML = '<section class="card">실적 데이터를 불러오는 중…</section>';
     try {
-      [ER, BIZ] = await Promise.all([
+      [ER, BIZ, SEG] = await Promise.all([
         fetch('earnings.json', { cache: 'no-cache' }).then(r => r.json()),
         fetch('business.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : {}).catch(() => ({})),
+        fetch('segments.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : {}).catch(() => ({})),
       ]);
     }
     catch (e) { main.innerHTML = `<section class="card">실적 데이터를 불러오지 못했습니다: ${esc(e.message)}</section>`; return; }
@@ -527,7 +530,7 @@ function drawEarnings(t) {
 // ───── 사업 구성 ─────
 function bizCard(t) {
   const b = BIZ[t];
-  if (!b) return '';
+  if (!b) return SEG[t] ? `<section class="card biz"><div class="formula">무슨 사업을 하나요?</div>${segTrend(t)}</section>` : '';
   const color = i => `var(--c${i % 6 + 1})`;
   return `
     <section class="card biz">
@@ -544,6 +547,7 @@ function bizCard(t) {
           ${b.new.map(n => `<div class="new-item"><b>${esc(n.name)}</b><span>${esc(n.desc)}</span></div>`).join('')}
         </div>
       </div>
+      ${segTrend(t)}
       <div class="note">
         ${b.verified ? '<span class="badge ok">최근 IR 확인</span>' : '<span class="badge meet">사업보고서 기준</span>'}
         ${esc(b.basis)}.${b.approx ? ' 회사가 따로 공개하지 않은 일부 비중은 추정치라서 대략적인 크기로 봐 주세요.' : ''}
@@ -551,6 +555,46 @@ function bizCard(t) {
         ${b.src ? ` <a href="${esc(b.src)}" target="_blank" rel="noopener">회사 IR 페이지 ↗</a>` : ''}
       </div>
     </section>`;
+}
+
+// ───── 사업부별 분기 매출 추이 (미국 SEC 공시) ─────
+const fmtM = v => v == null ? '–' : Math.abs(v) >= 1000 ? '$' + (v / 1000).toFixed(1) + 'B' : '$' + Math.round(v) + 'M';
+const qLabel = d => `'${d.slice(2, 4)}.${d.slice(5, 7)}`;
+
+function segTrend(t) {
+  const g = SEG[t];
+  if (!g) return '';
+  const n = g.quarters.length, color = i => `var(--c${i % 6 + 1})`;
+  const W = 900, H = 230, padL = 52, padB = 22, padT = 8, bw = (W - padL) / n * 0.62;
+  const maxV = Math.max(...g.quarters.map((_, i) => g.series.reduce((a, s) => a + (s.values[i] || 0), 0)));
+  const y = v => padT + (H - padT - padB) * (1 - v / maxV);
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map(k => maxV * k);
+  let bars = '';
+  g.quarters.forEach((q, i) => {
+    const x = padL + (W - padL) / n * (i + 0.5) - bw / 2;
+    let acc = 0;
+    g.series.forEach((s, k) => {
+      const v = s.values[i]; if (!v || v <= 0) return;
+      const y0 = y(acc), y1 = y(acc + v); acc += v;
+      bars += `<rect x="${x.toFixed(1)}" y="${y1.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(y0 - y1 - 1, 0.5).toFixed(1)}" fill="${color(k)}" rx="2"><title>${esc(s.name)} ${qLabel(q)}: ${fmtM(v)}</title></rect>`;
+    });
+    bars += `<text x="${(x + bw / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="11" fill="var(--muted)">${qLabel(q)}</text>`;
+  });
+  const grid = ticks.map(v => `<line x1="${padL}" x2="${W}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line)"/><text x="${padL - 6}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--muted)">${fmtM(v)}</text>`).join('');
+  const yoy = vals => { const a = vals[n - 1], b = vals[n - 5]; return a != null && b ? (a / b - 1) * 100 : null; };
+  const share = (vals) => vals[n - 1] != null && g.total[n - 1] ? vals[n - 1] / g.total[n - 1] * 100 : null;
+  return `
+    <div class="k" style="color:var(--muted);font-size:12px;margin:18px 0 6px">사업부별 분기 매출 추이 (SEC 공시 기준, ${esc(g.axis === 'Statement Business Segments' ? '사업부문' : g.axis === 'Product Or Service' ? '제품·서비스' : g.axis)} 구분)</div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="사업부별 분기 매출 누적 막대그래프">${grid}${bars}</svg>
+    <div class="table-wrap"><table class="er-table seg-table">
+      <thead><tr><th>사업부</th>${g.quarters.map(q => `<th>${qLabel(q)}</th>`).join('')}<th class="grp">비중</th><th>전년 대비</th></tr></thead>
+      <tbody>
+        ${g.series.map((s, k) => `<tr><td><i class="dot" style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${color(k)}"></i>${esc(s.name)}</td>
+          ${s.values.map(v => `<td>${fmtM(v)}</td>`).join('')}<td class="grp">${share(s.values) == null ? '–' : share(s.values).toFixed(0) + '%'}</td><td>${fmtPct(yoy(s.values))}</td></tr>`).join('')}
+        <tr><td><b>전체 매출</b></td>${g.total.map(v => `<td><b>${fmtM(v)}</b></td>`).join('')}<td class="grp">100%</td><td>${fmtPct(yoy(g.total))}</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note" style="margin-top:4px">분기 끝 달 기준이에요('26.06 = 2026년 4~6월). 사업부 이름은 회사가 공시에 쓴 그대로예요. 위의 매출 비중은 쉽게 묶은 구분이라 아래 공시 구분과 다를 수 있어요.</div>`;
 }
 
 // ───── 성장률로 보는 적정주가 (PEG 방식) ─────

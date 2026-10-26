@@ -20,10 +20,12 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - run: python build.py
+        env:
+          SEC_EMAIL: ${{ secrets.SEC_EMAIL }}  # SEC 공시 요청에 필요한 연락처
       - name: 변경사항 커밋
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898279+github-actions[bot]@users.noreply.github.com"
-          git add docs/data.json docs/earnings.json
+          git add docs/data.json docs/earnings.json docs/segments.json segments-cache.json
           git diff --cached --quiet || git commit -m "데이터 업데이트 $(TZ=Asia/Seoul date +%F)"
           git push

@@ -15,6 +15,7 @@ import pandas as pd
 import yfinance as yf
 
 from earnings import build_earnings
+from segments import build_segments
 
 DAYS = 90  # 차트 기간 (달력 기준 일수)
 
@@ -100,10 +101,10 @@ DOW = [
 
 MARKETS = [
     {'id': 'sp500', 'label': 'S&P 500', 'currency': 'USD',
-     'index': ('^GSPC', 'S&P 500'),
+     'index': ('^GSPC', 'S&P 500'), 'pe_etf': 'SPY',
      'stocks': [(s, US_NAMES.get(s, s)) for s in SP500]},
     {'id': 'nasdaq', 'label': '나스닥', 'currency': 'USD',
-     'index': ('^IXIC', 'NASDAQ'),
+     'index': ('^IXIC', 'NASDAQ'), 'pe_etf': 'ONEQ',
      'stocks': [(s, US_NAMES.get(s, s)) for s in NASDAQ]},
     {'id': 'kospi', 'label': '코스피', 'currency': 'KRW',
      'index': ('^KS11', 'KOSPI'),
@@ -112,7 +113,7 @@ MARKETS = [
      'index': ('^KQ11', 'KOSDAQ'),
      'stocks': [(f'{code}.KQ', name) for code, name in KOSDAQ_NAMES.items()]},
     {'id': 'dow', 'label': '다우', 'currency': 'USD',
-     'index': ('^DJI', 'Dow Jones'),
+     'index': ('^DJI', 'Dow Jones'), 'pe_etf': 'DIA',
      'stocks': [(s, US_NAMES.get(s, s)) for s in DOW]},
 ]
 
@@ -140,6 +141,15 @@ def download(tickers, start, **kw):
             if got['Close'].notna().any():
                 raw = raw.drop(columns=t, level=0).join(pd.concat({t: got}, axis=1), how='outer')
     return raw
+
+
+def index_pe(etf):
+    """지수 자체의 PER 은 야후에 없어서, 지수를 그대로 따라가는 ETF 의 PER 을 쓴다."""
+    try:
+        v = yf.Ticker(etf).info.get('trailingPE')
+        return round(float(v), 1) if v else None
+    except Exception:
+        return None
 
 
 def usd_krw():
@@ -219,6 +229,9 @@ def main():
         'markets': [build_market(m, start) for m in MARKETS],
     }
     add_market_caps(data['markets'])
+    for m, spec in zip(data['markets'], MARKETS):
+        if spec.get('pe_etf'):
+            m['index']['pe'] = {'value': index_pe(spec['pe_etf']), 'etf': spec['pe_etf']}
     data['usdkrw'] = usd_krw()
     print(f"원/달러 환율: {data['usdkrw']}")
     OUT.parent.mkdir(exist_ok=True)
@@ -229,6 +242,9 @@ def main():
     earnings = {'updated': data['updated'], 'stocks': build_earnings(names, download, EARNINGS_OUT)}
     EARNINGS_OUT.write_text(json.dumps(earnings, ensure_ascii=False, separators=(',', ':')))
     print(f'저장: {EARNINGS_OUT} ({EARNINGS_OUT.stat().st_size // 1024} KB)')
+
+    # 미국 종목 사업부별 분기 매출 (SEC 공시)
+    build_segments(sorted(t for t in names if not t.endswith(('.KS', '.KQ'))))
 
 
 if __name__ == '__main__':
