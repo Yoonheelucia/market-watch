@@ -5,11 +5,16 @@ GitHub Actions 가 매일 아침 이 스크립트를 실행하고, docs/index.ht
 """
 import json
 import math
+import time
+import warnings
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
 import yfinance as yf
+
+from earnings import build_earnings
 
 DAYS = 90  # 차트 기간 (달력 기준 일수)
 
@@ -111,7 +116,10 @@ MARKETS = [
      'stocks': [(s, US_NAMES.get(s, s)) for s in DOW]},
 ]
 
+warnings.filterwarnings('ignore')
+
 OUT = Path(__file__).parent / 'docs' / 'data.json'
+EARNINGS_OUT = OUT.with_name('earnings.json')
 
 
 def clean(values, digits):
@@ -119,10 +127,49 @@ def clean(values, digits):
             for v in values]
 
 
+def download(tickers, start, **kw):
+    raw = yf.download(tickers, start=start, group_by='ticker', progress=False, threads=True, **kw)
+
+    # 야후가 가끔 일부 종목을 빈 값으로 돌려주므로, 비어 있는 종목만 한 번 더 받는다
+    empty = [t for t in tickers if raw[t]['Close'].notna().sum() == 0]
+    if empty:
+        time.sleep(3)
+        retry = yf.download(empty, start=start, group_by='ticker', progress=False, threads=False, **kw)
+        for t in empty:
+            got = retry[t]
+            if got['Close'].notna().any():
+                raw = raw.drop(columns=t, level=0).join(pd.concat({t: got}, axis=1), how='outer')
+    return raw
+
+
+def market_cap(ticker):
+    for attempt in range(2):
+        try:
+            v = yf.Ticker(ticker).fast_info['marketCap']
+            return None if v is None or math.isnan(v) else float(v)
+        except Exception:
+            time.sleep(2)
+    return None
+
+
+def add_market_caps(markets):
+    """종목별 시총을 붙이고, 각 시장 목록 안에서 시총 순위를 매긴다."""
+    tickers = sorted({s['ticker'] for m in markets for s in m['stocks']})
+    with ThreadPoolExecutor(4) as ex:
+        caps = dict(zip(tickers, ex.map(market_cap, tickers)))
+    print(f"시총: {sum(v is not None for v in caps.values())}/{len(tickers)}개 종목")
+    for m in markets:
+        for s in m['stocks']:
+            s['cap'] = caps[s['ticker']]
+        ranked = sorted((s for s in m['stocks'] if s['cap']), key=lambda s: -s['cap'])
+        for rank, s in enumerate(ranked, 1):
+            s['rank'] = rank
+
+
 def build_market(m, start):
     index_ticker, index_name = m['index']
     tickers = [index_ticker] + [t for t, _ in m['stocks']]
-    raw = yf.download(tickers, start=start, group_by='ticker', progress=False, threads=True)
+    raw = download(tickers, start)
 
     index = raw[index_ticker][['Close']].dropna()
     if index.empty:
@@ -161,9 +208,15 @@ def main():
         'start': start,
         'markets': [build_market(m, start) for m in MARKETS],
     }
+    add_market_caps(data['markets'])
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(json.dumps(data, ensure_ascii=False, separators=(',', ':')))
     print(f'저장: {OUT} ({OUT.stat().st_size // 1024} KB)')
+
+    names = {s['ticker']: s['name'] for m in data['markets'] for s in m['stocks']}
+    earnings = {'updated': data['updated'], 'stocks': build_earnings(names, download, EARNINGS_OUT)}
+    EARNINGS_OUT.write_text(json.dumps(earnings, ensure_ascii=False, separators=(',', ':')))
+    print(f'저장: {EARNINGS_OUT} ({EARNINGS_OUT.stat().st_size // 1024} KB)')
 
 
 if __name__ == '__main__':

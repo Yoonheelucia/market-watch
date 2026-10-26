@@ -63,13 +63,59 @@ h2 { font-size: 16px; margin: 32px 0 12px; }
 .chart-box .legend { font-size: 12px; color: var(--muted); margin-bottom: 4px; display: flex; gap: 12px; }
 .chart-box .legend i { display: inline-block; width: 10px; height: 2px; vertical-align: middle; margin-right: 4px; }
 .chart { height: 260px; }
+.search { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.search input { flex: 1 1 260px; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg); color: var(--text); font: inherit; font-size: 15px; }
+.search input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { background: none; border: 0; padding: 9px 16px; font: inherit; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chips button { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px;
+  padding: 4px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.chips button:hover { border-color: var(--accent); color: var(--accent); }
+.er-head h3 { font-size: 18px; margin: 0 0 2px; }
+.er-head .sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi { background: var(--bg); border-radius: 8px; padding: 10px 12px; }
+.kpi .k { color: var(--muted); font-size: 12px; }
+.kpi .v { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.kpi .s { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.er-table th, .er-table td { text-align: right; }
+.er-table th:first-child, .er-table td:first-child, .er-table th:nth-child(2), .er-table td:nth-child(2) { text-align: left; }
+.er-table th { cursor: default; }
+.er-table tbody tr { cursor: default; }
+.er-table .grp { border-left: 1px solid var(--line); }
+.badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 1px 7px; border-radius: 999px; }
+.badge.beat { background: color-mix(in srgb, var(--up) 15%, transparent); color: var(--up); }
+.badge.miss { background: color-mix(in srgb, var(--down) 15%, transparent); color: var(--down); }
+.badge.meet { background: var(--bg); color: var(--muted); }
+.when { color: var(--muted); font-size: 11px; margin-left: 4px; }
+.partial td { color: var(--muted); }
+.val-inputs { display: flex; flex-wrap: wrap; gap: 12px 20px; margin: 4px 0 14px; }
+.val-inputs label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.num { width: 76px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg);
+  color: var(--text); font: inherit; text-align: right; font-variant-numeric: tabular-nums; }
+.val-table td, .val-table th { text-align: right; }
+.val-table th { cursor: default; }
+.val-table tbody tr { cursor: default; }
+.val-table tr.base td { font-weight: 700; background: var(--row-hover); }
+.formula { font-weight: 700; margin-bottom: 6px; }
+.matrix td.cell { font-weight: 500; }
+h4 { font-size: 14px; margin: 20px 0 8px; }
+.to-top { position: fixed; right: 20px; bottom: 20px; z-index: 10; padding: 10px 16px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 500;
+  box-shadow: 0 4px 14px rgb(0 0 0 / .15); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.to-top.show { opacity: 1; pointer-events: auto; }
+.to-top:hover { color: var(--accent); }
 .note { color: var(--muted); font-size: 12px; margin-top: 8px; }
 @media (max-width: 760px) {
   .charts { grid-template-columns: minmax(0, 1fr); }
   .chart { height: 220px; }
   .idx { gap: 4px 16px; }
   th, td { padding: 8px 6px; }
-  th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5) { display: none; }
+  .mk th:nth-child(5), .mk td:nth-child(5), .mk th:nth-child(7), .mk td:nth-child(7),
+  .mk th:nth-child(8), .mk td:nth-child(8), .mk th:nth-child(9), .mk td:nth-child(9) { display: none; }
 }
 </style>
 </head>
@@ -82,6 +128,7 @@ h2 { font-size: 16px; margin: 32px 0 12px; }
   <nav class="tabs" id="tabs" role="tablist"></nav>
   <main id="main"></main>
 </div>
+<button class="to-top" id="toTop" type="button">↑ 목록으로</button>
 
 <script>
 const LWC = LightweightCharts;
@@ -102,11 +149,19 @@ const tickerLink = t => {
   return `<a class="tk" href="${url}" target="_blank" rel="noopener" title="${code} 상세 정보 보기">${code}</a>`;
 };
 
+const fmtCap = (v, cur) => {
+  if (v == null) return '–';
+  if (cur === 'KRW') return v >= 1e12 ? (v / 1e12).toFixed(v >= 1e14 ? 0 : 1) + '조' : Math.round(v / 1e8).toLocaleString('ko-KR') + '억';
+  return v >= 1e12 ? '$' + (v / 1e12).toFixed(2) + 'T' : '$' + Math.round(v / 1e9).toLocaleString('en-US') + 'B';
+};
+
 function stats(closes) {
   const last = lastValid(closes);
   return {
     last,
     d1: pct(last, lastValid(closes, 1)),
+    d5: pct(last, lastValid(closes, 5)),
+    d10: pct(last, lastValid(closes, 10)),
     m1: pct(last, lastValid(closes, 21)),
     all: pct(last, firstValid(closes)),
   };
@@ -122,12 +177,22 @@ async function init() {
     b.onclick = () => { location.hash = m.id; };
     tabs.appendChild(b);
   });
+  const et = document.createElement('button');
+  et.className = 'tab'; et.textContent = '실적 조회'; et.role = 'tab'; et.dataset.id = 'earnings';
+  et.onclick = () => { location.hash = 'earnings' + (erTicker ? '/' + erTicker : ''); };
+  tabs.appendChild(et);
   window.addEventListener('hashchange', route);
   route();
 }
 
 function route() {
   const id = location.hash.slice(1);
+  if (id.startsWith('earnings')) {
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.id === 'earnings'));
+    current = null;
+    renderEarnings(decodeURIComponent(id.split('/')[1] || ''));
+    return;
+  }
   const m = DATA.markets.find(x => x.id === id) || DATA.markets[0];
   if (current === m) return;
   current = m;
@@ -142,7 +207,7 @@ function render(m) {
   if (observer) observer.disconnect();
 
   const idx = stats(m.index.c);
-  m.rows = m.stocks.map((s, i) => { const st = stats(s.c); return { i, s, ...st, excess: st.all != null && idx.all != null ? st.all - idx.all : null }; });
+  m.rows = m.stocks.map((s, i) => { const st = stats(s.c); return { i, s, ...st, cap: s.cap ?? null, rank: s.rank ?? null, excess: st.all != null && idx.all != null ? st.all - idx.all : null }; });
 
   const main = document.getElementById('main');
   main.innerHTML = `
@@ -154,22 +219,23 @@ function render(m) {
       <span class="stat">${m.dates.length}거래일 <b>${fmtPct(idx.all)}</b></span>
     </section>
     <section class="card">
-      <div class="table-wrap"><table>
+      <div class="table-wrap"><table class="mk">
         <thead><tr>
-          <th data-k="rank">#</th><th data-k="name">종목</th><th data-k="last">현재가</th>
-          <th data-k="d1">1일</th><th data-k="m1">1개월</th><th data-k="all">기간</th><th data-k="excess">지수 대비</th>
+          <th data-k="n">#</th><th data-k="name">종목</th><th data-k="last">현재가</th>
+          <th data-k="cap">시총</th><th data-k="rank">순위</th>
+          <th data-k="d1">1일</th><th data-k="d5">5일</th><th data-k="d10">10일</th><th data-k="m1">1개월</th><th data-k="all">기간</th><th data-k="excess">지수 대비</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table></div>
-      <div class="note">'기간'은 기준일 이후 수익률이고, '지수 대비'는 그 수익률에서 ${m.index.name} 수익률을 뺀 값입니다. 표의 제목을 누르면 정렬되고, 행을 누르면 해당 종목 차트로 이동합니다.${m.missing.length ? ` 데이터 없음: ${m.missing.join(', ')}` : ''}</div>
+      <div class="note">'기간'은 기준일 이후 수익률이고, '지수 대비'는 그 수익률에서 ${m.index.name} 수익률을 뺀 값이고, '순위'는 이 목록 안에서의 시총 순위입니다. 표의 제목을 누르면 정렬되고, 행을 누르면 해당 종목 차트로 이동합니다.${m.missing.length ? ` 데이터 없음: ${m.missing.join(', ')}` : ''}</div>
     </section>
     <h2>종목별 차트</h2>
     <div id="list"></div>`;
 
   main.querySelectorAll('th').forEach(th => th.onclick = () => {
     const k = th.dataset.k;
-    if (k === 'rank') return;
-    sortDir = sortKey === k ? -sortDir : (k === 'name' ? 1 : -1);
+    if (k === 'n') return;
+    sortDir = sortKey === k ? -sortDir : (k === 'name' || k === 'rank' ? 1 : -1);
     sortKey = k; renderTable(m);
   });
   renderTable(m);
@@ -178,7 +244,7 @@ function render(m) {
   list.innerHTML = m.rows.map(r => `
     <article class="card stock" id="s-${r.i}" data-i="${r.i}">
       <h3>${r.s.name}${tickerLink(r.s.ticker)}</h3>
-      <div class="meta">${fmtPrice(r.last, m.currency)} · 1일 ${fmtPct(r.d1)} · 기간 ${fmtPct(r.all)} · 지수 대비 ${fmtPp(r.excess)}</div>
+      <div class="meta">${fmtPrice(r.last, m.currency)} · 시총 ${fmtCap(r.cap, m.currency)}${r.rank ? ` (${r.rank}위)` : ''} · 1일 ${fmtPct(r.d1)} · 기간 ${fmtPct(r.all)} · 지수 대비 ${fmtPp(r.excess)}</div>
       <div class="charts">
         <div class="chart-box">
           <div class="legend"><span>캔들 (오른쪽 축)</span><span><i style="background:var(--index)"></i>${m.index.name} (왼쪽 축)</span></div>
@@ -212,7 +278,8 @@ function renderTable(m) {
       <td>${n + 1}</td>
       <td>${r.s.name}${tickerLink(r.s.ticker)}</td>
       <td>${fmtPrice(r.last, m.currency)}</td>
-      <td>${fmtPct(r.d1)}</td><td>${fmtPct(r.m1)}</td><td>${fmtPct(r.all)}</td><td>${fmtPp(r.excess)}</td>
+      <td>${fmtCap(r.cap, m.currency)}</td><td>${r.rank ?? '–'}</td>
+      <td>${fmtPct(r.d1)}</td><td>${fmtPct(r.d5)}</td><td>${fmtPct(r.d10)}</td><td>${fmtPct(r.m1)}</td><td>${fmtPct(r.all)}</td><td>${fmtPp(r.excess)}</td>
     </tr>`).join('');
   tb.querySelectorAll('tr').forEach(tr => tr.onclick = e => !e.target.closest('a') &&
     document.getElementById('s-' + tr.dataset.i).scrollIntoView({ behavior: 'smooth', block: 'start' }));
@@ -255,6 +322,238 @@ function drawStock(m, s, el) {
 }
 
 const line = (dates, vals) => dates.map((t, i) => vals[i] == null ? { time: t } : { time: t, value: vals[i] });
+
+const toTop = document.getElementById('toTop');
+toTop.onclick = () => document.querySelector('.tabs').scrollIntoView({ behavior: 'smooth' });
+addEventListener('scroll', () => {
+  const list = document.getElementById('list');
+  toTop.classList.toggle('show', !!list && list.getBoundingClientRect().top < innerHeight / 2);
+}, { passive: true });
+
+// ───── 실적 조회 탭 ─────
+let ER, erTicker = '', erMode = 'q';
+try { erMode = localStorage.getItem('erMode') || 'q'; } catch (e) {}
+const POPULAR = ['NVDA', 'AAPL', 'MSFT', 'TSLA', '005930.KS', '000660.KS', '196170.KQ'];
+const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const fmtEps = (v, cur) => v == null ? '–' : cur === 'KRW' ? Math.round(v).toLocaleString('ko-KR') + '원' : '$' + v.toFixed(2);
+const fmtX = v => v == null ? '–' : v.toFixed(1) + '배';
+const fmtD = v => v == null ? '–' : v.slice(2).replace(/-/g, '.');
+const sumR = (...a) => a.some(v => v == null) ? null : (a.reduce((p, v) => p * (1 + v / 100), 1) - 1) * 100;
+const beatBadge = b => b == null ? '–' : b > 0 ? '<span class="badge beat">상회</span>' : b < 0 ? '<span class="badge miss">하회</span>' : '<span class="badge meet">부합</span>';
+
+function findTicker(q) {
+  q = q.trim(); if (!q) return null;
+  const st = ER.stocks, up = q.toUpperCase();
+  const m = q.match(/\(([^)]+)\)\s*$/);
+  if (m) { const code = m[1].toUpperCase(); const t = Object.keys(st).find(t => t === code || t.replace(/\.K[SQ]$/, '') === code); if (t) return t; }
+  return Object.keys(st).find(t => t === up || t.replace(/\.K[SQ]$/, '') === up)
+    || Object.keys(st).find(t => st[t].name === q)
+    || Object.keys(st).find(t => st[t].name.includes(q) || (st[t].longName || '').toUpperCase().includes(up))
+    || null;
+}
+
+async function renderEarnings(ticker) {
+  charts.forEach(c => c.remove()); charts = [];
+  if (observer) observer.disconnect();
+  const main = document.getElementById('main');
+  if (!ER) {
+    main.innerHTML = '<section class="card">실적 데이터를 불러오는 중…</section>';
+    try { ER = await (await fetch('earnings.json', { cache: 'no-cache' })).json(); }
+    catch (e) { main.innerHTML = `<section class="card">실적 데이터를 불러오지 못했습니다: ${esc(e.message)}</section>`; return; }
+  }
+  if (ticker && !ER.stocks[ticker]) ticker = findTicker(ticker) || '';
+  erTicker = ticker;
+  const opts = Object.entries(ER.stocks).map(([t, s]) => `<option value="${esc(s.name)} (${t.replace(/\.K[SQ]$/, '')})">`).join('');
+  main.innerHTML = `
+    <section class="card">
+      <div class="search">
+        <input id="erInput" list="erList" placeholder="티커 또는 종목명 입력 (예: NVDA, 삼성전자)" autocomplete="off" value="${ticker ? esc(ER.stocks[ticker].name + ' (' + ticker.replace(/\.K[SQ]$/, '') + ')') : ''}">
+        <datalist id="erList">${opts}</datalist>
+        <div class="seg" role="group" aria-label="보기">
+          <button data-mode="q" aria-pressed="${erMode === 'q'}">분기</button><button data-mode="y" aria-pressed="${erMode === 'y'}">연간</button>
+        </div>
+      </div>
+      <div class="chips">${POPULAR.filter(t => ER.stocks[t]).map(t => `<button data-t="${t}">${esc(ER.stocks[t].name)}</button>`).join('')}</div>
+      <div class="note" id="erMsg">이 페이지의 S&P 500·나스닥·코스피·코스닥·다우 목록에 있는 ${Object.keys(ER.stocks).length}개 종목을 조회할 수 있습니다. 업데이트 ${esc(ER.updated)}</div>
+    </section>
+    <div id="er"></div>`;
+
+  const input = document.getElementById('erInput');
+  const go = () => {
+    const t = findTicker(input.value);
+    if (t) location.hash = 'earnings/' + encodeURIComponent(t);
+    else document.getElementById('erMsg').textContent = `'${input.value}'에 해당하는 종목을 찾지 못했습니다. 목록에 있는 종목만 조회할 수 있습니다.`;
+  };
+  input.addEventListener('change', go);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  main.querySelectorAll('.chips button').forEach(b => b.onclick = () => { location.hash = 'earnings/' + b.dataset.t; });
+  main.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
+    erMode = b.dataset.mode;
+    try { localStorage.setItem('erMode', erMode); } catch (e) {}
+    main.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    if (erTicker) drawEarnings(erTicker);
+  });
+  if (ticker) drawEarnings(ticker);
+  else input.focus();
+}
+
+function drawEarnings(t) {
+  const s = ER.stocks[t], cur = s.currency;
+  const qs = s.quarters, rated = qs.filter(q => q.beat != null), beats = rated.filter(q => q.beat > 0).length;
+  const avgR0 = qs.filter(q => q.r0 != null);
+  const avg = avgR0.length ? avgR0.reduce((a, q) => a + Math.abs(q.r0), 0) / avgR0.length : null;
+  const head = `
+    <section class="card er-head">
+      <h3>${esc(s.name)}${tickerLink(t)}</h3>
+      <div class="sub">${esc(s.longName || '')} · 결산월 ${s.fyMonth}월 · 주가 기준일 ${esc(s.priceDate)}</div>
+      <div class="kpis">
+        <div class="kpi"><div class="k">현재가</div><div class="v">${fmtPrice(s.price, cur)}</div></div>
+        <div class="kpi"><div class="k">다음 실적발표</div><div class="v">${s.next ? fmtD(s.next.date) : '–'}</div>
+          <div class="s">${s.next ? `${esc(s.next.when)} · 예상 EPS ${fmtEps(s.next.est, cur)}` : '일정 미정'}</div></div>
+        <div class="kpi"><div class="k">PER (최근 4분기)</div><div class="v">${fmtX(s.pe)}</div><div class="s">EPS ${fmtEps(s.ttmEps, cur)}</div></div>
+        <div class="kpi"><div class="k">선행 PER (다음 회계연도)</div><div class="v">${fmtX(s.fpe)}</div><div class="s">예상 EPS ${fmtEps(s.fwdEps, cur)}</div></div>
+        <div class="kpi"><div class="k">컨센서스 상회</div><div class="v">${rated.length ? `${beats}/${rated.length}회` : '–'}</div><div class="s">최근 ${rated.length}개 분기</div></div>
+        <div class="kpi"><div class="k">발표 반응(D) 평균 크기</div><div class="v">${avg == null ? '–' : '±' + avg.toFixed(1) + '%'}</div><div class="s">${avgR0.length}회 평균</div></div>
+      </div>
+    </section>`;
+
+  let table;
+  if (erMode === 'q') {
+    table = `
+      <table class="er-table"><thead><tr>
+        <th>발표일</th><th>분기</th><th class="grp">예상 EPS</th><th>실제 EPS</th><th>서프라이즈</th><th>결과</th>
+        <th class="grp">D</th><th>D+1</th><th>D+2</th><th>3일 누적</th>
+        <th class="grp">EPS(4분기)</th><th>PER</th><th>선행 PER</th>
+      </tr></thead><tbody>
+      ${s.next ? `<tr class="partial"><td>${fmtD(s.next.date)}<span class="when">${esc(s.next.when)}</span></td><td>예정</td>
+        <td class="grp">${fmtEps(s.next.est, cur)}</td><td colspan="10">발표 예정</td></tr>` : ''}
+      ${[...qs].reverse().map(q => `<tr>
+        <td>${fmtD(q.date)}<span class="when">${esc(q.when)}</span></td><td>${esc(q.fy)} Q${q.fq}</td>
+        <td class="grp">${fmtEps(q.est, cur)}</td><td>${fmtEps(q.act, cur)}</td><td>${fmtPct(q.surp)}</td><td>${beatBadge(q.beat)}</td>
+        <td class="grp">${fmtPct(q.r0)}</td><td>${fmtPct(q.r1)}</td><td>${fmtPct(q.r2)}</td><td>${fmtPct(sumR(q.r0, q.r1, q.r2))}</td>
+        <td class="grp">${fmtEps(q.ttm, cur)}</td><td>${fmtX(q.pe)}</td><td>${fmtX(q.fpe)}</td>
+      </tr>`).join('')}
+      </tbody></table>`;
+  } else {
+    table = `
+      <table class="er-table"><thead><tr>
+        <th>회계연도</th><th>결산</th><th class="grp">EPS</th><th>증가율</th><th>컨센서스</th><th>서프라이즈</th><th>상회 분기</th>
+        <th class="grp">4분기 발표일</th><th>D</th><th>D+1</th><th>D+2</th>
+        <th class="grp">PER</th><th>선행 PER</th>
+      </tr></thead><tbody>
+      ${[...s.years].reverse().map(y => `<tr class="${y.n < 4 ? 'partial' : ''}">
+        <td>${esc(y.fy)}${y.n < 4 ? `<span class="when">진행 중 ${y.n}/4분기</span>` : ''}</td><td>${y.fyEnd.slice(0, 7).replace('-', '.')}</td>
+        <td class="grp">${fmtEps(y.eps, cur)}</td><td>${fmtPct(y.growth)}</td><td>${fmtEps(y.est, cur)}</td><td>${fmtPct(y.surp)}</td>
+        <td>${y.beats}/${y.n}</td>
+        <td class="grp">${y.date ? fmtD(y.date) + `<span class="when">${esc(y.when)}</span>` : '–'}</td>
+        <td>${fmtPct(y.r0)}</td><td>${fmtPct(y.r1)}</td><td>${fmtPct(y.r2)}</td>
+        <td class="grp">${fmtX(y.pe)}</td><td>${fmtX(y.fpe)}</td>
+      </tr>`).join('')}
+      </tbody></table>`;
+  }
+  const note = erMode === 'q'
+    ? `D는 발표 후 첫 거래일입니다. 장후 발표는 다음 거래일이 D이고, 장전·장중 발표는 발표 당일이 D입니다. D·D+1·D+2는 각각 그날 하루 등락률이고, 3일 누적은 셋을 합친 수익률입니다. EPS는 야후 파이낸스 기준(미국은 대부분 조정 EPS)이고, PER은 D의 종가를 직전 4개 분기 EPS 합으로 나눈 값, 선행 PER은 같은 종가를 이후 4개 분기 컨센서스 EPS 합으로 나눈 값입니다.`
+    : `연간 EPS와 컨센서스는 그 회계연도 4개 분기를 합친 값이고, 주가 반응은 4분기 실적 발표일 기준입니다. PER은 결산월 말 종가 / 연간 EPS, 선행 PER은 같은 종가 / 다음 회계연도 4개 분기 컨센서스 합입니다. 가장 최근 회계연도의 선행 PER은 진행 중인 회계연도의 현재 컨센서스를 씁니다.`;
+  document.getElementById('er').innerHTML = head + `<section class="card"><div class="table-wrap">${table}</div><div class="note">${note}</div></section>`
+    + `<section class="card" id="val"></section>`;
+  drawValuation(s);
+}
+
+// ───── 목표 주가 = 예상 EPS × 적정 PER ─────
+const median = a => { const v = a.filter(x => x != null).sort((x, y) => x - y); return v.length ? (v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2) : null; };
+const STEPS = [-10, -5, 0, 5, 10];
+const fmtPctR = v => `<span class="${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : ''}${Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1)}%</span>`;
+
+function drawValuation(s) {
+  const cur = s.currency, el = document.getElementById('val');
+  const ys = s.years.filter(y => y.n === 4);
+  const last = ys[ys.length - 1], base3 = ys[ys.length - 4];
+  const cagr = last && base3 && last.eps > 0 && base3.eps > 0 ? (Math.pow(last.eps / base3.eps, 1 / 3) - 1) * 100 : null;
+  const medPe = median(ys.map(y => y.pe));
+  const eps0 = s.ttmEps;
+  if (eps0 == null || eps0 <= 0) {
+    el.innerHTML = `<h3 class="formula">목표 주가 = 예상 EPS × 적정 PER</h3><div class="note">최근 4개 분기 EPS가 ${eps0 == null ? '없어서' : '적자라서'} 계산할 수 없습니다.</div>`;
+    return;
+  }
+  const st = { g: cagr != null ? Math.round(cagr * 10) / 10 : 10, pe: medPe != null ? Math.round(medPe * 10) / 10 : (s.pe ?? 15), yrs: 3, pes: {} };
+  const src = cagr != null
+    ? `${base3.fy} → ${last.fy} 연간 EPS ${fmtEps(base3.eps, cur)} → ${fmtEps(last.eps, cur)}의 3년 연평균 성장률`
+    : '3년 전 EPS가 없거나 적자라서 성장률은 10%로 넣어 두었습니다. 직접 고쳐 주세요';
+
+  el.innerHTML = `
+    <div class="formula">목표 주가 = 예상 EPS × 적정 PER</div>
+    <div class="note" style="margin:0 0 12px">현재 EPS는 최근 4개 분기 EPS 합(${fmtEps(eps0, cur)}), 기본 성장률은 ${src}, 적정 PER 기본값은 최근 ${ys.filter(y => y.pe != null).length}년 연말 PER의 중앙값입니다. 참고로 현재 PER은 ${fmtX(s.pe)}, 선행 PER은 ${fmtX(s.fpe)}입니다.</div>
+    <div class="chips" style="margin:0 0 10px">
+      ${cagr != null ? `<button data-g="${Math.round(cagr * 10) / 10}">과거 3년 연평균 ${cagr.toFixed(1)}%</button>` : ''}
+      ${s.fwdGrowth != null ? `<button data-g="${s.fwdGrowth}">컨센서스 (다음 회계연도 EPS 성장률) ${s.fwdGrowth.toFixed(1)}%</button>` : ''}
+    </div>
+    <div class="val-inputs">
+      <label>기본 성장률 <input class="num" id="vG" type="number" step="0.5" value="${st.g}"> %</label>
+      <label>적정 PER <input class="num" id="vPe" type="number" step="0.5" min="0" value="${st.pe}"> 배</label>
+      <label>기간 <input class="num" id="vY" type="number" step="1" min="1" max="10" value="${st.yrs}"> 년</label>
+    </div>
+    <div class="table-wrap"><table class="val-table">
+      <thead><tr><th>시나리오</th><th>현재 EPS</th><th>연평균 성장률</th><th id="vYh">3년 후 예상 EPS</th><th>적정 PER</th><th>목표 주가</th><th>현재 주가</th><th>상승 여지</th></tr></thead>
+      <tbody id="vBody"></tbody>
+    </table></div>
+    <h4>상승 여지 민감도 (성장률 × 적정 PER)</h4>
+    <div class="table-wrap"><table class="val-table matrix"><thead id="mHead"></thead><tbody id="mBody"></tbody></table></div>
+    <div class="note">기간 동안 성장률이 매년 같다고 가정한 단순 계산입니다. 표의 PER 칸은 시나리오마다 따로 고칠 수 있습니다. 투자 판단의 참고용이며 실제 주가를 예측하지 않습니다.</div>`;
+
+  const upside = (g, pe) => { const tgt = eps0 * Math.pow(1 + g / 100, st.yrs) * pe; return { tgt, up: (tgt / s.price - 1) * 100 }; };
+  const heat = v => {
+    const c = v >= 0 ? 'var(--up)' : 'var(--down)', a = Math.min(Math.abs(v), 100) * 0.35;
+    return `background: color-mix(in srgb, ${c} ${a.toFixed(0)}%, transparent)`;
+  };
+  const update = () => {
+    document.getElementById('vYh').textContent = `${st.yrs}년 후 예상 EPS`;
+    const body = document.getElementById('vBody');
+    const focused = document.activeElement?.dataset?.step;
+    body.innerHTML = STEPS.map(d => {
+      const g = st.g + d, pe = st.pes[d] ?? st.pe, { tgt, up } = upside(g, pe);
+      return `<tr class="${d === 0 ? 'base' : ''}">
+        <td>${d === 0 ? '기본' : (d > 0 ? '+' : '') + d + '%p'}</td><td>${fmtEps(eps0, cur)}</td><td>${g.toFixed(1)}%</td>
+        <td>${fmtEps(eps0 * Math.pow(1 + g / 100, st.yrs), cur)}</td>
+        <td><input class="num" type="number" step="0.5" min="0" data-step="${d}" value="${pe}"> 배</td>
+        <td>${fmtPrice(cur === 'KRW' ? Math.round(tgt) : tgt, cur)}</td><td>${fmtPrice(s.price, cur)}</td><td>${fmtPctR(up)}</td></tr>`;
+    }).join('');
+    body.querySelectorAll('input').forEach(i => i.oninput = () => {
+      const v = parseFloat(i.value);
+      if (!isNaN(v)) { st.pes[i.dataset.step] = v; drawMatrix(); refreshRow(i); }
+    });
+    if (focused != null) body.querySelector(`input[data-step="${focused}"]`)?.focus();
+    drawMatrix();
+  };
+  const refreshRow = i => {
+    const d = +i.dataset.step, g = st.g + d, { tgt, up } = upside(g, st.pes[d]);
+    const tds = i.closest('tr').children;
+    tds[5].innerHTML = fmtPrice(cur === 'KRW' ? Math.round(tgt) : tgt, cur);
+    tds[7].innerHTML = fmtPctR(up);
+  };
+  const drawMatrix = () => {
+    const pes = [0.5, 0.75, 1, 1.25, 1.5].map(k => Math.round(st.pe * k * 10) / 10).filter(v => v > 0);
+    document.getElementById('mHead').innerHTML = `<tr><th>성장률 ↓ · PER →</th>${pes.map(p => `<th>${+p.toFixed(1)}배</th>`).join('')}</tr>`;
+    document.getElementById('mBody').innerHTML = STEPS.map(d => {
+      const g = st.g + d;
+      return `<tr class="${d === 0 ? 'base' : ''}"><td>${g.toFixed(1)}%</td>${pes.map(p => {
+        const { up } = upside(g, p);
+        return `<td class="cell" style="${heat(up)}">${up >= 0 ? '+' : ''}${up.toFixed(0)}%</td>`;
+      }).join('')}</tr>`;
+    }).join('');
+  };
+  const bind = (id, key) => document.getElementById(id).oninput = e => {
+    const v = parseFloat(e.target.value);
+    if (isNaN(v)) return;
+    st[key] = key === 'yrs' ? Math.max(1, Math.min(10, Math.round(v))) : v;
+    if (key === 'pe') st.pes = {};
+    update();
+  };
+  bind('vG', 'g'); bind('vPe', 'pe'); bind('vY', 'yrs');
+  el.querySelectorAll('.chips button').forEach(b => b.onclick = () => {
+    st.g = +b.dataset.g; document.getElementById('vG').value = st.g; update();
+  });
+  update();
+}
 
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (current) { const m = current; current = null; render(m); current = m; } });
 
