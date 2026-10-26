@@ -76,7 +76,8 @@ h2 { font-size: 16px; margin: 32px 0 12px; }
 .chips button:hover { border-color: var(--accent); color: var(--accent); }
 .er-head h3 { font-size: 18px; margin: 0 0 2px; }
 .er-head .sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .kpi { background: var(--bg); border-radius: 8px; padding: 10px 12px; }
 .kpi .k { color: var(--muted); font-size: 12px; }
 .kpi .v { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
@@ -401,17 +402,21 @@ function drawEarnings(t) {
   const s = ER.stocks[t], cur = s.currency;
   const qs = s.quarters, rated = qs.filter(q => q.beat != null), beats = rated.filter(q => q.beat > 0).length;
   const avgR0 = qs.filter(q => q.r0 != null);
+  const capInfo = DATA.markets.flatMap(m => m.stocks.map(x => ({ m, s: x }))).find(x => x.s.ticker === t && x.s.cap);
   const avg = avgR0.length ? avgR0.reduce((a, q) => a + Math.abs(q.r0), 0) / avgR0.length : null;
   const head = `
     <section class="card er-head">
       <h3>${esc(s.name)}${tickerLink(t)}</h3>
       <div class="sub">${esc(s.longName || '')} · 결산월 ${s.fyMonth}월 · 주가 기준일 ${esc(s.priceDate)}</div>
       <div class="kpis">
-        <div class="kpi"><div class="k">현재가</div><div class="v">${fmtPrice(s.price, cur)}</div></div>
         <div class="kpi"><div class="k">다음 실적발표</div><div class="v">${s.next ? fmtD(s.next.date) : '–'}</div>
           <div class="s">${s.next ? `${esc(s.next.when)} · 예상 EPS ${fmtEps(s.next.est, cur)}` : '일정 미정'}</div></div>
-        <div class="kpi"><div class="k">PER (최근 4분기)</div><div class="v">${fmtX(s.pe)}</div><div class="s">EPS ${fmtEps(s.ttmEps, cur)}</div></div>
-        <div class="kpi"><div class="k">선행 PER (다음 회계연도)</div><div class="v">${fmtX(s.fpe)}</div><div class="s">예상 EPS ${fmtEps(s.fwdEps, cur)}</div></div>
+        <div class="kpi"><div class="k">현재 시총</div><div class="v">${fmtCap(capInfo?.s.cap, cur)}</div>
+          <div class="s">${capInfo?.s.rank ? `${esc(capInfo.m.label)} 목록 ${capInfo.s.rank}위` : ''}</div></div>
+        <div class="kpi"><div class="k">현재가</div><div class="v">${fmtPrice(s.price, cur)}</div><div class="s">${esc(s.priceDate)} 종가</div></div>
+        <div class="kpi"><div class="k">현재 PER</div><div class="v">${fmtX(s.pe)}</div><div class="s">최근 4개 분기 EPS 기준</div></div>
+        <div class="kpi"><div class="k">선행 PER</div><div class="v">${fmtX(s.fpe)}</div><div class="s">다음 회계연도 예상 EPS ${fmtEps(s.fwdEps, cur)} 기준</div></div>
+        <div class="kpi"><div class="k">EPS</div><div class="v">${fmtEps(s.ttmEps, cur)}</div><div class="s">최근 4개 분기 합</div></div>
         <div class="kpi"><div class="k">컨센서스 상회</div><div class="v">${rated.length ? `${beats}/${rated.length}회` : '–'}</div><div class="s">최근 ${rated.length}개 분기</div></div>
         <div class="kpi"><div class="k">발표 반응(D) 평균 크기</div><div class="v">${avg == null ? '–' : '±' + avg.toFixed(1) + '%'}</div><div class="s">${avgR0.length}회 평균</div></div>
       </div>
