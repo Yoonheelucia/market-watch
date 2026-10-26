@@ -462,6 +462,7 @@ function drawEarnings(t) {
 // ───── 목표 주가 = 예상 EPS × 적정 PER ─────
 const median = a => { const v = a.filter(x => x != null).sort((x, y) => x - y); return v.length ? (v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2) : null; };
 const STEPS = [-10, -5, 0, 5, 10];
+const CASES = { '-10': '많이 보수적', '-5': '보수적', 0: '기본', 5: '낙관적', 10: '많이 낙관적' };
 const fmtPctR = v => `<span class="${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : ''}${Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1)}%</span>`;
 
 function drawValuation(s) {
@@ -472,33 +473,44 @@ function drawValuation(s) {
   const medPe = median(ys.map(y => y.pe));
   const eps0 = s.ttmEps;
   if (eps0 == null || eps0 <= 0) {
-    el.innerHTML = `<h3 class="formula">목표 주가 = 예상 EPS × 적정 PER</h3><div class="note">최근 4개 분기 EPS가 ${eps0 == null ? '없어서' : '적자라서'} 계산할 수 없습니다.</div>`;
+    el.innerHTML = `<div class="formula">목표 주가 계산기</div><div class="note">최근 1년 EPS가 ${eps0 == null ? '없어서' : '적자라서'} 계산할 수 없어요.</div>`;
     return;
   }
   const st = { g: cagr != null ? Math.round(cagr * 10) / 10 : 10, pe: medPe != null ? Math.round(medPe * 10) / 10 : (s.pe ?? 15), yrs: 3, pes: {} };
-  const src = cagr != null
-    ? `${base3.fy} → ${last.fy} 연간 EPS ${fmtEps(base3.eps, cur)} → ${fmtEps(last.eps, cur)}의 3년 연평균 성장률`
-    : '3년 전 EPS가 없거나 적자라서 성장률은 10%로 넣어 두었습니다. 직접 고쳐 주세요';
 
   el.innerHTML = `
-    <div class="formula">목표 주가 = 예상 EPS × 적정 PER</div>
-    <div class="note" style="margin:0 0 12px">현재 EPS는 최근 4개 분기 EPS 합(${fmtEps(eps0, cur)}), 기본 성장률은 ${src}, 적정 PER 기본값은 최근 ${ys.filter(y => y.pe != null).length}년 연말 PER의 중앙값입니다. 참고로 현재 PER은 ${fmtX(s.pe)}, 선행 PER은 ${fmtX(s.fpe)}입니다.</div>
-    <div class="chips" style="margin:0 0 10px">
-      ${cagr != null ? `<button data-g="${Math.round(cagr * 10) / 10}">과거 3년 연평균 ${cagr.toFixed(1)}%</button>` : ''}
-      ${s.fwdGrowth != null ? `<button data-g="${s.fwdGrowth}">컨센서스 (다음 회계연도 EPS 성장률) ${s.fwdGrowth.toFixed(1)}%</button>` : ''}
+    <div class="formula">목표 주가 계산기</div>
+    <div class="note" style="margin:0 0 12px; font-size:13px; line-height:1.7">
+      <b>목표 주가 = 몇 년 뒤 EPS × 적정 PER</b><br>
+      ① 지금 EPS는 최근 1년(4개 분기) 동안 번 주당순이익 <b>${fmtEps(eps0, cur)}</b>예요.<br>
+      ② EPS가 매년 몇 %씩 늘어날지 정해요. 아래 버튼으로 고르거나 직접 입력하세요.<br>
+      ③ 그때 PER을 몇 배로 쳐줄지 정해요. 기본값은 최근 몇 년 PER의 가운데 값이고, 아래 버튼으로 바꿀 수 있어요.
     </div>
+    <div class="chips" style="margin:0 0 6px">
+      <span class="note" style="margin:0;align-self:center">PER</span>
+      ${medPe != null ? `<button data-pe="${Math.round(medPe * 10) / 10}">최근 몇 년 가운데 값 ${fmtX(medPe)}</button>` : ''}
+      ${s.pe != null ? `<button data-pe="${s.pe}">현재 PER ${fmtX(s.pe)}</button>` : ''}
+      ${s.fpe != null ? `<button data-pe="${s.fpe}" title="지금 주가 ÷ 다음 회계연도 예상 EPS">포워드 PER ${fmtX(s.fpe)}</button>` : ''}
+    </div>
+    <div class="chips" style="margin:0 0 10px">
+      <span class="note" style="margin:0;align-self:center">성장률</span>
+      ${cagr != null ? `<button data-g="${Math.round(cagr * 10) / 10}" title="${base3.fy} ${fmtEps(base3.eps, cur)} → ${last.fy} ${fmtEps(last.eps, cur)}">지난 3년 실제 성장률 ${cagr.toFixed(1)}%</button>` : ''}
+      ${s.fwdGrowth != null ? `<button data-g="${s.fwdGrowth}">애널리스트 예상 성장률 ${s.fwdGrowth.toFixed(1)}%</button>` : ''}
+    </div>
+    ${cagr == null ? '<div class="note" style="margin:0 0 10px">지난 3년 성장률은 적자이거나 기록이 부족해서 구할 수 없어요. 일단 10%로 넣어 뒀으니 직접 바꿔 주세요.</div>' : ''}
     <div class="val-inputs">
-      <label>기본 성장률 <input class="num" id="vG" type="number" step="0.5" value="${st.g}"> %</label>
+      <label>매년 EPS 성장률 <input class="num" id="vG" type="number" step="0.5" value="${st.g}"> %</label>
       <label>적정 PER <input class="num" id="vPe" type="number" step="0.5" min="0" value="${st.pe}"> 배</label>
-      <label>기간 <input class="num" id="vY" type="number" step="1" min="1" max="10" value="${st.yrs}"> 년</label>
+      <label>몇 년 뒤 <input class="num" id="vY" type="number" step="1" min="1" max="10" value="${st.yrs}"> 년</label>
     </div>
     <div class="table-wrap"><table class="val-table">
-      <thead><tr><th>시나리오</th><th>현재 EPS</th><th>연평균 성장률</th><th id="vYh">3년 후 예상 EPS</th><th>적정 PER</th><th>목표 주가</th><th>현재 주가</th><th>상승 여지</th></tr></thead>
+      <thead><tr><th>경우</th><th>지금 EPS</th><th>매년 성장률</th><th id="vYh">3년 뒤 EPS</th><th>적정 PER</th><th>목표 주가</th><th>지금 주가</th><th>오를 여지</th></tr></thead>
       <tbody id="vBody"></tbody>
     </table></div>
-    <h4>상승 여지 민감도 (성장률 × 적정 PER)</h4>
+    <h4>성장률과 PER을 같이 바꿔 보면</h4>
+    <div class="note" style="margin:0 0 8px">세로는 매년 성장률, 가로는 적정 PER이에요. 칸의 숫자는 지금 주가보다 몇 % 오르거나 내릴 수 있는지예요.</div>
     <div class="table-wrap"><table class="val-table matrix"><thead id="mHead"></thead><tbody id="mBody"></tbody></table></div>
-    <div class="note">기간 동안 성장률이 매년 같다고 가정한 단순 계산입니다. 표의 PER 칸은 시나리오마다 따로 고칠 수 있습니다. 투자 판단의 참고용이며 실제 주가를 예측하지 않습니다.</div>`;
+    <div class="note">EPS가 매년 같은 비율로 늘어난다고 단순하게 가정한 계산이에요. 표의 PER 칸을 눌러 경우마다 다르게 넣을 수도 있어요. 참고용일 뿐, 실제 주가를 예측하는 건 아니에요.</div>`;
 
   const upside = (g, pe) => { const tgt = eps0 * Math.pow(1 + g / 100, st.yrs) * pe; return { tgt, up: (tgt / s.price - 1) * 100 }; };
   const heat = v => {
@@ -506,13 +518,13 @@ function drawValuation(s) {
     return `background: color-mix(in srgb, ${c} ${a.toFixed(0)}%, transparent)`;
   };
   const update = () => {
-    document.getElementById('vYh').textContent = `${st.yrs}년 후 예상 EPS`;
+    document.getElementById('vYh').textContent = `${st.yrs}년 뒤 EPS`;
     const body = document.getElementById('vBody');
     const focused = document.activeElement?.dataset?.step;
     body.innerHTML = STEPS.map(d => {
       const g = st.g + d, pe = st.pes[d] ?? st.pe, { tgt, up } = upside(g, pe);
       return `<tr class="${d === 0 ? 'base' : ''}">
-        <td>${d === 0 ? '기본' : (d > 0 ? '+' : '') + d + '%p'}</td><td>${fmtEps(eps0, cur)}</td><td>${g.toFixed(1)}%</td>
+        <td>${CASES[d]}</td><td>${fmtEps(eps0, cur)}</td><td>${g.toFixed(1)}%</td>
         <td>${fmtEps(eps0 * Math.pow(1 + g / 100, st.yrs), cur)}</td>
         <td><input class="num" type="number" step="0.5" min="0" data-step="${d}" value="${pe}"> 배</td>
         <td>${fmtPrice(cur === 'KRW' ? Math.round(tgt) : tgt, cur)}</td><td>${fmtPrice(s.price, cur)}</td><td>${fmtPctR(up)}</td></tr>`;
@@ -531,13 +543,18 @@ function drawValuation(s) {
     tds[7].innerHTML = fmtPctR(up);
   };
   const drawMatrix = () => {
-    const pes = [0.5, 0.75, 1, 1.25, 1.5].map(k => Math.round(st.pe * k * 10) / 10).filter(v => v > 0);
-    document.getElementById('mHead').innerHTML = `<tr><th>성장률 ↓ · PER →</th>${pes.map(p => `<th>${+p.toFixed(1)}배</th>`).join('')}</tr>`;
+    const tag = {};
+    [0.5, 0.75, 1, 1.25, 1.5].forEach(k => { tag[Math.round(st.pe * k * 10) / 10] ??= ''; });
+    if (s.pe != null) tag[s.pe] = '현재';
+    if (s.fpe != null) tag[s.fpe] = tag[s.fpe] ? tag[s.fpe] + '·포워드' : '포워드';
+    const pes = Object.keys(tag).map(Number).filter(v => v > 0).sort((a, b) => a - b);
+    document.getElementById('mHead').innerHTML = `<tr><th>성장률 \\ PER</th>${pes.map(p => `<th>${tag[p] ? tag[p] + ' ' : ''}${+p.toFixed(1)}배</th>`).join('')}</tr>`;
     document.getElementById('mBody').innerHTML = STEPS.map(d => {
       const g = st.g + d;
       return `<tr class="${d === 0 ? 'base' : ''}"><td>${g.toFixed(1)}%</td>${pes.map(p => {
         const { up } = upside(g, p);
-        return `<td class="cell" style="${heat(up)}">${up >= 0 ? '+' : ''}${up.toFixed(0)}%</td>`;
+        const r = Math.round(up) || 0;
+        return `<td class="cell" style="${heat(up)}">${r > 0 ? '+' : ''}${r}%</td>`;
       }).join('')}</tr>`;
     }).join('');
   };
@@ -550,7 +567,9 @@ function drawValuation(s) {
   };
   bind('vG', 'g'); bind('vPe', 'pe'); bind('vY', 'yrs');
   el.querySelectorAll('.chips button').forEach(b => b.onclick = () => {
-    st.g = +b.dataset.g; document.getElementById('vG').value = st.g; update();
+    if (b.dataset.g != null) { st.g = +b.dataset.g; document.getElementById('vG').value = st.g; }
+    else { st.pe = +b.dataset.pe; st.pes = {}; document.getElementById('vPe').value = st.pe; }
+    update();
   });
   update();
 }
