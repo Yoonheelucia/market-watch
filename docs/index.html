@@ -718,27 +718,34 @@ const verdict = up => { const j = judge(up); const c = j[2] <= 2 ? 'var(--up)' :
 
 function drawFairValue(s) {
   const el = document.getElementById('fv'), cur = s.currency, price = s.price;
-  const past = s.diluted || [];
+  // 이번 회계연도가 이미 끝났는데 실적 발표 전이면(예: 9월 결산 애플의 10월), 그 해는 '가장 최근(추정)'으로 보고 한 칸 민다
+  const ended = !!s.fwdPeriod && s.fwdPeriod.slice(0, 7).replace('.', '-') <= s.priceDate.slice(0, 7);
+  const allPast = s.diluted || [];
+  const past = ended ? allPast.slice(-3) : allPast;
   const e1 = s.curEps, e2 = s.fwdEps;
   if (!past.length || e1 == null || e2 == null) {
     el.innerHTML = `<div class="formula">성장률로 보는 적정주가</div><div class="note">과거 EPS나 향후 EPS 추정치가 없어서 계산할 수 없어요.</div>`;
     return;
   }
-  const cols = [...past.map((d, i) => ({ label: i === past.length - 1 ? '가장 최근' : `과거 ${past.length - 1 - i}년`, fy: d.fy, eps: d.eps, latest: i === past.length - 1 })),
-    { label: '향후 1년', fy: s.curFy, eps: e1, fut: true }, { label: '향후 2년', fy: s.nextFy, eps: e2, fut: true }];
+  const cols = ended
+    ? [...past.map((d, i) => ({ label: `과거 ${past.length - i}년`, fy: d.fy, eps: d.eps })),
+       { label: '가장 최근 (발표 전 추정)', fy: s.curFy, eps: e1, latest: true }, { label: '향후 1년', fy: s.nextFy, eps: e2, fut: true }]
+    : [...past.map((d, i) => ({ label: i === past.length - 1 ? '가장 최근' : `과거 ${past.length - 1 - i}년`, fy: d.fy, eps: d.eps, latest: i === past.length - 1 })),
+       { label: '향후 1년', fy: s.curFy, eps: e1, fut: true }, { label: '향후 2년', fy: s.nextFy, eps: e2, fut: true }];
   cols.forEach((c, i) => { const p = cols[i - 1]; c.g = p && p.eps > 0 ? (c.eps / p.eps - 1) * 100 : null; });
   const unstable = cols.some(c => c.g != null && (c.g < 0 || c.g >= 50));
   const last = past[past.length - 1].eps;
+  const fwd = ended ? e2 : e1;  // 적정주가에 곱하는 '향후 1년 EPS'
   const gBase = e1 > 0 ? (e2 / e1 - 1) * 100 : null;
   const gAdj = last > 0 && e2 > 0 ? (Math.pow(e2 / last, 1 / 2) - 1) * 100 : null;
-  const curX = e1 > 0 ? price / e1 : null;
+  const curX = fwd > 0 ? price / fwd : null;
   const money = v => fmtPrice(cur === 'KRW' ? Math.round(v) : v, cur);
   const pct = v => `${v >= 0 ? '' : ''}${v.toFixed(1)}%`;
   const upPct = v => `<span class="${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</span>`;
 
   const panel = (title, g, color) => {
-    if (g == null || g <= 0 || e1 <= 0) return `<div class="fv-panel"><h4 style="color:${color}">${title}</h4><div class="note">성장률이 0 이하라 이 방식으로는 계산할 수 없어요.</div></div>`;
-    const lo = e1 * g, hi = e1 * g * 2, bull = e1 * g * 2.5;
+    if (g == null || g <= 0 || fwd <= 0) return `<div class="fv-panel"><h4 style="color:${color}">${title}</h4><div class="note">성장률이 0 이하라 이 방식으로는 계산할 수 없어요.</div></div>`;
+    const lo = fwd * g, hi = fwd * g * 2, bull = fwd * g * 2.5;
     const up1 = (hi / price - 1) * 100, up2 = (bull / price - 1) * 100;
     const row = (lb, a, b, sep = '~') => `<div class="fv-row"><span class="lb">${lb}</span><span>${a}</span><span>${b === '' ? '' : sep}</span><span>${b}</span></div>`;
     return `<div class="fv-panel"><h4 style="color:${color}">${title}</h4>
@@ -773,8 +780,12 @@ function drawFairValue(s) {
       ${panel('① 기본값', gBase, 'var(--text)')}
       ${panel('② 보정값', gAdj, 'var(--up)')}
     </div>
-    <div class="note">① 기본값 성장률은 향후 1년 → 향후 2년 EPS 성장률이에요.
-      ② 보정값은 원래 3~5년 장기 성장률(CAGR)을 쓰는데, 자동으로 받을 수 있는 값이 없어서 가장 최근 실적(${esc(past[past.length - 1].fy)}) → 향후 2년(${esc(s.nextFy || '')}) 연평균 성장률로 대신했어요.
+    <div class="note">${ended
+      ? `${esc(s.curFy || '')} 회계연도는 이미 끝났지만 실적 발표 전이라 추정치를 썼어요. ① 기본값 성장률은 ${esc(s.curFy || '')} → ${esc(s.nextFy || '')} EPS 성장률이에요.
+      ② 보정값은 원래 3~5년 장기 성장률(CAGR)을 쓰는데, 자동으로 받을 수 있는 값이 없어서 마지막 공시 실적(${esc(past[past.length - 1].fy)}) → 향후 1년(${esc(s.nextFy || '')}) 연평균 성장률로 대신했어요.`
+      : `① 기본값 성장률은 향후 1년 → 향후 2년 EPS 성장률이에요.
+      ② 보정값은 원래 3~5년 장기 성장률(CAGR)을 쓰는데, 자동으로 받을 수 있는 값이 없어서 가장 최근 실적(${esc(past[past.length - 1].fy)}) → 향후 2년(${esc(s.nextFy || '')}) 연평균 성장률로 대신했어요.`}
+      이 방식은 빨리 크는 성장주에 잘 맞고, 성장은 느리지만 이익이 안정적이고 배당·자사주 매입이 많은 회사(예: 애플, 코카콜라)는 늘 낮게 나오는 한계가 있어요.
       상승여력이 마이너스로 나오면, 주가가 미래 성장을 먼저 반영하고 있거나 월가 예상치가 보수적일 수 있어요.</div>
     <div class="fv-cols">
       <div>
@@ -791,8 +802,8 @@ function drawFairValue(s) {
 
   const out = () => {
     const x = parseFloat(document.getElementById('fvX').value);
-    if (isNaN(x) || e1 <= 0) { document.getElementById('fvOut').innerHTML = ''; return; }
-    const tgt = e1 * x, up = (tgt / price - 1) * 100;
+    if (isNaN(x) || fwd <= 0) { document.getElementById('fvOut').innerHTML = ''; return; }
+    const tgt = fwd * x, up = (tgt / price - 1) * 100;
     document.getElementById('fvOut').innerHTML = `
       <div class="fv-row"><span class="lb">적정주가</span><span><b>${money(tgt)}</b></span><span></span><span></span></div>
       <div class="fv-row"><span class="lb">상승여력</span><span>${upPct(up)}</span><span></span><span>${verdict(up)}</span></div>`;
