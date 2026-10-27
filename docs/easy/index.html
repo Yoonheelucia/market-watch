@@ -43,6 +43,7 @@ nav a { flex: none; padding: 7px 13px; border-radius: 999px; background: var(--c
 section { margin-top: 36px; scroll-margin-top: 12px; }
 h2 { font-size: 20px; margin: 0 0 4px; }
 .lead { color: var(--muted); margin: 0 0 14px; font-size: 14px; }
+.stamp { color: var(--muted); margin: -10px 0 14px; font-size: 12px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
 .grid { display: grid; gap: 12px; }
 @media (min-width: 620px) { .grid.three { grid-template-columns: repeat(3, 1fr); } .grid.two { grid-template-columns: repeat(2, 1fr); } }
@@ -144,6 +145,7 @@ footer { margin-top: 48px; font-size: 12px; color: var(--muted); border-top: 1px
   <section id="weather">
     <h2>오늘의 시장 날씨</h2>
     <p class="lead">지난 장에서 주가가 얼마나 오르고 내렸는지 날씨로 보여 드려요.</p>
+    <p class="stamp" data-kind="data"></p>
     <div class="grid three" id="wx"></div>
     <div class="scale">☀️ 1% 넘게 오름 · 🌤️ 조금 오름 · ☁️ 거의 그대로 · 🌦️ 조금 내림 · 🌧️ 1% 넘게 내림 · ⛈️ 2.5% 넘게 내림</div>
     <div class="fx" id="fx"></div>
@@ -152,6 +154,7 @@ footer { margin-top: 48px; font-size: 12px; color: var(--muted); border-top: 1px
   <section id="why">
     <h2>요즘 시장, 왜 이럴까?</h2>
     <p class="lead" id="why-date"></p>
+    <p class="stamp" data-kind="brief"></p>
     <div class="card why" id="why-box"></div>
     <div class="news" id="news"></div>
     <div class="more"><a href="../#brief">더 자세한 브리핑 보기 →</a></div>
@@ -160,6 +163,7 @@ footer { margin-top: 48px; font-size: 12px; color: var(--muted); border-top: 1px
   <section id="companies">
     <h2>많이 들어 본 회사들</h2>
     <p class="lead">이름은 아는데 요즘 어떤지 궁금했던 회사들을 모았어요.</p>
+    <p class="stamp" data-kind="data"></p>
     <div class="seg" role="group" aria-label="나라 선택">
       <button type="button" data-c="kr" aria-pressed="true">🇰🇷 한국</button>
       <button type="button" data-c="us" aria-pressed="false">🇺🇸 미국</button>
@@ -171,12 +175,13 @@ footer { margin-top: 48px; font-size: 12px; color: var(--muted); border-top: 1px
   <section id="week">
     <h2>이번 주 알아 둘 일정</h2>
     <p class="lead">이런 날엔 주가가 크게 움직일 수 있어요. 시간은 모두 한국 시간이에요.</p>
+    <p class="stamp" data-kind="brief"></p>
     <div class="card"><ul class="cal" id="cal"></ul></div>
   </section>
 
   <section id="term">
     <h2>오늘의 용어</h2>
-    <p class="lead">하루에 하나씩, 뉴스에 자주 나오는 말을 알아봐요.</p>
+    <p class="lead">하루에 하나씩, 뉴스에 자주 나오는 말을 알아봐요. 매일 0시에 바뀌어요.</p>
     <div class="card term" id="term-box"></div>
   </section>
 
@@ -278,6 +283,7 @@ footer { margin-top: 48px; font-size: 12px; color: var(--muted); border-top: 1px
   </footer>
 </div>
 
+<script src="../schedule.js"></script>
 <script>
 const COMPANIES = {
   kr: ['005930.KS', '000660.KS', '005380.KS', '035420.KS', '035720.KS', '066570.KS', '207940.KS', '105560.KS', '090430.KS', '097950.KS'],
@@ -470,6 +476,12 @@ function renderTerm(start) {
 
 (async () => {
   const [data, brief, earnings, biz] = await Promise.all(['../data.json', '../briefing.json', '../earnings.json', '../business.json'].map(load));
+  const stamps = () => document.querySelectorAll('.stamp').forEach(el => {
+    el.textContent = stampText(el.dataset.kind, el.dataset.kind === 'data' ? data?.updated : brief?.updated);
+  });
+  stamps();
+  setInterval(stamps, 60e3);
+  autoRefresh(['../data.json', '../briefing.json']);
   const now = new Date(), doy = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 864e5);
   renderTerm(doy);
   renderWhy(brief);

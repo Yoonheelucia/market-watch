@@ -191,6 +191,7 @@ h1 .by { font-size: 12px; font-weight: 500; letter-spacing: .08em; color: var(--
 .to-top.show { opacity: 1; pointer-events: auto; }
 .to-top:hover { color: var(--accent); }
 .note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+.stamp { color: var(--muted); font-size: 12px; margin: -6px 0 12px; }
 @media (max-width: 760px) {
   .charts { grid-template-columns: minmax(0, 1fr); }
   .chart { height: 220px; }
@@ -208,10 +209,12 @@ h1 .by { font-size: 12px; font-weight: 500; letter-spacing: .08em; color: var(--
     <span class="updated"><span id="updated">불러오는 중…</span> · <a class="easy-link" href="easy/">🌱 주식이 처음이라면 쉽게 보기</a></span>
   </header>
   <nav class="tabs" id="tabs" role="tablist"></nav>
+  <div class="stamp" id="stamp"></div>
   <main id="main"></main>
 </div>
 <button class="to-top" id="toTop" type="button">↑ 목록으로</button>
 
+<script src="schedule.js"></script>
 <script>
 const LWC = LightweightCharts;
 let DATA, current, observer, charts = [];
@@ -277,8 +280,24 @@ async function init() {
   gt.className = 'tab'; gt.textContent = '용어 설명'; gt.role = 'tab'; gt.dataset.id = 'glossary';
   gt.onclick = () => { location.hash = 'glossary'; };
   tabs.appendChild(gt);
+  try { BRIEF = await (await fetch('briefing.json', { cache: 'no-cache' })).json(); } catch (e) {}
   window.addEventListener('hashchange', route);
   route();
+  setInterval(setStamp, 60e3);
+  autoRefresh(['data.json', 'briefing.json']);
+}
+
+// 지금 보고 있는 탭의 '마지막 업데이트 · 다음 업데이트 예정'
+function setStamp() {
+  const id = location.hash.slice(1);
+  let text;
+  if (id.startsWith('glossary')) text = stampText(null);
+  else if (id === 'brief') text = stampText('brief', BRIEF?.updated);
+  else {
+    text = stampText('data', DATA.updated);
+    if (id.startsWith('earnings')) text += ' · 회사 사업 설명 글은 직접 정리해서 날짜가 따로 적혀 있어요';
+  }
+  document.getElementById('stamp').textContent = text;
 }
 
 // 각 시장의 마지막 거래일과, 데이터를 받은 시각에 그 장이 끝났는지
@@ -300,6 +319,7 @@ function priceBasis(data) {
 
 function route() {
   const id = location.hash.slice(1);
+  setStamp();
   if (id.startsWith('glossary')) {
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.id === 'glossary'));
     current = null;
@@ -761,7 +781,8 @@ function drawEarnings(t) {
   const s = ER.stocks[t], cur = s.currency;
   const qs = s.quarters, rated = qs.filter(q => q.beat != null), beats = rated.filter(q => q.beat > 0).length;
   const avgR0 = qs.filter(q => q.r0 != null);
-  const capInfo = DATA.markets.flatMap(m => m.stocks.map(x => ({ m, s: x }))).find(x => x.s.ticker === t && x.s.cap);
+  const capInfo = DATA.markets.flatMap(m => m.stocks.map(x => ({ m, s: x }))).find(x => x.s.ticker === t && x.s.cap)
+    || (s.cap ? { m: {}, s: { cap: s.cap } } : null);  // 시장 목록 밖 종목(EARNINGS_EXTRA)은 실적 자료의 시총
   const avg = avgR0.length ? avgR0.reduce((a, q) => a + Math.abs(q.r0), 0) / avgR0.length : null;
   const head = `
     <section class="card er-head">

@@ -94,6 +94,9 @@ US_NAMES = {
     'IBM': 'IBM', 'MMM': '3M', 'SHW': '셔윈윌리엄스', 'TRV': '트래블러스',
 }
 
+# 시장 목록에는 없지만 실적 조회 탭에서 볼 수 있게 추가하는 종목
+EARNINGS_EXTRA = {'VRT': '버티브홀딩스'}
+
 DOW = [
     'AAPL', 'AMGN', 'AMZN', 'AXP', 'BA', 'CAT', 'CRM', 'CSCO', 'CVX', 'DIS',
     'GS', 'HD', 'HON', 'IBM', 'JNJ', 'JPM', 'KO', 'MCD', 'MMM', 'MRK',
@@ -274,7 +277,11 @@ def main():
     print(f'저장: {OUT} ({OUT.stat().st_size // 1024} KB)')
 
     names = {s['ticker']: s['name'] for m in data['markets'] for s in m['stocks']}
+    names.update(EARNINGS_EXTRA)
     earnings = {'updated': data['updated'], 'stocks': build_earnings(names, download, EARNINGS_OUT)}
+    for t in EARNINGS_EXTRA:
+        if t in earnings['stocks']:
+            earnings['stocks'][t]['cap'] = market_cap(t)
     EARNINGS_OUT.write_text(json.dumps(earnings, ensure_ascii=False, separators=(',', ':')))
     print(f'저장: {EARNINGS_OUT} ({EARNINGS_OUT.stat().st_size // 1024} KB)')
 
