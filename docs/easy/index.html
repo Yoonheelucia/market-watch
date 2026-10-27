@@ -378,7 +378,8 @@ function renderWeather(data) {
 function renderWhy(brief) {
   if (!brief) { $('#why-box').innerHTML = '<span class="err">오늘 이야기를 불러오지 못했어요.</span>'; return; }
   const easy = brief.easy || {};
-  $('#why-date').textContent = `${fmtDate(brief.asOf)} 아침에 정리했어요.`;
+  const at = (brief.updated || '').slice(11, 16);
+  $('#why-date').textContent = `${fmtDate(brief.asOf)} ${at ? at + '에' : ''} 정리했어요.`.replace('  ', ' ');
   $('#why-box').innerHTML = easy.why?.length
     ? `<ol>${easy.why.map(s => `<li>${esc(s)}</li>`).join('')}</ol>`
     : `<p style="margin:0">${esc(brief.summary)}</p>`;

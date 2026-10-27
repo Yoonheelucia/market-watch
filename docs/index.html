@@ -456,7 +456,7 @@ async function renderBrief() {
   const el = document.getElementById('brief');
   el.innerHTML = `
     <details ${open ? 'open' : ''}>
-      <summary><div class="t">시장 브리핑 · ${esc(b.asOf.slice(5).replace('-', '월 '))}일 기준</div>
+      <summary><div class="t">시장 브리핑 · ${esc(b.asOf.slice(5).replace('-', '월 '))}일${b.updated ? ' ' + esc(b.updated.slice(11, 16)) : ''} 기준</div>
         <div class="sm">${esc(b.summary)} <span style="white-space:nowrap">(호재 ${cnt('+')} · 악재 ${cnt('-')} · 혼재 ${cnt('±')})</span></div></summary>
       <div class="body">
         <h4>지금 주가에 영향을 주는 요인</h4>
