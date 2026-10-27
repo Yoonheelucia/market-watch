@@ -74,6 +74,16 @@ h2 { font-size: 16px; margin: 32px 0 12px; }
 .search input { flex: 1 1 260px; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
   background: var(--bg); color: var(--text); font: inherit; font-size: 15px; }
 .search input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.sugg-wrap { position: relative; flex: 1 1 260px; min-width: 0; display: flex; }
+.sugg-wrap input { width: 100%; }
+.sugg { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20; max-height: 320px; overflow-y: auto;
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.12); }
+.sugg button { display: flex; justify-content: space-between; gap: 8px; width: 100%; padding: 10px 12px; border: 0; background: none;
+  font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+.sugg button + button { border-top: 1px solid var(--line); }
+.sugg button:hover, .sugg button.on { background: var(--row-hover); }
+.sugg button span { color: var(--muted); font-size: 12px; }
+.sugg .none { padding: 10px 12px; color: var(--muted); font-size: 13px; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg button { background: none; border: 0; padding: 9px 16px; font: inherit; color: var(--muted); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
@@ -766,12 +776,14 @@ async function renderEarnings(ticker) {
   }
   if (ticker && !ER.stocks[ticker]) ticker = findTicker(ticker) || '';
   erTicker = ticker;
-  const opts = Object.entries(ER.stocks).map(([t, s]) => `<option value="${esc(s.name)} (${t.replace(/\.K[SQ]$/, '')})">`).join('');
   main.innerHTML = `
     <section class="card">
       <div class="search">
-        <input id="erInput" list="erList" placeholder="티커 또는 종목명 입력 (예: NVDA, 삼성전자)" autocomplete="off" value="${ticker ? esc(ER.stocks[ticker].name + ' (' + ticker.replace(/\.K[SQ]$/, '') + ')') : ''}">
-        <datalist id="erList">${opts}</datalist>
+        <div class="sugg-wrap">
+          <input id="erInput" type="search" enterkeyhint="search" placeholder="티커 또는 종목명 입력 (예: NVDA, 삼성전자)" autocomplete="off"
+            value="${ticker ? esc(ER.stocks[ticker].name + ' (' + ticker.replace(/\.K[SQ]$/, '') + ')') : ''}">
+          <div class="sugg" id="erSugg" hidden></div>
+        </div>
         <div class="seg" role="group" aria-label="보기">
           <button data-mode="q" aria-pressed="${erMode === 'q'}">분기</button><button data-mode="y" aria-pressed="${erMode === 'y'}">연간</button>
         </div>
@@ -781,14 +793,48 @@ async function renderEarnings(ticker) {
     </section>
     <div id="er"></div>`;
 
-  const input = document.getElementById('erInput');
-  const go = () => {
-    const t = findTicker(input.value);
-    if (t) location.hash = 'earnings/' + encodeURIComponent(t);
-    else document.getElementById('erMsg').textContent = `'${input.value}'에 해당하는 종목을 찾지 못했습니다. 목록에 있는 종목만 조회할 수 있습니다.`;
+  // 검색: 글자를 칠 때마다 맞는 종목 목록을 보여 주고, 사용자가 고르거나 Enter 를 눌러야 이동한다
+  // (아이패드 사파리는 datalist 목록을 잘 못 보여 주고, change 이벤트는 입력 중 포커스만 빠져도 엉뚱한 종목을 골라 버려서 직접 만든다)
+  const input = document.getElementById('erInput'), sugg = document.getElementById('erSugg');
+  const open = t => { sugg.hidden = true; location.hash = 'earnings/' + encodeURIComponent(t); };
+  const matches = q => {
+    q = q.trim().replace(/\s*\([^)]*\)\s*$/, '');
+    if (!q) return [];
+    const up = q.toUpperCase(), code = t => t.replace(/\.K[SQ]$/, '');
+    const rank = ([t, s]) => code(t) === up || s.name === q ? 0 : code(t).startsWith(up) || s.name.startsWith(q) ? 1 : 2;
+    return Object.entries(ER.stocks)
+      .filter(([t, s]) => code(t).startsWith(up) || s.name.toUpperCase().includes(up) || (s.longName || '').toUpperCase().includes(up))
+      .sort((a, b) => rank(a) - rank(b) || a[1].name.localeCompare(b[1].name, 'ko'))
+      .slice(0, 15);
   };
-  input.addEventListener('change', go);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  let list = [], sel = -1;
+  const show = () => {
+    list = matches(input.value); sel = -1;
+    if (!input.value.trim()) { sugg.hidden = true; return; }
+    sugg.innerHTML = list.length
+      ? list.map(([t, s], i) => `<button type="button" data-t="${t}">${esc(s.name)}<span>${t.replace(/\.K[SQ]$/, '')}${s.longName ? ' · ' + esc(s.longName) : ''}</span></button>`).join('')
+      : `<div class="none">'${esc(input.value.trim())}'에 맞는 종목이 없어요. 목록에 있는 ${Object.keys(ER.stocks).length}개 종목만 조회할 수 있어요.</div>`;
+    sugg.hidden = false;
+  };
+  input.addEventListener('focus', () => input.select());
+  input.addEventListener('input', show);
+  input.addEventListener('keydown', e => {
+    if (e.isComposing || e.keyCode === 229) return;  // 한글 조합 중 Enter 는 무시
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!list.length) return;
+      e.preventDefault();
+      sel = (sel + (e.key === 'ArrowDown' ? 1 : -1) + list.length) % list.length;
+      sugg.querySelectorAll('button').forEach((b, i) => b.classList.toggle('on', i === sel));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!list.length) list = matches(input.value);
+      if (list.length) open(list[Math.max(sel, 0)][0]);
+      else show();
+    } else if (e.key === 'Escape') sugg.hidden = true;
+  });
+  // 목록을 누르는 순간 입력창이 포커스를 잃어 목록이 먼저 사라지지 않게 pointerdown 에서 처리
+  sugg.addEventListener('pointerdown', e => { const b = e.target.closest('button'); if (b) { e.preventDefault(); open(b.dataset.t); } });
+  input.addEventListener('blur', () => setTimeout(() => { sugg.hidden = true; }, 150));
   main.querySelectorAll('.chips button').forEach(b => b.onclick = () => { location.hash = 'earnings/' + b.dataset.t; });
   main.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
     erMode = b.dataset.mode;
