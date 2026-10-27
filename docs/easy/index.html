@@ -109,6 +109,8 @@ h2 { font-size: 20px; margin: 0 0 4px; }
 .cal .date { font-weight: 700; font-size: 14px; color: var(--accent); }
 .cal .t { font-weight: 700; }
 .cal .m { font-size: 14px; color: var(--muted); }
+.cal li.sep { display: block; padding: 16px 0 4px; font-size: 13px; font-weight: 700; color: var(--muted); border-bottom: 0; }
+.cal li.done .date, .cal li.done .t { color: var(--muted); }
 
 /* 용어 */
 .term .word { font-size: 22px; font-weight: 700; }
@@ -421,7 +423,9 @@ function renderWeek(brief) {
   if (!brief) return;
   let rows = brief.easy?.week;
   if (!rows?.length) rows = (brief.week || []).flatMap(d => d.items.map(t => ({ date: d.date, title: t.replace(/^\S+\s/, ''), meaning: '' })));
-  $('#cal').innerHTML = rows.map(r => `<li><div class="date">${esc(r.date)}</div><div><div class="t">${esc(r.title)}</div>${r.meaning ? `<div class="m">${esc(r.meaning)}</div>` : ''}</div></li>`).join('');
+  $('#cal').innerHTML = rows.map(r => `<li><div class="date">${esc(r.date)}</div><div><div class="t">${esc(r.title)}</div>${r.meaning ? `<div class="m">${esc(r.meaning)}</div>` : ''}</div></li>`).join('')
+    + (brief.easy?.weekPast?.length ? `<li class="sep">이미 지난 일정 · 그 뒤 주가는?</li>` + brief.easy.weekPast.map(r =>
+      `<li class="done"><div class="date">${esc(r.date)}</div><div><div class="t">${esc(r.title)}</div><div class="m">↳ ${esc(r.result || '반응 확인 중')}</div></div></li>`).join('') : '');
 }
 
 // 지금 PER 을 지난 5년 분기별 PER 의 가운데 값과 비교

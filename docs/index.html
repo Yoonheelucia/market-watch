@@ -187,6 +187,9 @@ h4 { font-size: 14px; margin: 20px 0 8px; }
 .cal { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 0 12px; font-size: 13.5px; }
 .cal > div { padding: 7px 0; border-top: 1px solid var(--line); line-height: 1.6; }
 .cal .d { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cal.past > div { color: var(--muted); }
+.cal.past .rx { font-size: 12.5px; }
+.cal.past .rx.up { color: var(--up); } .cal.past .rx.down { color: var(--down); }
 .brief-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
 @media (max-width: 760px) { .brief-cols { grid-template-columns: minmax(0, 1fr); } .cal { grid-template-columns: 72px minmax(0, 1fr); } }
 button.reload { font: inherit; font-size: 12px; color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; cursor: pointer; margin-left: 6px; }
@@ -515,6 +518,10 @@ async function renderBrief() {
     return `<div class="sg" style="color:${c};background:color-mix(in srgb, ${c} 14%, transparent)">${f.sign === '±' ? '±' : f.sign === '+' ? '+' : '−'}<small>${lb}</small></div>`;
   };
   const cal = rows => `<div class="cal">${rows.map(r => `<div class="d">${esc(r.date)}</div><div>${r.items.map(esc).join('<br>')}</div>`).join('')}</div>`;
+  // 지난 일정: 항목마다 그 일 뒤 주가가 어떻게 움직였는지
+  const react = t => { const m = /([+−-]\d+(\.\d+)?%)/.exec(t || ''); return m ? (m[1].startsWith('+') ? 'up' : 'down') : ''; };
+  const pastCal = rows => `<div class="cal past">${rows.map(r => `<div class="d">${esc(r.date)}</div><div>${r.items.map(x =>
+    `${esc(x.text)}<br><span class="rx ${react(x.reaction)}">↳ ${esc(x.reaction || '반응 확인 중')}</span>`).join('<br>')}</div>`).join('')}</div>`;
   const cnt = s => b.factors.filter(f => f.sign === s).length;
   main.innerHTML = `<div id="brief">
     <section class="card">
@@ -522,7 +529,8 @@ async function renderBrief() {
       <p class="sm">${esc(b.summary)} <span class="note" style="white-space:nowrap">(호재 ${cnt('+')} · 악재 ${cnt('-')} · 혼재 ${cnt('±')})</span></p>
     </section>
     <section class="card brief-cols">
-      <div><h4>이번 주 주요 일정 (한국시간 기준)</h4>${cal(b.week)}</div>
+      <div><h4>이번 주 주요 일정 (한국시간 기준)</h4>${cal(b.week)}
+        ${b.weekPast?.length ? `<h4 style="margin-top:18px">이번 주 지난 일정 · 주가 반응</h4>${pastCal(b.weekPast)}` : ''}</div>
       <div><h4>앞으로 한 달 주요 일정</h4>${cal(b.month)}</div>
     </section>
     <section class="card">
