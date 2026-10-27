@@ -306,7 +306,7 @@ def main(region='all'):
 
     if region == 'kr':
         return
-    # 시장 체력 (S&P 500 전체 종목)
+    # 시장 흐름 (S&P 500 전체 종목)
     build_breadth(download, US_NAMES)
 
     # 미국 종목 사업부별 분기 매출 (SEC 공시)

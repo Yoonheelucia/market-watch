@@ -275,7 +275,7 @@ async function init() {
   bf.onclick = () => { location.hash = 'brief'; };
   tabs.appendChild(bf);
   const bt = document.createElement('button');
-  bt.className = 'tab'; bt.textContent = '시장 체력'; bt.role = 'tab'; bt.dataset.id = 'breadth';
+  bt.className = 'tab'; bt.textContent = '시장 흐름'; bt.role = 'tab'; bt.dataset.id = 'breadth';
   bt.onclick = () => { location.hash = 'breadth'; };
   tabs.appendChild(bt);
   const et = document.createElement('button');
@@ -588,7 +588,7 @@ const GLOSSARY = [
   { id: 'ma', t: '이동평균선 (5일선 · 50일선 · 200일선)', one: '최근 N일 종가의 평균을 이은 선', body: `
     <p>50일선은 최근 50거래일 종가의 평균이에요. 주가가 이 선 위에 있으면 최근 50일 동안 산 사람들이 평균적으로 이익이라, 그 기간의 추세가 위쪽이라는 뜻이에요.</p>
     <p>짧은 선(5·20일)은 단기 분위기, 긴 선(50·200일)은 중장기 추세를 보여 줘요. 특히 <b>200일선</b>은 "큰 흐름이 상승장인가 하락장인가"를 가르는 기준으로 많이 써요.</p>` },
-  { id: 'breadth', t: '시장 체력 (브레드스)', one: '시장 전체가 같이 오르나, 몇 종목만 오르나', body: `
+  { id: 'breadth', t: '시장 흐름 (브레드스)', one: '시장 전체가 같이 오르나, 몇 종목만 오르나', body: `
     <p>S&P 500 종목 중 <b>몇 %가 자기 이동평균선 위에 있는지</b>를 세요. 지수만 보면 대형주 몇 개 때문에 오르는지 알기 어려워서 보는 지표예요.</p>
     <table class="er-table"><thead><tr><th>비율</th><th>뜻</th></tr></thead><tbody>
       <tr><td>80% 이상</td><td>과열권. 너무 많은 종목이 한꺼번에 올라서 쉬어갈 수 있어요.</td></tr>
@@ -624,7 +624,7 @@ function renderGlossary(focus) {
   if (focus) document.getElementById('gl-' + focus)?.scrollIntoView({ block: 'start' });
 }
 
-// ───── 시장 체력 탭 ─────
+// ───── 시장 흐름 탭 ─────
 let BR;
 const brColor = v => {
   const c = v >= 50 ? 'var(--up)' : 'var(--down)', a = Math.min(Math.abs(v - 50) * 1.4, 60);
@@ -639,7 +639,7 @@ async function renderBreadth() {
   if (!BR) {
     main.innerHTML = '<section class="card">불러오는 중…</section>';
     try { BR = await (await fetch('breadth.json', { cache: 'no-cache' })).json(); }
-    catch (e) { main.innerHTML = `<section class="card">시장 체력 데이터를 불러오지 못했습니다: ${esc(e.message)}</section>`; return; }
+    catch (e) { main.innerHTML = `<section class="card">시장 흐름 데이터를 불러오지 못했습니다: ${esc(e.message)}</section>`; return; }
   }
   const b = BR, t0 = b.table['오늘'], a = b.advance, tot = a.up + a.flat + a.down;
   const lead = b.leaders.map((l, i) => `<tr data-t="${esc(l.ticker)}">

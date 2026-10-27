@@ -1,4 +1,4 @@
-"""S&P 500 전체 종목으로 '시장 체력(브레드스)' 지표를 계산해 docs/breadth.json 으로 저장한다.
+"""S&P 500 전체 종목으로 '시장 흐름(브레드스)' 지표를 계산해 docs/breadth.json 으로 저장한다.
 
 Barchart 의 Market Performance Indicator 와 같은 방식이다 (대상 종목만 S&P 500 으로 좁힘).
 - 이동평균선 위 종목 비율: 5·20·50·100·150·200일선, 오늘·어제·1주 전·1달 전, 그리고 1년 추이
@@ -122,4 +122,4 @@ def build_breadth(download, korean_names):
         },
     }
     OUT.write_text(json.dumps(data, ensure_ascii=False, separators=(',', ':')))
-    print(f"시장 체력: S&P 500 {data['count']}개 종목, 50일선 위 {table['오늘']['50']}%, 200일선 위 {table['오늘']['200']}%")
+    print(f"시장 흐름: S&P 500 {data['count']}개 종목, 50일선 위 {table['오늘']['50']}%, 200일선 위 {table['오늘']['200']}%")
