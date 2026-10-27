@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Daily Stock Insight (BY YOONSEUL)</title>
+<title>Daily Stock Insights (BY YOONSEUL)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
@@ -168,15 +168,9 @@ h4 { font-size: 14px; margin: 20px 0 8px; }
 .gl table { margin: 8px 0; }
 .gl td, .gl th { text-align: left !important; white-space: normal; vertical-align: top; }
 .gl th, .gl tbody tr { cursor: default; }
-#brief details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-top: 16px; }
-#brief summary { cursor: pointer; padding: 14px 16px; list-style: none; }
-#brief summary::-webkit-details-marker { display: none; }
-#brief summary .t { font-weight: 700; font-size: 15px; }
-#brief summary .t::after { content: ' ▾'; color: var(--muted); }
-#brief details[open] summary .t::after { content: ' ▴'; }
-#brief summary .sm { color: var(--muted); font-size: 13px; margin-top: 4px; line-height: 1.6; }
-#brief .body { padding: 0 16px 16px; }
-#brief h4 { margin: 16px 0 8px; font-size: 14px; }
+#brief .t { font-weight: 700; font-size: 16px; margin: 0; }
+#brief .sm { font-size: 14px; margin: 8px 0 0; line-height: 1.7; }
+#brief h4 { margin: 0 0 8px; font-size: 15px; }
 .factor { border-top: 1px solid var(--line); padding: 12px 0; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; }
 .factor .sg { font-size: 18px; font-weight: 700; text-align: center; border-radius: 8px; padding: 6px 0; height: fit-content; }
 .factor .sg small { display: block; font-size: 10px; font-weight: 500; }
@@ -210,10 +204,9 @@ h1 .by { font-size: 12px; font-weight: 500; letter-spacing: .08em; color: var(--
 <body>
 <div class="wrap">
   <header>
-    <h1>Daily Stock Insight <span class="by">BY YOONSEUL</span></h1>
+    <h1>Daily Stock Insights <span class="by">BY YOONSEUL</span></h1>
     <span class="updated"><span id="updated">불러오는 중…</span> · <a class="easy-link" href="easy/">🌱 주식이 처음이라면 쉽게 보기</a></span>
   </header>
-  <div id="brief"></div>
   <nav class="tabs" id="tabs" role="tablist"></nav>
   <main id="main"></main>
 </div>
@@ -258,7 +251,7 @@ function stats(closes) {
 
 async function init() {
   DATA = await (await fetch('data.json', { cache: 'no-cache' })).json();
-  document.getElementById('updated').textContent = `업데이트 ${DATA.updated} · 차트 기간 ${DATA.start} ~ ${DATA.markets[0].dates.at(-1)} (최근 90일)`;
+  document.getElementById('updated').textContent = `주가 업데이트 ${DATA.updated} · ${priceBasis(DATA)} · 차트는 최근 90일`;
   const tabs = document.getElementById('tabs');
   DATA.markets.forEach(m => {
     const b = document.createElement('button');
@@ -266,6 +259,10 @@ async function init() {
     b.onclick = () => { location.hash = m.id; };
     tabs.appendChild(b);
   });
+  const bf = document.createElement('button');
+  bf.className = 'tab'; bf.textContent = '브리핑·일정'; bf.role = 'tab'; bf.dataset.id = 'brief';
+  bf.onclick = () => { location.hash = 'brief'; };
+  tabs.appendChild(bf);
   const bt = document.createElement('button');
   bt.className = 'tab'; bt.textContent = '시장 체력'; bt.role = 'tab'; bt.dataset.id = 'breadth';
   bt.onclick = () => { location.hash = 'breadth'; };
@@ -280,7 +277,23 @@ async function init() {
   tabs.appendChild(gt);
   window.addEventListener('hashchange', route);
   route();
-  renderBrief();
+}
+
+// 각 시장의 마지막 거래일과, 데이터를 받은 시각에 그 장이 끝났는지
+function priceBasis(data) {
+  const at = new Date(data.updated.replace(' ', 'T').replace(' KST', ':00+09:00'));
+  const usDst = d => {  // 미국 서머타임: 3월 둘째 일요일 ~ 11월 첫째 일요일
+    const y = d.getUTCFullYear(), sun = (m, n) => { const x = new Date(Date.UTC(y, m, 1)); return Date.UTC(y, m, 1 + (7 - x.getUTCDay()) % 7 + 7 * (n - 1)); };
+    return d >= sun(2, 2) && d < sun(10, 1);
+  };
+  const part = (label, id, closeUtc) => {
+    const m = data.markets.find(x => x.id === id);
+    if (!m) return '';
+    const day = m.dates.at(-1), d = new Date(day + 'T00:00:00Z');
+    const close = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), ...closeUtc(d)));
+    return `${label} ${+day.slice(5, 7)}/${+day.slice(8)} ${at >= close ? '마감' : '장중'}`;
+  };
+  return '기준: ' + [part('미국', 'sp500', d => usDst(d) ? [20, 15] : [21, 15]), part('한국', 'kospi', () => [6, 45])].filter(Boolean).join(' · ');
 }
 
 function route() {
@@ -289,6 +302,12 @@ function route() {
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.id === 'glossary'));
     current = null;
     renderGlossary(id.split('/')[1]);
+    return;
+  }
+  if (id === 'brief') {
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.id === 'brief'));
+    current = null;
+    renderBrief();
     return;
   }
   if (id === 'breadth') {
@@ -442,36 +461,41 @@ addEventListener('scroll', () => {
 }, { passive: true });
 
 // ───── 시장 브리핑 (영향 요인 · 일정) ─────
+let BRIEF;
 async function renderBrief() {
-  let b;
-  try { b = await (await fetch('briefing.json', { cache: 'no-cache' })).json(); } catch (e) { return; }
-  let open = true;
-  try { open = localStorage.getItem('briefOpen') !== '0'; } catch (e) {}
+  charts.forEach(c => c.remove()); charts = [];
+  if (observer) observer.disconnect();
+  const main = document.getElementById('main');
+  if (!BRIEF) {
+    main.innerHTML = '<section class="card">불러오는 중…</section>';
+    try { BRIEF = await (await fetch('briefing.json', { cache: 'no-cache' })).json(); }
+    catch (e) { main.innerHTML = '<section class="card">브리핑을 불러오지 못했어요.</section>'; return; }
+  }
+  if (location.hash !== '#brief') return;
+  const b = BRIEF;
   const sign = f => {
     const [c, lb] = f.sign === '+' ? ['var(--up)', '호재'] : f.sign === '-' ? ['var(--down)', '악재'] : ['var(--muted)', '혼재'];
     return `<div class="sg" style="color:${c};background:color-mix(in srgb, ${c} 14%, transparent)">${f.sign === '±' ? '±' : f.sign === '+' ? '+' : '−'}<small>${lb}</small></div>`;
   };
   const cal = rows => `<div class="cal">${rows.map(r => `<div class="d">${esc(r.date)}</div><div>${r.items.map(esc).join('<br>')}</div>`).join('')}</div>`;
   const cnt = s => b.factors.filter(f => f.sign === s).length;
-  const el = document.getElementById('brief');
-  el.innerHTML = `
-    <details ${open ? 'open' : ''}>
-      <summary><div class="t">시장 브리핑 · ${esc(b.asOf.slice(5).replace('-', '월 '))}일${b.updated ? ' ' + esc(b.updated.slice(11, 16)) : ''} 기준</div>
-        <div class="sm">${esc(b.summary)} <span style="white-space:nowrap">(호재 ${cnt('+')} · 악재 ${cnt('-')} · 혼재 ${cnt('±')})</span></div></summary>
-      <div class="body">
-        <h4>지금 주가에 영향을 주는 요인</h4>
-        <div class="note" style="margin:0 0 6px">빨간 +는 주가에 좋은 요인(호재), 파란 −는 나쁜 요인(악재), 회색 ±는 양쪽으로 읽힐 수 있는 요인이에요.</div>
-        ${b.factors.map(f => `<div class="factor">${sign(f)}<div><div class="ft">${esc(f.title)}</div><div class="fh">${esc(f.head)}</div>
-          <p>${esc(f.detail)}</p><p class="st"><b>진행 상황:</b> ${esc(f.status)}</p></div></div>`).join('')}
-        <div class="brief-cols">
-          <div><h4>이번 주 주요 일정 (한국시간 기준)</h4>${cal(b.week)}</div>
-          <div><h4>앞으로 한 달 주요 일정</h4>${cal(b.month)}</div>
-        </div>
-        <div class="note" style="margin-top:12px">이 브리핑은 매일 자동으로 바뀌지 않고, 위 날짜에 뉴스를 모아 정리한 거예요. 실적 발표 시간은 회사 사정으로 바뀔 수 있어요.
-          출처: ${b.sources.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>`).join(' · ')}</div>
-      </div>
-    </details>`;
-  el.querySelector('details').addEventListener('toggle', e => { try { localStorage.setItem('briefOpen', e.target.open ? '1' : '0'); } catch (err) {} });
+  main.innerHTML = `<div id="brief">
+    <section class="card">
+      <div class="t">시장 브리핑 · ${esc(b.asOf.slice(5).replace('-', '월 '))}일${b.updated ? ' ' + esc(b.updated.slice(11, 16)) : ''} 기준</div>
+      <p class="sm">${esc(b.summary)} <span class="note" style="white-space:nowrap">(호재 ${cnt('+')} · 악재 ${cnt('-')} · 혼재 ${cnt('±')})</span></p>
+    </section>
+    <section class="card brief-cols">
+      <div><h4>이번 주 주요 일정 (한국시간 기준)</h4>${cal(b.week)}</div>
+      <div><h4>앞으로 한 달 주요 일정</h4>${cal(b.month)}</div>
+    </section>
+    <section class="card">
+      <h4>지금 주가에 영향을 주는 요인</h4>
+      <div class="note" style="margin:0 0 6px">빨간 +는 주가에 좋은 요인(호재), 파란 −는 나쁜 요인(악재), 회색 ±는 양쪽으로 읽힐 수 있는 요인이에요.</div>
+      ${b.factors.map(f => `<div class="factor">${sign(f)}<div><div class="ft">${esc(f.title)}</div><div class="fh">${esc(f.head)}</div>
+        <p>${esc(f.detail)}</p><p class="st"><b>진행 상황:</b> ${esc(f.status)}</p></div></div>`).join('')}
+      <div class="note" style="margin-top:12px">한국시간 02:00 · 06:30 · 11:00 · 15:00 · 19:00 · 22:00 · 23:30에 뉴스를 모아 새로 정리해요. 실적 발표 시간은 회사 사정으로 바뀔 수 있어요.
+        출처: ${b.sources.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>`).join(' · ')}</div>
+    </section></div>`;
 }
 
 // ───── 용어 설명 탭 ─────

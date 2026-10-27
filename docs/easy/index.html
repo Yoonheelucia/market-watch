@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Daily Stock Insight 쉽게 보기</title>
+<title>Daily Stock Insights 쉽게 보기</title>
 <meta name="description" content="주식이 처음인 분을 위한 매일 아침 시장 이야기">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
@@ -127,7 +127,7 @@ footer { margin-top: 48px; font-size: 12px; color: var(--muted); border-top: 1px
 <body>
 <div class="wrap">
   <header>
-    <h1>Daily Stock Insight 쉽게 보기<span class="by">BY YOONSEUL</span></h1>
+    <h1>Daily Stock Insights 쉽게 보기<span class="by">BY YOONSEUL</span></h1>
     <p class="sub">주식이 처음인 분을 위한 매일 아침 시장 이야기</p>
     <div class="meta"><span id="updated">불러오는 중…</span><a href="../">전문가용 페이지 →</a></div>
   </header>
@@ -353,6 +353,18 @@ function spark(values, color) {
 }
 const lineColor = v => getComputedStyle(document.documentElement).getPropertyValue(v > 0 ? '--up' : v < 0 ? '--down' : '--muted').trim();
 
+// 데이터를 받은 시각에 그 날 장이 끝났는지 (끝났으면 '마감', 아니면 '장중')
+function sessionState(data, id, day) {
+  const at = new Date(data.updated.replace(' ', 'T').replace(' KST', ':00+09:00'));
+  const d = new Date(day + 'T00:00:00Z'), y = d.getUTCFullYear();
+  let h = [6, 45];  // 한국: 15:30 마감 (+여유 15분)
+  if (!['kospi', 'kosdaq'].includes(id)) {  // 미국: 뉴욕 16:00 마감, 서머타임(3월 둘째 일요일 ~ 11월 첫째 일요일)이면 UTC 20시
+    const sun = (m, n) => { const x = new Date(Date.UTC(y, m, 1)); return Date.UTC(y, m, 1 + (7 - x.getUTCDay()) % 7 + 7 * (n - 1)); };
+    h = d >= sun(2, 2) && d < sun(10, 1) ? [20, 15] : [21, 15];
+  }
+  return at >= Date.UTC(y, d.getUTCMonth(), d.getUTCDate(), ...h) ? '장 마감 기준' : '장중 (아직 마감 전)';
+}
+
 function renderWeather(data) {
   const pick = [['sp500', '🇺🇸 미국', '대표 회사 500곳 (S&P 500)'], ['nasdaq', '🇺🇸 미국 기술주', '나스닥'], ['kospi', '🇰🇷 한국', '코스피']];
   $('#wx').innerHTML = pick.map(([id, where, what]) => {
@@ -367,7 +379,7 @@ function renderWeather(data) {
       <div class="icon">${w.ico}</div>
       <div class="word">${w.word}</div>
       <div class="chg ${cls(ch)} num">${arrow(ch)} ${pct(ch)} · ${w.say}</div>
-      <div class="what">${fmtDate(m.dates[b])} 장 기준</div>
+      <div class="what">${fmtDate(m.dates[b])} ${sessionState(data, id, m.dates[b])}</div>
       ${spark(c, lineColor(three))}
       <div class="three">최근 3달 동안 <b class="${cls(three)} num">${pct(three)}</b></div>
     </div>`;

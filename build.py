@@ -141,6 +141,19 @@ def download(tickers, start, **kw):
             got = retry[t]
             if got['Close'].notna().any():
                 raw = raw.drop(columns=t, level=0).join(pd.concat({t: got}, axis=1), how='outer')
+
+    # 마지막 날만 빠진 종목도 있다 (다른 종목은 그날 값이 있는데 이 종목만 빈 경우) → 한 번 더 받아 채운다
+    have_last = [t for t in tickers if pd.notna(raw[t]['Close'].iloc[-1])]
+    stale = [t for t in tickers if t not in have_last]
+    if have_last and stale:
+        time.sleep(3)
+        retry = yf.download(stale, start=start, group_by='ticker', progress=False, threads=False, **kw)
+        for t in stale:
+            got = retry[t].reindex(raw.index)
+            for col in got.columns:
+                if (t, col) in raw.columns:
+                    raw[(t, col)] = raw[(t, col)].combine_first(got[col])
+        print(f'마지막 날 빠진 종목 다시 받음: {len(stale)}개 → 남은 빈 종목 {sum(pd.isna(raw[t]["Close"].iloc[-1]) for t in stale)}개')
     return raw
 
 
