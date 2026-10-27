@@ -7,7 +7,8 @@
 이 작업은 하루 7번(한국시간 02:00, 06:30, 11:00, 15:00, 19:00, 22:00, 23:30) 실행된다. 직전 브리핑을 바탕으로, 그 사이 새로 나온 소식(장 마감 결과, 지표 발표, 실적 발표, 속보)을 반영해 고친다. 한국장(09:00~15:30)이나 미국장(한국시간 밤 22:30~새벽 05:00, 미국 서머타임이 끝나는 11월 첫 일요일 이후는 23:30~06:00)이 열려 있는 시간이면 진행 중인 장 분위기도 반영한다.
 
 ## 0. 준비
-- `git pull --rebase` 로 최신 상태를 받는다 (다른 자동 작업이 데이터를 푸시한다).
+- 가장 먼저 `git fetch origin main && git checkout -B main origin/main` 으로 원격 main 의 최신 상태에서 시작한다 (작업 공간이 옛 커밋에 멈춰 있을 수 있다. 다른 자동 작업이 데이터를 푸시한다).
+- "직전 브리핑이 얼마 안 됐다", "새 소식이 없다"는 이유로 건너뛰지 않는다. 새 뉴스가 없어도 매번 0-1 의 지수 숫자와 2 의 weekPast(회사별 주가 반응 포함)를 최신 data.json·earnings.json 으로 다시 계산해 반영하고, updated 를 바꿔 푸시한다.
 - 오늘 날짜: `TZ=Asia/Seoul date +%F` → asOf. 지금 시각: `TZ=Asia/Seoul date '+%F %H:%M'` → updated (asOf 바로 다음 키).
 - 지금 docs/briefing.json 을 읽고 구조(키 이름, 문체, 분량)를 그대로 따른다. 키: asOf, updated, summary, factors[{title, sign, head, detail, status}], week[{date, items[]}], weekPast[{date, items[{text, reaction}]}], month[{date, items[]}], sources[{name, url}], easy{why[], news[{sign, title, text}], week[{date, title, meaning}], weekPast[{date, title, result}]}.
 
@@ -89,5 +90,6 @@ E
 
 ## 3. 저장과 배포
 - docs/briefing.json 을 덮어쓴다 (UTF-8, 한글 그대로, ensure_ascii=False, indent=2). 쓴 뒤 `python3 -c "import json;b=json.load(open('docs/briefing.json'));assert b['updated'] and b['easy']['why'] and b['easy']['news'] and b['easy']['week'] and 'weekPast' in b"` 로 JSON 과 필수 키가 제대로 있는지 확인한다.
-- `git add docs/briefing.json && git commit -m "시장 브리핑 업데이트 $(TZ=Asia/Seoul date '+%F %H:%M')"` 후 `git pull --rebase && git push` 로 main 에 바로 푸시한다. 푸시가 실패하면 한 번 더 pull --rebase 후 재시도한다.
+- `git add docs/briefing.json && git commit -m "시장 브리핑 업데이트 $(TZ=Asia/Seoul date '+%F %H:%M')"` 후 `git pull --rebase && git push` 로 main 에 바로 푸시한다.
+- pull --rebase 중 docs/briefing.json 이 충돌하면, 내 커밋을 버리지 말고 `git rebase --abort` → `git fetch origin main` → 방금 쓴 내 briefing.json 내용을 잠시 저장 → `git reset --hard origin/main` → 저장한 내 내용으로 docs/briefing.json 을 덮어쓴 뒤 다시 커밋·푸시한다 (내 실행이 더 최신이다). 최대 3번 시도한다.
 - 마지막에 바뀐 요인(추가/삭제/부호 변경)과 이번 주 핵심 일정을 3~5줄로 요약해서 보고한다.
