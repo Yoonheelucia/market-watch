@@ -2,9 +2,15 @@ name: 매일 주식 데이터 업데이트
 
 on:
   schedule:
-    # 한국시간 화~토 06:37 (UTC 월~금 21:37) — 미국장 마감 후. 정각은 GitHub 실행이 자주 밀려서 피함
+    # 미국 시장: 한국시간 화~토 06:37 (UTC 월~금 21:37) — 미국장 마감 후. 정각은 GitHub 실행이 자주 밀려서 피함
     - cron: '37 21 * * 1-5'
+    # 한국 시장: 한국시간 월~금 18:03 (UTC 09:03) — 한국장 마감 후
+    - cron: '3 9 * * 1-5'
   workflow_dispatch:  # Actions 탭에서 수동 실행
+    inputs:
+      region:
+        description: 'all / us / kr'
+        default: all
 
 permissions:
   contents: write
@@ -19,7 +25,7 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python build.py
+      - run: python build.py ${{ github.event.schedule == '3 9 * * 1-5' && 'kr' || github.event.schedule && 'us' || inputs.region || 'all' }}
         env:
           SEC_EMAIL: ${{ secrets.SEC_EMAIL }}  # SEC 공시 요청에 필요한 연락처
       - name: 변경사항 커밋

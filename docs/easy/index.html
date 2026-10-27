@@ -43,7 +43,7 @@ nav a { flex: none; padding: 7px 13px; border-radius: 999px; background: var(--c
 section { margin-top: 36px; scroll-margin-top: 12px; }
 h2 { font-size: 20px; margin: 0 0 4px; }
 .lead { color: var(--muted); margin: 0 0 14px; font-size: 14px; }
-.stamp { color: var(--muted); margin: -10px 0 14px; font-size: 12px; }
+.stamp { color: var(--muted); margin: -10px 0 14px; font-size: 12px; white-space: pre-line; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
 .grid { display: grid; gap: 12px; }
 @media (min-width: 620px) { .grid.three { grid-template-columns: repeat(3, 1fr); } .grid.two { grid-template-columns: repeat(2, 1fr); } }
@@ -361,7 +361,8 @@ const lineColor = v => getComputedStyle(document.documentElement).getPropertyVal
 
 // 데이터를 받은 시각에 그 날 장이 끝났는지 (끝났으면 '마감', 아니면 '장중')
 function sessionState(data, id, day) {
-  const at = new Date(data.updated.replace(' ', 'T').replace(' KST', ':00+09:00'));
+  const m = data.markets.find(x => x.id === id);
+  const at = new Date((m?.updated || data.updated).replace(' ', 'T').replace(' KST', ':00+09:00'));
   const d = new Date(day + 'T00:00:00Z'), y = d.getUTCFullYear();
   let h = [6, 45];  // 한국: 15:30 마감 (+여유 15분)
   if (!['kospi', 'kosdaq'].includes(id)) {  // 미국: 뉴욕 16:00 마감, 서머타임(3월 둘째 일요일 ~ 11월 첫째 일요일)이면 UTC 20시
@@ -476,8 +477,10 @@ function renderTerm(start) {
 
 (async () => {
   const [data, brief, earnings, biz] = await Promise.all(['../data.json', '../briefing.json', '../earnings.json', '../business.json'].map(load));
+  const upd = id => data?.markets.find(m => m.id === id)?.updated || data?.updated;
   const stamps = () => document.querySelectorAll('.stamp').forEach(el => {
-    el.textContent = stampText(el.dataset.kind, el.dataset.kind === 'data' ? data?.updated : brief?.updated);
+    el.textContent = el.dataset.kind === 'brief' ? stampText('brief', brief?.updated)
+      : `🇺🇸 ${stampText('us', upd('sp500')).slice(3)}\n🇰🇷 ${stampText('kr', upd('kospi')).slice(3)}`;
   });
   stamps();
   setInterval(stamps, 60e3);
@@ -487,7 +490,8 @@ function renderTerm(start) {
   renderWhy(brief);
   renderWeek(brief);
   if (!data) { $('#updated').innerHTML = '<span class="err">주가를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.</span>'; return; }
-  $('#updated').textContent = `주가 업데이트 ${data.updated}`;
+  const mu = id => (data.markets.find(m => m.id === id)?.updated || data.updated).slice(5, 16).replace('-', '/');
+  $('#updated').textContent = `주가 업데이트: 🇺🇸 미국 ${mu('sp500')} · 🇰🇷 한국 ${mu('kospi')}`;
   renderWeather(data);
   const earn = earnings?.stocks;
   let country = 'kr';

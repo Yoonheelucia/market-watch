@@ -256,7 +256,7 @@ async function init() {
   DATA = await (await fetch('data.json', { cache: 'no-cache' })).json();
   const ORDER = ['sp500', 'nasdaq', 'dow', 'kospi', 'kosdaq'];  // 탭 순서
   DATA.markets.sort((a, b) => (ORDER.indexOf(a.id) + 1 || 99) - (ORDER.indexOf(b.id) + 1 || 99));
-  document.getElementById('updated').textContent = `주가 업데이트 ${DATA.updated} · ${priceBasis(DATA)} · 차트는 최근 90일`;
+  document.getElementById('updated').textContent = `${priceBasis(DATA)} · 차트는 최근 90일`;
   const tabs = document.getElementById('tabs');
   DATA.markets.forEach(m => {
     const b = document.createElement('button');
@@ -287,22 +287,29 @@ async function init() {
   autoRefresh(['data.json', 'briefing.json']);
 }
 
+const marketUpdated = id => DATA.markets.find(m => m.id === id)?.updated || DATA.updated;
+
 // 지금 보고 있는 탭의 '마지막 업데이트 · 다음 업데이트 예정'
 function setStamp() {
   const id = location.hash.slice(1);
   let text;
   if (id.startsWith('glossary')) text = stampText(null);
   else if (id === 'brief') text = stampText('brief', BRIEF?.updated);
-  else {
-    text = stampText('data', DATA.updated);
-    if (id.startsWith('earnings')) text += ' · 회사 사업 설명 글은 직접 정리해서 날짜가 따로 적혀 있어요';
+  else if (id.startsWith('earnings')) {
+    const t = decodeURIComponent(id.split('/')[1] || ''), kr = /\.K[SQ]$/.test(t);
+    const upd = DATA.markets.find(m => kr === ['kospi', 'kosdaq'].includes(m.id))?.updated || DATA.updated;
+    text = (t ? stampText(kr ? 'kr' : 'us', upd) : `미국 ${stampText('us', marketUpdated('sp500')).slice(3)} | 한국 ${stampText('kr', marketUpdated('kospi')).slice(3)}`)
+      + ' · 회사 사업 설명 글은 직접 정리해서 날짜가 따로 적혀 있어요';
+  } else {
+    const m = DATA.markets.find(x => x.id === id) || DATA.markets[0];
+    text = id === 'breadth' ? stampText('us', marketUpdated('sp500')) : stampText(['kospi', 'kosdaq'].includes(m.id) ? 'kr' : 'us', marketUpdated(m.id));
   }
   document.getElementById('stamp').textContent = text;
 }
 
 // 각 시장의 마지막 거래일과, 데이터를 받은 시각에 그 장이 끝났는지
 function priceBasis(data) {
-  const at = new Date(data.updated.replace(' ', 'T').replace(' KST', ':00+09:00'));
+
   const usDst = d => {  // 미국 서머타임: 3월 둘째 일요일 ~ 11월 첫째 일요일
     const y = d.getUTCFullYear(), sun = (m, n) => { const x = new Date(Date.UTC(y, m, 1)); return Date.UTC(y, m, 1 + (7 - x.getUTCDay()) % 7 + 7 * (n - 1)); };
     return d >= sun(2, 2) && d < sun(10, 1);
@@ -310,11 +317,12 @@ function priceBasis(data) {
   const part = (label, id, closeUtc) => {
     const m = data.markets.find(x => x.id === id);
     if (!m) return '';
+    const at = new Date((m.updated || data.updated).replace(' ', 'T').replace(' KST', ':00+09:00'));
     const day = m.dates.at(-1), d = new Date(day + 'T00:00:00Z');
     const close = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), ...closeUtc(d)));
     return `${label} ${+day.slice(5, 7)}/${+day.slice(8)} ${at >= close ? '마감' : '장중'}`;
   };
-  return '기준: ' + [part('미국', 'sp500', d => usDst(d) ? [20, 15] : [21, 15]), part('한국', 'kospi', () => [6, 45])].filter(Boolean).join(' · ');
+  return '주가 기준: ' + [part('미국', 'sp500', d => usDst(d) ? [20, 15] : [21, 15]), part('한국', 'kospi', () => [6, 45])].filter(Boolean).join(' · ');
 }
 
 function route() {

@@ -259,32 +259,53 @@ def build_market(m, start):
     }
 
 
-def main():
+KOREA = ('kospi', 'kosdaq')
+
+
+def main(region='all'):
+    """region: 'us' = 미국 시장만(한국시간 아침), 'kr' = 한국 시장만(한국시간 저녁), 'all' = 전부.
+    고르지 않은 시장은 지난번 data.json·earnings.json 값을 그대로 둔다."""
+    pick = lambda mid: region == 'all' or (mid in KOREA) == (region == 'kr')
+    now = datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d %H:%M KST')
     start = (pd.Timestamp.today() - pd.DateOffset(days=DAYS)).strftime('%Y-%m-%d')
-    data = {
-        'updated': datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d %H:%M KST'),
-        'start': start,
-        'markets': [build_market(m, start) for m in MARKETS],
-    }
-    add_market_caps(data['markets'])
-    for m, spec in zip(data['markets'], MARKETS):
+    old = {}
+    if OUT.exists() and region != 'all':
+        old = {m['id']: m for m in json.loads(OUT.read_text()).get('markets', [])}
+
+    fresh = []
+    for spec in MARKETS:
+        if pick(spec['id']) or spec['id'] not in old:
+            m = build_market(spec, start)
+            m['updated'] = now
+            fresh.append(m)
+    add_market_caps(fresh)
+    for m in fresh:
+        spec = next(x for x in MARKETS if x['id'] == m['id'])
         if spec.get('pe_etf'):
             m['index']['pe'] = {'value': index_pe(spec['pe_etf']), 'etf': spec['pe_etf']}
+    by_id = {**old, **{m['id']: m for m in fresh}}
+    data = {'updated': now, 'start': start, 'markets': [by_id[x['id']] for x in MARKETS]}
     data['usdkrw'] = usd_krw()
     print(f"원/달러 환율: {data['usdkrw']}")
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(json.dumps(data, ensure_ascii=False, separators=(',', ':')))
-    print(f'저장: {OUT} ({OUT.stat().st_size // 1024} KB)')
+    print(f'저장: {OUT} ({OUT.stat().st_size // 1024} KB), 갱신한 시장 {[m["id"] for m in fresh]}')
 
-    names = {s['ticker']: s['name'] for m in data['markets'] for s in m['stocks']}
-    names.update(EARNINGS_EXTRA)
-    earnings = {'updated': data['updated'], 'stocks': build_earnings(names, download, EARNINGS_OUT)}
+    names = {s['ticker']: s['name'] for m in fresh for s in m['stocks']}
+    if region != 'kr':
+        names.update(EARNINGS_EXTRA)
+    stocks = {}
+    if EARNINGS_OUT.exists() and region != 'all':
+        stocks = json.loads(EARNINGS_OUT.read_text()).get('stocks', {})
+    stocks.update(build_earnings(names, download, EARNINGS_OUT))
     for t in EARNINGS_EXTRA:
-        if t in earnings['stocks']:
-            earnings['stocks'][t]['cap'] = market_cap(t)
-    EARNINGS_OUT.write_text(json.dumps(earnings, ensure_ascii=False, separators=(',', ':')))
+        if t in names and t in stocks:
+            stocks[t]['cap'] = market_cap(t)
+    EARNINGS_OUT.write_text(json.dumps({'updated': now, 'stocks': stocks}, ensure_ascii=False, separators=(',', ':')))
     print(f'저장: {EARNINGS_OUT} ({EARNINGS_OUT.stat().st_size // 1024} KB)')
 
+    if region == 'kr':
+        return
     # 시장 체력 (S&P 500 전체 종목)
     build_breadth(download, US_NAMES)
 
@@ -293,4 +314,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+    main(sys.argv[1] if len(sys.argv) > 1 else 'all')

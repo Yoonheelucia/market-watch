@@ -1,6 +1,7 @@
 // 자료별 업데이트 시각 (한국시간). 바꾸면 .github/workflows/update.yml 의 cron 과 클라우드 브리핑 작업 시간도 같이 바꿔야 한다.
 const SCHEDULE = {
-  data: { times: ['06:37'], days: [2, 3, 4, 5, 6], what: '주가·숫자' },  // 화~토, GitHub Actions
+  us: { times: ['06:37'], days: [2, 3, 4, 5, 6], what: '미국 주가' },  // 화~토, GitHub Actions
+  kr: { times: ['18:03'], days: [1, 2, 3, 4, 5], what: '한국 주가' },  // 월~금, GitHub Actions
   brief: { times: ['02:00', '06:30', '11:00', '15:00', '19:00', '22:00', '23:30'], days: [0, 1, 2, 3, 4, 5, 6], what: '브리핑' },
 };
 const KST = 9 * 3600e3;
