@@ -251,6 +251,8 @@ function stats(closes) {
 
 async function init() {
   DATA = await (await fetch('data.json', { cache: 'no-cache' })).json();
+  const ORDER = ['sp500', 'nasdaq', 'dow', 'kospi', 'kosdaq'];  // 탭 순서
+  DATA.markets.sort((a, b) => (ORDER.indexOf(a.id) + 1 || 99) - (ORDER.indexOf(b.id) + 1 || 99));
   document.getElementById('updated').textContent = `주가 업데이트 ${DATA.updated} · ${priceBasis(DATA)} · 차트는 최근 90일`;
   const tabs = document.getElementById('tabs');
   DATA.markets.forEach(m => {
