@@ -1,0 +1,8 @@
+{
+  "name": "Daily Stock Insights 쉽게 보기",
+  "short_name": "쉽게 보기",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff"
+}
