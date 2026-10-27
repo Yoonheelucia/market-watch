@@ -154,6 +154,27 @@ def download(tickers, start, **kw):
                 if (t, col) in raw.columns:
                     raw[(t, col)] = raw[(t, col)].combine_first(got[col])
         print(f'마지막 날 빠진 종목 다시 받음: {len(stale)}개 → 남은 빈 종목 {sum(pd.isna(raw[t]["Close"].iloc[-1]) for t in stale)}개')
+
+    # 그래도 비어 있으면(야후 일봉이 늦게 채워지는 경우, 특히 한국장) 1시간봉을 모아 그날 값을 만든다
+    holes = [t for t in tickers if raw[t]['Close'].iloc[-5:].isna().any()]
+    if holes and 'auto_adjust' not in kw:
+        try:
+            hourly = yf.download(holes, period='5d', interval='1h', group_by='ticker', progress=False, threads=True)
+            filled = 0
+            for t in holes:
+                h = hourly[t].dropna(subset=['Close'])
+                if h.empty:
+                    continue
+                day = h.groupby(h.index.tz_localize(None).normalize())  # 현지 날짜별로 묶기
+                ohlc = pd.DataFrame({'Open': day['Open'].first(), 'High': day['High'].max(), 'Low': day['Low'].min(), 'Close': day['Close'].last()})
+                for d in raw.index[-5:]:
+                    if pd.isna(raw.at[d, (t, 'Close')]) and d in ohlc.index:
+                        for col in ohlc.columns:
+                            raw.at[d, (t, col)] = ohlc.at[d, col]
+                        filled += 1
+            print(f'일봉이 빈 날을 1시간봉으로 채움: {filled}칸')
+        except Exception as e:
+            print(f'1시간봉 보충 실패: {e}')
     return raw
 
 
