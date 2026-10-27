@@ -46,7 +46,33 @@ E
 - week: 오늘부터 이번 주 금요일까지(주말이면 다음 주 월~금) 날짜별로 아직 오지 않은 주요 일정. 날짜 형식 "10/27 (화)", 시간은 한국시간 기준. 미국 지표 발표는 미국 동부시간 8:30 = 서머타임 기간 한국시간 21:30, 서머타임 아닐 때 22:30. FOMC 결정은 미국 14:00 = 한국시간 다음 날 새벽 3시(서머타임)/4시. 항목 앞에 🇺🇸 또는 🇰🇷. 오늘 일정 중 이미 끝나서 반응까지 나온 것은 weekPast 로 옮긴다.
 - weekPast: 이번 주(주말이면 방금 끝난 주) 월요일부터 이미 지난 날짜의 주요 일정과, 그 일 뒤 주가가 어떻게 반응했는지. 가장 최근 날짜가 위로 오게 쓴다. 화면에서는 week 아래에 보인다.
   - 형식: {date: "10/27 (화)", items: [{text: "🇰🇷 SK하이닉스 실적", reaction: "발표일 +3.2% · 컨센서스 상회, 사상 최대 영업이익"}]}
-  - 실적: earnings.json 의 그 분기 r0(장전·장중 발표) 또는 r1(장후 발표면 다음 거래일)과 beat 를 쓴다. earnings.json 에 없는 종목은 data.json 종가로 계산하고, 둘 다 없으면 뉴스에서 확인한 숫자만 쓴다.
+  - 지수 마감만 적고 끝내지 않는다. 그날 실적을 발표한 회사가 있으면 **회사마다 한 줄씩** 넣는다 (그날 week 에 있던 실적 일정은 빠짐없이 weekPast 로 옮긴다). 하루에 실적 발표 회사가 많으면 시총 큰 순으로 최대 6곳.
+  - 실적 반응은 아래 코드로 뽑아서 쓴다. 반응 날짜 = 장전·장중 발표면 발표일, 장후 발표면 다음 거래일. 그 날짜의 종가가 아직 없거나 그날 장이 안 끝났으면 "반응 확인 중"(다음 실행에서 채운다).
+```
+python3 - <<'E'
+import json
+from datetime import date, timedelta
+e = json.load(open('docs/earnings.json'))['stocks']
+d = json.load(open('docs/data.json'))
+closes = {}
+for m in d['markets']:
+    for s in m['stocks']:
+        closes.setdefault(s['ticker'], dict(zip(m['dates'], s['c'])))
+start = date.today() - timedelta(days=date.today().weekday() + (7 if date.today().weekday() >= 5 else 0))
+for t, s in e.items():
+    for q in s.get('quarters', []):
+        if q['date'] >= start.isoformat():
+            beat = {1: '예상보다 좋음', -1: '예상보다 나쁨', 0: '예상과 비슷'}.get(q.get('beat'), '')
+            print(s['name'], t, q['date'], q['when'], '발표일', q.get('r0'), '다음날', q.get('r1'), beat, 'EPS', q.get('act'), '예상', q.get('est'))
+    nxt = s.get('next') or {}
+    if nxt.get('date', '') >= start.isoformat() and nxt.get('date', '') <= date.today().isoformat():
+        c = closes.get(t, {}); ds = sorted(k for k, v in c.items() if v is not None)
+        after = (lambda k: k > nxt['date']) if nxt.get('when') == '장후' else (lambda k: k >= nxt['date'])  # 장후 발표는 다음 거래일부터
+        tail = [(k, round((c[k] / c[ds[i - 1]] - 1) * 100, 2)) for i, k in enumerate(ds) if i and after(k)]
+        print(s['name'], t, nxt['date'], nxt.get('when'), '(실적 자료 반영 전) 종가 변화', tail)
+E
+```
+  - reaction 예: "발표 다음 날 +4.2% · 예상보다 좋음 (EPS 1.98 vs 예상 1.82)". earnings.json 에 아직 그 분기가 없으면(실적 자료 반영 전) data.json 종가 변화로 쓰고, 예상 대비 결과는 뉴스에서 확인한 경우에만 덧붙인다. 목록에 없는 회사는 뉴스에서 확인한 등락률만 쓴다.
   - 금리 결정·물가·고용 같은 경제 이벤트: 그 뒤 첫 마감(미국 이벤트는 그날 미국장 마감) 기준 해당 지수 등락률. 예: "S&P 500 −0.8%, 나스닥 −1.2% · 12월 인상 시사에 하락".
   - 숫자 앞에는 + 또는 − 부호를 붙인다. 아직 장이 안 끝나 반응을 모르면 reaction 을 "반응 확인 중" 으로 쓰고, 다음 실행에서 채운다.
 - 실적 일정은 docs/earnings.json 의 각 종목 next.date / next.when 을 쓴다 (python 으로 읽어서 기간 안의 것을 고른다). 미국 '장후' 발표는 '(장 마감 후 → 한국시간 다음 날 새벽)'처럼 적는다. 하루에 너무 많으면 시총 큰 종목·관심 큰 종목 위주로 3~5개만.
