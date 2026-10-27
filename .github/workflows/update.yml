@@ -2,8 +2,8 @@ name: 매일 주식 데이터 업데이트
 
 on:
   schedule:
-    # 한국시간 화~토 07:00 (UTC 월~금 22:00) — 미국장 마감 직후
-    - cron: '0 22 * * 1-5'
+    # 한국시간 화~토 06:37 (UTC 월~금 21:37) — 미국장 마감 후. 정각은 GitHub 실행이 자주 밀려서 피함
+    - cron: '37 21 * * 1-5'
   workflow_dispatch:  # Actions 탭에서 수동 실행
 
 permissions:
