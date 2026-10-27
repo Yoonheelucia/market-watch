@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Stock Insight 쉽게 보기</title>
+<meta name="description" content="주식이 처음인 분을 위한 매일 아침 시장 이야기">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f6f2; --card: #ffffff; --text: #1d1f24; --muted: #6b7280; --line: #e8e6df;
+  --accent: #0f8a7e; --accent-soft: #e3f4f1; --up: #e0314b; --down: #2463eb;
+  --good: #16a34a; --good-soft: #e8f7ee; --bad: #dc2626; --bad-soft: #fdecec; --mix: #b45309; --mix-soft: #fdf3e2;
+  --chip: #f1f0ea;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1214; --card: #181c1f; --text: #e8eaed; --muted: #9aa1ab; --line: #2a2f34;
+    --accent: #4fd1c1; --accent-soft: #15302d; --up: #ff5c73; --down: #6b9bff;
+    --good: #4ade80; --good-soft: #143022; --bad: #f87171; --bad-soft: #351a1a; --mix: #fbbf24; --mix-soft: #33270f;
+    --chip: #22272b;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1214; --card: #181c1f; --text: #e8eaed; --muted: #9aa1ab; --line: #2a2f34;
+  --accent: #4fd1c1; --accent-soft: #15302d; --up: #ff5c73; --down: #6b9bff;
+  --good: #4ade80; --good-soft: #143022; --bad: #f87171; --bad-soft: #351a1a; --mix: #fbbf24; --mix-soft: #33270f;
+  --chip: #22272b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); line-height: 1.65;
+  font-family: 'Noto Sans KR', system-ui, -apple-system, sans-serif; font-size: 16px; word-break: keep-all; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 28px 16px 72px; }
+header h1 { font-size: 24px; margin: 0; line-height: 1.3; }
+header h1 .by { font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: .04em; margin-left: 4px; }
+header .sub { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
+header .meta { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 13px; color: var(--muted); }
+header .meta a { color: var(--accent); text-decoration: none; }
+nav { display: flex; gap: 6px; overflow-x: auto; margin: 20px -16px 8px; padding: 0 16px 4px; scrollbar-width: none; }
+nav a { flex: none; padding: 7px 13px; border-radius: 999px; background: var(--chip); color: var(--text);
+  text-decoration: none; font-size: 14px; }
+section { margin-top: 36px; scroll-margin-top: 12px; }
+h2 { font-size: 20px; margin: 0 0 4px; }
+.lead { color: var(--muted); margin: 0 0 14px; font-size: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+.grid { display: grid; gap: 12px; }
+@media (min-width: 620px) { .grid.three { grid-template-columns: repeat(3, 1fr); } .grid.two { grid-template-columns: repeat(2, 1fr); } }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* 날씨 */
+.wx { text-align: center; }
+.wx .where { font-weight: 700; }
+.wx .what { font-size: 12px; color: var(--muted); }
+.wx .icon { font-size: 44px; line-height: 1.2; margin: 8px 0 2px; }
+.wx .word { font-weight: 700; font-size: 18px; }
+.wx .chg { font-size: 15px; margin-top: 2px; }
+.wx svg { display: block; width: 100%; height: 40px; margin-top: 10px; }
+.wx .three { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.scale { margin-top: 10px; font-size: 12px; color: var(--muted); }
+.fx { margin-top: 12px; font-size: 14px; }
+
+/* 왜 */
+.why ol { margin: 0; padding-left: 22px; }
+.why li { margin: 4px 0; }
+.news { display: grid; gap: 10px; margin-top: 14px; }
+.news .item { border-radius: 12px; padding: 12px 14px; }
+.news .item.p { background: var(--good-soft); } .news .item.m { background: var(--bad-soft); } .news .item.x { background: var(--mix-soft); }
+.news .tag { font-size: 12px; font-weight: 700; }
+.news .item.p .tag { color: var(--good); } .news .item.m .tag { color: var(--bad); } .news .item.x .tag { color: var(--mix); }
+.news .t { font-weight: 700; margin: 2px 0; }
+.news .d { font-size: 14px; }
+.more { margin-top: 12px; font-size: 13px; }
+.more a { color: var(--accent); text-decoration: none; }
+
+/* 회사 */
+.seg { display: inline-flex; background: var(--chip); border-radius: 999px; padding: 3px; margin-bottom: 12px; }
+.seg button { border: 0; background: none; font: inherit; font-size: 14px; padding: 6px 16px; border-radius: 999px; cursor: pointer; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--text); font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.co .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.co .nm { font-weight: 700; font-size: 18px; }
+.co .px { text-align: right; white-space: nowrap; }
+.co .px b { font-size: 17px; }
+.co .px .krw { display: block; font-size: 12px; color: var(--muted); }
+.co .desc { font-size: 14px; color: var(--muted); margin: 6px 0 10px; }
+.co .stats { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }
+.co .stats span { background: var(--chip); border-radius: 8px; padding: 3px 9px; }
+.co .light { margin-top: 10px; font-size: 14px; display: flex; gap: 8px; align-items: flex-start; }
+.co .light .dot { font-size: 18px; line-height: 1.3; }
+.co .light small { color: var(--muted); display: block; font-size: 12px; }
+.co .ev { margin-top: 8px; font-size: 13px; background: var(--accent-soft); border-radius: 8px; padding: 6px 10px; }
+.co .link { display: inline-block; margin-top: 10px; font-size: 13px; color: var(--accent); text-decoration: none; }
+.co svg { display: block; width: 100%; height: 34px; margin-top: 10px; }
+.note { font-size: 13px; color: var(--muted); margin-top: 12px; }
+
+/* 일정 */
+.cal { list-style: none; margin: 0; padding: 0; }
+.cal li { display: grid; grid-template-columns: 96px 1fr; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.cal li:last-child { border-bottom: 0; }
+.cal .date { font-weight: 700; font-size: 14px; color: var(--accent); }
+.cal .t { font-weight: 700; }
+.cal .m { font-size: 14px; color: var(--muted); }
+
+/* 용어 */
+.term .word { font-size: 22px; font-weight: 700; }
+.term .en { font-size: 13px; color: var(--muted); margin-left: 6px; font-weight: 400; }
+.term .ex { margin-top: 10px; background: var(--chip); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+.term button { margin-top: 12px; border: 1px solid var(--line); background: none; color: var(--text); font: inherit; font-size: 14px;
+  border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+
+/* 처음이라면 */
+details { background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 8px; }
+summary { cursor: pointer; padding: 14px 16px; font-weight: 700; list-style: none; display: flex; justify-content: space-between; gap: 8px; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: '+'; color: var(--muted); font-weight: 400; }
+details[open] summary::after { content: '−'; }
+details .body { padding: 0 16px 16px; font-size: 15px; }
+details .body p { margin: 0 0 10px; }
+details .body ul, details .body ol { margin: 0 0 10px; padding-left: 20px; }
+details .body li { margin: 4px 0; }
+
+footer { margin-top: 48px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+.err { color: var(--bad); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Daily Stock Insight 쉽게 보기<span class="by">BY YOONSEUL</span></h1>
+    <p class="sub">주식이 처음인 분을 위한 매일 아침 시장 이야기</p>
+    <div class="meta"><span id="updated">불러오는 중…</span><a href="../">전문가용 페이지 →</a></div>
+  </header>
+
+  <nav>
+    <a href="#weather">☀️ 시장 날씨</a>
+    <a href="#why">🤔 왜 그랬을까</a>
+    <a href="#companies">🏢 아는 회사</a>
+    <a href="#week">📅 이번 주</a>
+    <a href="#term">📖 오늘의 용어</a>
+    <a href="#start">🌱 처음이라면</a>
+  </nav>
+
+  <section id="weather">
+    <h2>오늘의 시장 날씨</h2>
+    <p class="lead">지난 장에서 주가가 얼마나 오르고 내렸는지 날씨로 보여 드려요.</p>
+    <div class="grid three" id="wx"></div>
+    <div class="scale">☀️ 1% 넘게 오름 · 🌤️ 조금 오름 · ☁️ 거의 그대로 · 🌦️ 조금 내림 · 🌧️ 1% 넘게 내림 · ⛈️ 2.5% 넘게 내림</div>
+    <div class="fx" id="fx"></div>
+  </section>
+
+  <section id="why">
+    <h2>요즘 시장, 왜 이럴까?</h2>
+    <p class="lead" id="why-date"></p>
+    <div class="card why" id="why-box"></div>
+    <div class="news" id="news"></div>
+    <div class="more"><a href="../#brief">더 자세한 브리핑 보기 →</a></div>
+  </section>
+
+  <section id="companies">
+    <h2>많이 들어 본 회사들</h2>
+    <p class="lead">이름은 아는데 요즘 어떤지 궁금했던 회사들을 모았어요.</p>
+    <div class="seg" role="group" aria-label="나라 선택">
+      <button type="button" data-c="kr" aria-pressed="true">🇰🇷 한국</button>
+      <button type="button" data-c="us" aria-pressed="false">🇺🇸 미국</button>
+    </div>
+    <div class="grid two" id="cos"></div>
+    <p class="note">🟢🟡🔴 신호등은 지금 주가가 그 회사의 지난 5년 보통 수준보다 비싼지 싼지만 비교한 거예요. 싸다고 꼭 오르는 것도, 비싸다고 꼭 내리는 것도 아니에요.</p>
+  </section>
+
+  <section id="week">
+    <h2>이번 주 알아 둘 일정</h2>
+    <p class="lead">이런 날엔 주가가 크게 움직일 수 있어요. 시간은 모두 한국 시간이에요.</p>
+    <div class="card"><ul class="cal" id="cal"></ul></div>
+  </section>
+
+  <section id="term">
+    <h2>오늘의 용어</h2>
+    <p class="lead">하루에 하나씩, 뉴스에 자주 나오는 말을 알아봐요.</p>
+    <div class="card term" id="term-box"></div>
+  </section>
+
+  <section id="start">
+    <h2>처음이라면 꼭 읽어 보세요</h2>
+    <p class="lead">눌러서 펼쳐 보세요.</p>
+    <details>
+      <summary>주식이 뭐예요?</summary>
+      <div class="body">
+        <p>회사의 아주 작은 조각이에요. 삼성전자 주식 1주를 사면 삼성전자를 아주 조금 가진 '주인(주주)'이 되는 거예요.</p>
+        <p>회사가 돈을 잘 벌고 커지면 그 조각의 값(주가)이 오르고, 회사가 번 돈 일부를 나눠 주기도 해요. 이걸 <b>배당</b>이라고 해요.</p>
+      </div>
+    </details>
+    <details>
+      <summary>주가는 왜 오르고 내려요?</summary>
+      <div class="body">
+        <p>사고 싶은 사람이 많으면 오르고, 팔고 싶은 사람이 많으면 내려요. 시장에서 파는 물건 값과 같아요.</p>
+        <p>사람들이 사고 싶어지는 이유는 크게 세 가지예요.</p>
+        <ul>
+          <li><b>회사가 돈을 더 잘 벌 것 같을 때</b> (실적이 좋을 때)</li>
+          <li><b>금리가 내려갈 때</b> (예금 이자가 줄면 주식으로 돈이 와요)</li>
+          <li><b>세상이 평화롭고 경기가 좋을 때</b></li>
+        </ul>
+        <p>반대로 전쟁, 물가 상승, 금리 인상 같은 소식이 나오면 내리기 쉬워요.</p>
+      </div>
+    </details>
+    <details>
+      <summary>코스피, S&amp;P 500 같은 '지수'는 뭐예요?</summary>
+      <div class="body">
+        <p>많은 회사의 주가를 한데 모아 평균처럼 만든 숫자예요. 반 전체 성적 평균 같은 거예요.</p>
+        <ul>
+          <li><b>코스피</b>: 한국 큰 회사들 (삼성전자, 현대차 등)</li>
+          <li><b>코스닥</b>: 한국 중소·성장 회사들 (바이오, 2차전지 등)</li>
+          <li><b>S&amp;P 500</b>: 미국 대표 회사 500곳. 미국 시장 전체 분위기를 볼 때 가장 많이 써요</li>
+          <li><b>나스닥</b>: 미국 기술 회사가 많은 시장 (애플, 엔비디아 등)</li>
+          <li><b>다우</b>: 미국의 아주 오래되고 유명한 회사 30곳</li>
+        </ul>
+      </div>
+    </details>
+    <details>
+      <summary>ETF가 뭐예요? 처음엔 이게 좋다던데?</summary>
+      <div class="body">
+        <p>여러 회사 주식을 한 바구니에 담아서 주식처럼 사고팔 수 있게 만든 상품이에요. 예를 들어 'S&amp;P 500 ETF' 하나를 사면 미국 대표 회사 500곳을 조금씩 다 가진 효과가 나요.</p>
+        <p>한 회사가 망해도 바구니 전체는 크게 흔들리지 않아서, 처음 시작할 때 많이 권하는 방법이에요. 한국 증권사 앱에서도 'S&amp;P500', '나스닥100' 같은 이름으로 검색하면 나와요.</p>
+      </div>
+    </details>
+    <details>
+      <summary>어떻게 시작해요?</summary>
+      <div class="body">
+        <ol>
+          <li><b>증권사 앱 설치</b>: 은행 앱처럼 증권사 앱을 받아요. 신분증만 있으면 집에서 계좌를 만들 수 있어요.</li>
+          <li><b>돈 넣기</b>: 은행 계좌에서 증권 계좌로 돈을 옮겨요.</li>
+          <li><b>종목 검색</b>: 사고 싶은 회사나 ETF 이름을 검색해요.</li>
+          <li><b>사기(매수)</b>: 몇 주를 얼마에 살지 정하고 주문해요. 처음엔 '시장가'(지금 가격으로 바로)로 사도 괜찮아요.</li>
+        </ol>
+        <p>미국 주식은 달러로 사야 해서 환전이 필요해요. 요즘은 앱이 자동으로 환전해 주는 경우가 많아요.</p>
+      </div>
+    </details>
+    <details>
+      <summary>언제 거래할 수 있어요?</summary>
+      <div class="body">
+        <ul>
+          <li><b>한국 주식</b>: 평일 오전 9시 ~ 오후 3시 30분</li>
+          <li><b>미국 주식</b>: 한국 시간 밤 10시 30분 ~ 새벽 5시 (3월 둘째 주 ~ 11월 첫째 주, 서머타임)<br>
+            나머지 기간은 한 시간씩 늦어져 밤 11시 30분 ~ 새벽 6시예요.</li>
+        </ul>
+        <p>그래서 아침에 일어나면 밤사이 미국 시장이 어땠는지 확인하는 사람이 많아요. 이 페이지도 매일 아침에 새로 바뀌어요.</p>
+      </div>
+    </details>
+    <details>
+      <summary>처음 하는 사람이 자주 하는 실수</summary>
+      <div class="body">
+        <ul>
+          <li><b>당장 써야 할 돈으로 투자하기</b>: 주가는 몇 달, 몇 년씩 떨어져 있을 수도 있어요. 없어도 생활에 지장 없는 돈으로 하세요.</li>
+          <li><b>한 회사에 몽땅 넣기</b>: 그 회사에 무슨 일이 생기면 크게 잃어요. 여러 곳에 나누거나 ETF로 시작하세요.</li>
+          <li><b>빚내서 하기</b>: 떨어지면 손실에 이자까지 더해져요.</li>
+          <li><b>"이거 무조건 오른대" 소문 따라 사기</b>: 모두가 안다고 할 때는 이미 많이 오른 뒤인 경우가 많아요.</li>
+          <li><b>매일 들여다보며 사고팔기</b>: 하루하루 움직임에 흔들리면 오히려 손해 보기 쉬워요. 좋은 회사는 오래 두는 게 보통 유리했어요.</li>
+          <li><b>떨어졌다고 겁먹고 바로 팔기</b>: 시장은 원래 오르내려요. 왜 샀는지 이유가 그대로라면 서두를 필요 없어요.</li>
+        </ul>
+      </div>
+    </details>
+    <details>
+      <summary>세금은 어떻게 돼요?</summary>
+      <div class="body">
+        <ul>
+          <li><b>한국 주식</b>: 팔아서 번 돈(매매 차익)에는 보통 세금이 없어요. 아주 많이 가진 대주주만 내요. 대신 팔 때 작은 거래세가 자동으로 빠져요.</li>
+          <li><b>미국 등 해외 주식</b>: 1년 동안 번 돈에서 250만 원을 뺀 나머지에 22% 세금을 내요. 다음 해 5월에 신고해요 (증권사가 대신 해 주는 서비스도 많아요).</li>
+          <li><b>배당</b>: 한국 주식은 15.4%, 미국 주식은 보통 15%가 자동으로 떼이고 들어와요.</li>
+        </ul>
+        <p>세금 제도는 바뀔 수 있으니, 실제로 거래하기 전에 쓰는 증권사 안내를 한 번 확인하세요.</p>
+      </div>
+    </details>
+  </section>
+
+  <footer>
+    이 페이지는 공부를 돕기 위한 참고 자료이고, 어떤 종목을 사거나 팔라는 추천이 아니에요. 투자 결정과 그 결과는 본인의 몫이에요.<br>
+    주가는 야후 파이낸스, 시장 이야기는 뉴스 기사를 바탕으로 매일 아침 자동으로 새로 써요. 숫자가 늦거나 틀릴 수 있어요.
+  </footer>
+</div>
+
+<script>
+const COMPANIES = {
+  kr: ['005930.KS', '000660.KS', '005380.KS', '035420.KS', '035720.KS', '066570.KS', '207940.KS', '105560.KS', '090430.KS', '097950.KS'],
+  us: ['AAPL', 'NVDA', 'MSFT', 'GOOG', 'AMZN', 'TSLA', 'META', 'NFLX', 'KO', 'MCD'],
+};
+const WEATHER = [
+  { min: 2.5, ico: '☀️', word: '아주 맑음', say: '크게 올랐어요' },
+  { min: 1, ico: '☀️', word: '맑음', say: '많이 올랐어요' },
+  { min: 0.2, ico: '🌤️', word: '대체로 맑음', say: '조금 올랐어요' },
+  { min: -0.2, ico: '☁️', word: '구름', say: '거의 그대로예요' },
+  { min: -1, ico: '🌦️', word: '조금 흐림', say: '조금 내렸어요' },
+  { min: -2.5, ico: '🌧️', word: '비', say: '많이 내렸어요' },
+  { min: -Infinity, ico: '⛈️', word: '폭풍', say: '크게 내렸어요' },
+];
+const TERMS = [
+  { w: '주가', en: 'Stock Price', d: '주식 1주의 가격이에요. 사려는 사람과 팔려는 사람이 만나는 값으로 매 순간 바뀌어요.', ex: '삼성전자 주가가 22만 원이면, 삼성전자 주식 1주를 22만 원에 살 수 있다는 뜻이에요.' },
+  { w: '시가총액 (시총)', en: 'Market Cap', d: '회사 전체의 몸값이에요. 주가 × 주식 수로 계산해요.', ex: '주가 1만 원짜리 주식이 100만 주 있으면 시총은 100억 원이에요. 회사 크기를 비교할 때 써요.' },
+  { w: '실적', en: 'Earnings', d: '회사가 일정 기간(보통 3개월) 동안 얼마를 벌었는지 보여 주는 성적표예요.', ex: '"삼성전자 실적 발표"는 지난 3개월 동안 얼마나 팔고 얼마나 남겼는지 공개하는 날이에요.' },
+  { w: '매출', en: 'Revenue', d: '물건이나 서비스를 팔아서 들어온 돈 전체예요. 비용을 빼기 전 금액이에요.', ex: '빵집이 하루에 빵을 100만 원어치 팔았다면 매출은 100만 원이에요.' },
+  { w: '영업이익', en: 'Operating Profit', d: '매출에서 재료비·월급·임대료 같은 장사 비용을 빼고 남은 돈이에요.', ex: '빵 100만 원어치를 팔고 비용이 80만 원이었다면 영업이익은 20만 원이에요.' },
+  { w: 'EPS (주당순이익)', en: 'Earnings Per Share', d: '회사가 1년 동안 번 돈(순이익)을 주식 1주당으로 나눈 값이에요.', ex: '1년에 100억 원을 벌고 주식이 1억 주면 EPS는 100원이에요. "주식 1주가 1년에 100원을 벌어 온다"는 뜻이에요.' },
+  { w: 'PER (주가수익비율)', en: 'Price to Earnings', d: '주가가 1주당 이익(EPS)의 몇 배인지예요. 이익에 비해 주가가 비싼지 싼지 볼 때 써요.', ex: '주가 2,000원, EPS 100원이면 PER은 20배예요. "지금 이익으로 20년 벌어야 주가만큼 된다"고 생각하면 쉬워요.' },
+  { w: '배당', en: 'Dividend', d: '회사가 번 돈 일부를 주주에게 나눠 주는 거예요.', ex: '1주당 1,000원 배당이면 100주를 가진 사람은 10만 원(세금 떼기 전)을 받아요.' },
+  { w: '금리', en: 'Interest Rate', d: '돈을 빌리거나 맡길 때 붙는 이자의 비율이에요. 나라 중앙은행이 기준 금리를 정해요.', ex: '금리가 오르면 예금 이자가 늘어 주식보다 예금이 매력적이 되고, 회사도 빌린 돈 이자 부담이 커져서 보통 주가에 나빠요.' },
+  { w: '연준 (Fed)', en: 'Federal Reserve', d: '미국의 중앙은행이에요. 미국 금리를 정하는데, 전 세계 주식시장이 이 결정을 지켜봐요.', ex: '"연준이 금리를 동결했다"는 미국 금리를 그대로 두기로 했다는 뜻이에요.' },
+  { w: 'FOMC', en: 'Federal Open Market Committee', d: '연준이 금리를 정하는 회의예요. 1년에 8번 열려요.', ex: 'FOMC가 끝나는 날(한국 시간 새벽)에는 주가가 크게 움직이는 경우가 많아요.' },
+  { w: '물가 (CPI)', en: 'Consumer Price Index', d: '사람들이 사는 물건값이 1년 전보다 얼마나 올랐는지 보여 주는 숫자예요.', ex: '"CPI 3.7%"는 1년 전에 100원이던 물건들이 평균 103.7원이 됐다는 뜻이에요. 너무 높으면 금리 인상 걱정이 커져요.' },
+  { w: '환율', en: 'Exchange Rate', d: '다른 나라 돈과 바꿀 때의 비율이에요. 보통 1달러가 몇 원인지로 말해요.', ex: '환율이 1,300원에서 1,400원으로 오르면, 미국 주식을 가진 사람은 주가가 그대로여도 원화로는 돈이 늘어요.' },
+  { w: '지수', en: 'Index', d: '여러 회사의 주가를 모아서 하나로 만든 숫자예요. 시장 전체 분위기를 볼 때 써요.', ex: '"코스피가 1% 올랐다"는 한국 큰 회사들 주가가 평균적으로 1% 올랐다는 뜻이에요.' },
+  { w: 'ETF', en: 'Exchange Traded Fund', d: '여러 주식을 한 바구니에 담아 주식처럼 사고팔 수 있게 만든 상품이에요.', ex: 'S&P 500 ETF 1주를 사면 미국 대표 회사 500곳을 조금씩 다 가진 셈이에요.' },
+  { w: '상장', en: 'IPO / Listing', d: '회사가 주식시장에 처음 들어와서 누구나 그 회사 주식을 사고팔 수 있게 되는 거예요.', ex: '"앤트로픽이 상장한다"는 이제 일반 사람도 앤트로픽 주식을 살 수 있게 된다는 뜻이에요.' },
+  { w: '컨센서스', en: 'Consensus', d: '전문가(애널리스트)들이 예상한 실적의 평균이에요.', ex: '실적이 컨센서스보다 좋으면 "어닝 서프라이즈", 나쁘면 "어닝 쇼크"라고 하고 주가가 크게 움직여요.' },
+  { w: '호재 / 악재', en: 'Good / Bad News', d: '주가를 올릴 만한 좋은 소식이 호재, 내릴 만한 나쁜 소식이 악재예요.', ex: '전쟁이 끝났다는 소식은 호재, 금리가 오른다는 소식은 악재로 받아들여지는 경우가 많아요.' },
+  { w: '매수 / 매도', en: 'Buy / Sell', d: '주식을 사는 게 매수, 파는 게 매도예요.', ex: '"외국인이 매도했다"는 외국인 투자자들이 판 주식이 산 주식보다 많았다는 뜻이에요.' },
+  { w: '시장가 / 지정가', en: 'Market / Limit Order', d: '시장가는 지금 가격으로 바로 사고파는 주문, 지정가는 내가 정한 가격이 되면 사고파는 주문이에요.', ex: '"5만 원 지정가 매수"는 주가가 5만 원 이하로 내려와야 사진다는 뜻이에요.' },
+  { w: '분산투자', en: 'Diversification', d: '돈을 여러 곳에 나눠서 투자하는 거예요. 한 곳이 망해도 크게 잃지 않게요.', ex: '"달걀을 한 바구니에 담지 말라"는 말이 바로 분산투자예요.' },
+  { w: '변동성', en: 'Volatility', d: '주가가 얼마나 크게 오르내리는지예요. 변동성이 크면 하루에도 많이 움직여요.', ex: '작은 바이오 회사는 하루에 10%씩 움직이기도 하고, 코카콜라 같은 회사는 1%도 잘 안 움직여요.' },
+  { w: '서머타임', en: 'Daylight Saving Time', d: '여름에 시계를 한 시간 앞당기는 제도예요. 미국은 3월부터 11월 초까지 해요.', ex: '서머타임이 끝나면 미국 주식시장이 한국 시간으로 한 시간 늦게 열리고 닫혀요.' },
+  { w: '반도체', en: 'Semiconductor', d: '컴퓨터·휴대폰·자동차의 두뇌와 기억장치 역할을 하는 칩이에요. 한국 주식시장에서 가장 큰 산업이에요.', ex: '삼성전자·SK하이닉스는 기억을 담당하는 메모리 반도체, 엔비디아는 AI 계산용 칩을 만들어요.' },
+  { w: '성장주 / 가치주', en: 'Growth / Value', d: '성장주는 앞으로 크게 클 것으로 기대받는 회사, 가치주는 이미 돈을 꾸준히 버는데 주가가 싼 편인 회사예요.', ex: '엔비디아·테슬라는 성장주, 은행이나 코카콜라는 가치주로 많이 불려요. 금리가 오르면 성장주가 더 흔들리는 편이에요.' },
+  { w: '외국인 순매도', en: 'Foreign Net Selling', d: '외국 투자자들이 하루 동안 판 금액이 산 금액보다 많았다는 뜻이에요.', ex: '한국 시장은 외국인 비중이 커서, 외국인이 많이 팔면 코스피가 내리는 경우가 많아요.' },
+  { w: '중간선거', en: 'Midterm Election', d: '미국 대통령 임기 중간(2년째)에 국회의원을 뽑는 선거예요.', ex: '어느 당이 이기느냐에 따라 세금·규제 정책이 바뀔 수 있어서 주식시장이 관심 있게 지켜봐요.' },
+  { w: '유가', en: 'Oil Price', d: '석유 가격이에요. 보통 브렌트유·WTI(서부텍사스유) 1배럴 가격으로 말해요.', ex: '유가가 오르면 기름값·운송비가 올라 물가가 오르고, 금리 인상 걱정으로 이어져요.' },
+];
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const cls = v => v > 0.05 ? 'up' : v < -0.05 ? 'down' : 'flat';
+const pct = v => (v > 0 ? '+' : '') + v.toFixed(1) + '%';
+const arrow = v => v > 0.05 ? '▲' : v < -0.05 ? '▼' : '–';
+const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const fmtDate = s => { const d = new Date(s + 'T00:00:00'); return `${d.getMonth() + 1}월 ${d.getDate()}일(${DAYS[d.getDay()]})`; };
+
+async function load(url) {
+  try { const r = await fetch(url, { cache: 'no-cache' }); return r.ok ? r.json() : null; } catch (e) { return null; }
+}
+
+// 값이 있는 마지막 두 날의 위치
+function lastTwo(arr) {
+  const idx = [];
+  for (let i = arr.length - 1; i >= 0 && idx.length < 2; i--) if (arr[i] != null) idx.unshift(i);
+  return idx;
+}
+function firstIdx(arr) { return arr.findIndex(v => v != null); }
+
+function spark(values, color) {
+  const pts = values.map((v, i) => [i, v]).filter(p => p[1] != null);
+  if (pts.length < 2) return '';
+  const xs = values.length - 1, ys = pts.map(p => p[1]);
+  const lo = Math.min(...ys), hi = Math.max(...ys), span = hi - lo || 1;
+  const d = pts.map(([i, v], k) => `${k ? 'L' : 'M'}${(i / xs * 200).toFixed(1)},${(36 - (v - lo) / span * 32).toFixed(1)}`).join('');
+  return `<svg viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`;
+}
+const lineColor = v => getComputedStyle(document.documentElement).getPropertyValue(v > 0 ? '--up' : v < 0 ? '--down' : '--muted').trim();
+
+function renderWeather(data) {
+  const pick = [['sp500', '🇺🇸 미국', '대표 회사 500곳 (S&P 500)'], ['nasdaq', '🇺🇸 미국 기술주', '나스닥'], ['kospi', '🇰🇷 한국', '코스피']];
+  $('#wx').innerHTML = pick.map(([id, where, what]) => {
+    const m = data.markets.find(x => x.id === id);
+    if (!m) return '';
+    const c = m.index.c, [a, b] = lastTwo(c);
+    const ch = (c[b] / c[a] - 1) * 100;
+    const w = WEATHER.find(x => ch >= x.min);
+    const f = firstIdx(c), three = (c[b] / c[f] - 1) * 100;
+    return `<div class="card wx">
+      <div class="where">${where}</div><div class="what">${what}</div>
+      <div class="icon">${w.ico}</div>
+      <div class="word">${w.word}</div>
+      <div class="chg ${cls(ch)} num">${arrow(ch)} ${pct(ch)} · ${w.say}</div>
+      <div class="what">${fmtDate(m.dates[b])} 장 기준</div>
+      ${spark(c, lineColor(three))}
+      <div class="three">최근 3달 동안 <b class="${cls(three)} num">${pct(three)}</b></div>
+    </div>`;
+  }).join('');
+  if (data.usdkrw) $('#fx').innerHTML = `💵 오늘 환율: <b class="num">1달러 = ${Math.round(data.usdkrw).toLocaleString()}원</b> <span class="flat">(미국 주식을 살 때 이 가격으로 바꿔요)</span>`;
+}
+
+function renderWhy(brief) {
+  if (!brief) { $('#why-box').innerHTML = '<span class="err">오늘 이야기를 불러오지 못했어요.</span>'; return; }
+  const easy = brief.easy || {};
+  $('#why-date').textContent = `${fmtDate(brief.asOf)} 아침에 정리했어요.`;
+  $('#why-box').innerHTML = easy.why?.length
+    ? `<ol>${easy.why.map(s => `<li>${esc(s)}</li>`).join('')}</ol>`
+    : `<p style="margin:0">${esc(brief.summary)}</p>`;
+  const SIGN = { '+': ['p', '👍 좋은 소식'], '-': ['m', '👎 걱정거리'], '±': ['x', '🤔 둘 다 가능'] };
+  const news = easy.news?.length ? easy.news : (brief.factors || []).slice(0, 5).map(f => ({ sign: f.sign, title: f.title, text: f.head }));
+  $('#news').innerHTML = news.map(n => {
+    const [k, tag] = SIGN[n.sign] || SIGN['±'];
+    return `<div class="item ${k}"><div class="tag">${tag}</div><div class="t">${esc(n.title)}</div><div class="d">${esc(n.text)}</div></div>`;
+  }).join('');
+}
+
+function renderWeek(brief) {
+  if (!brief) return;
+  let rows = brief.easy?.week;
+  if (!rows?.length) rows = (brief.week || []).flatMap(d => d.items.map(t => ({ date: d.date, title: t.replace(/^\S+\s/, ''), meaning: '' })));
+  $('#cal').innerHTML = rows.map(r => `<li><div class="date">${esc(r.date)}</div><div><div class="t">${esc(r.title)}</div>${r.meaning ? `<div class="m">${esc(r.meaning)}</div>` : ''}</div></li>`).join('');
+}
+
+// 지금 PER 을 지난 5년 분기별 PER 의 가운데 값과 비교
+function priceLevel(e) {
+  if (!e || !(e.pe > 0)) return { dot: '⚪', text: '판단하기 어려워요', why: '최근 이익이 너무 적거나 손실이라 비교할 수 없어요.' };
+  const hist = (e.quarters || []).map(q => q.pe).filter(v => v > 0).sort((a, b) => a - b);
+  if (hist.length < 8) return { dot: '⚪', text: '판단하기 어려워요', why: '비교할 과거 기록이 부족해요.' };
+  const mid = hist[Math.floor(hist.length / 2)], r = e.pe / mid;
+  const base = `지난 5년 보통 PER ${mid.toFixed(0)}배 → 지금 ${e.pe.toFixed(0)}배`;
+  if (r < 0.85) return { dot: '🟢', text: '평소보다 싼 편이에요', why: base };
+  if (r > 1.15) return { dot: '🔴', text: '평소보다 비싼 편이에요', why: base };
+  return { dot: '🟡', text: '평소와 비슷한 수준이에요', why: base };
+}
+
+function renderCompanies(country, data, earn, biz) {
+  const stocks = {};
+  for (const m of data.markets) for (const s of m.stocks) stocks[s.ticker] ??= { ...s, dates: m.dates, currency: m.currency };
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  $('#cos').innerHTML = COMPANIES[country].map(t => {
+    const s = stocks[t], e = earn?.[t], b = biz?.[t];
+    if (!s) return '';
+    const c = s.c, [a, l] = lastTwo(c), f = firstIdx(c);
+    const ch = (c[l] / c[a] - 1) * 100, three = (c[l] / c[f] - 1) * 100;
+    const us = s.currency === 'USD';
+    const price = us ? `$${c[l].toLocaleString(undefined, { maximumFractionDigits: 2 })}` : `${Math.round(c[l]).toLocaleString()}원`;
+    const krw = us && data.usdkrw ? `<span class="krw num">약 ${Math.round(c[l] * data.usdkrw).toLocaleString()}원</span>` : '';
+    const lv = priceLevel(e);
+    let ev = '';
+    if (e?.next?.date) {
+      const nd = new Date(e.next.date + 'T00:00:00'), days = Math.round((nd - today) / 864e5);
+      if (days >= 0 && days <= 30) ev = `<div class="ev">📅 ${days === 0 ? '오늘' : fmtDate(e.next.date)} 실적(성적표) 발표 — 이날 전후로 주가가 크게 움직일 수 있어요</div>`;
+    }
+    return `<div class="card co">
+      <div class="top"><span class="nm">${esc(s.name)}</span><span class="px"><b class="num">${price}</b>${krw}</span></div>
+      ${b?.summary ? `<div class="desc">${esc(b.summary)}</div>` : ''}
+      <div class="stats num">
+        <span>하루 <b class="${cls(ch)}">${pct(ch)}</b></span>
+        <span>최근 3달 <b class="${cls(three)}">${pct(three)}</b></span>
+      </div>
+      ${spark(c, lineColor(three))}
+      <div class="light"><span class="dot">${lv.dot}</span><div>${lv.text}<small>${esc(lv.why)}</small></div></div>
+      ${ev}
+      <a class="link" href="../#earnings/${encodeURIComponent(t)}">숫자로 더 자세히 보기 →</a>
+    </div>`;
+  }).join('');
+}
+
+function renderTerm(start) {
+  let i = start;
+  const show = () => {
+    const t = TERMS[i % TERMS.length];
+    $('#term-box').innerHTML = `<div class="word">${esc(t.w)}<span class="en">${esc(t.en)}</span></div>
+      <p style="margin:8px 0 0">${esc(t.d)}</p>
+      <div class="ex">💡 예를 들면 — ${esc(t.ex)}</div>
+      <button type="button" id="next-term">다른 용어 보기</button>`;
+    $('#next-term').onclick = () => { i++; show(); };
+  };
+  show();
+}
+
+(async () => {
+  const [data, brief, earnings, biz] = await Promise.all(['../data.json', '../briefing.json', '../earnings.json', '../business.json'].map(load));
+  const now = new Date(), doy = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 864e5);
+  renderTerm(doy);
+  renderWhy(brief);
+  renderWeek(brief);
+  if (!data) { $('#updated').innerHTML = '<span class="err">주가를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.</span>'; return; }
+  $('#updated').textContent = `주가 업데이트 ${data.updated}`;
+  renderWeather(data);
+  const earn = earnings?.stocks;
+  let country = 'kr';
+  try { country = localStorage.getItem('easy-country') || 'kr'; } catch (e) {}
+  const pickCountry = c => {
+    country = c;
+    document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.c === c));
+    renderCompanies(c, data, earn, biz);
+    try { localStorage.setItem('easy-country', c); } catch (e) {}
+  };
+  document.querySelectorAll('.seg button').forEach(b => b.onclick = () => pickCountry(b.dataset.c));
+  pickCountry(country);
+})();
+</script>
+</body>
+</html>
