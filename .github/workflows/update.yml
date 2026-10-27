@@ -28,4 +28,5 @@ jobs:
           git config user.email "41898279+github-actions[bot]@users.noreply.github.com"
           git add docs/data.json docs/earnings.json docs/segments.json segments-cache.json docs/breadth.json sp500.csv
           git diff --cached --quiet || git commit -m "데이터 업데이트 $(TZ=Asia/Seoul date +%F)"
-          git push
+          # 브리핑 작업이 그사이 올린 커밋이 있을 수 있어서, 합친 뒤 올린다 (최대 3번)
+          for i in 1 2 3; do git pull --rebase && git push && exit 0; sleep 5; done; exit 1
