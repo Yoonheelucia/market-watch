@@ -43,6 +43,7 @@ header h1 .by { font-size: 12px; font-weight: 500; color: var(--muted); letter-s
 header .sub { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
 header .meta { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 13px; color: var(--muted); }
 header .meta a { color: var(--accent); text-decoration: none; }
+button.reload { font: inherit; font-size: 12px; color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 1px 10px; cursor: pointer; }
 nav { display: flex; gap: 6px; overflow-x: auto; margin: 20px -16px 8px; padding: 0 16px 4px; scrollbar-width: none; }
 nav a { flex: none; padding: 7px 13px; border-radius: 999px; background: var(--chip); color: var(--text);
   text-decoration: none; font-size: 14px; }
@@ -136,7 +137,7 @@ footer { margin-top: 48px; font-size: 12px; color: var(--muted); border-top: 1px
   <header>
     <h1>Daily Stock Insights 쉽게 보기<span class="by">BY YOONSEUL</span></h1>
     <p class="sub">주식이 처음인 분을 위한 매일 아침 시장 이야기</p>
-    <div class="meta"><span id="updated">불러오는 중…</span><a href="../">전문가용 페이지 →</a></div>
+    <div class="meta"><span id="updated">불러오는 중…</span><a href="../">전문가용 페이지 →</a><button type="button" class="reload" onclick="location.reload()" title="새로고침">↻ 새로고침</button></div>
   </header>
 
   <nav>

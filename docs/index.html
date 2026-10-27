@@ -189,6 +189,7 @@ h4 { font-size: 14px; margin: 20px 0 8px; }
 .cal .d { font-weight: 700; font-variant-numeric: tabular-nums; }
 .brief-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
 @media (max-width: 760px) { .brief-cols { grid-template-columns: minmax(0, 1fr); } .cal { grid-template-columns: 72px minmax(0, 1fr); } }
+button.reload { font: inherit; font-size: 12px; color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; cursor: pointer; margin-left: 6px; }
 a.easy-link { color: var(--accent); text-decoration: none; white-space: nowrap; }
 h1 .by { font-size: 12px; font-weight: 500; letter-spacing: .08em; color: var(--muted); margin-left: 6px; vertical-align: middle; }
 .to-top { position: fixed; right: 20px; bottom: 20px; z-index: 10; padding: 10px 16px; border-radius: 999px;
@@ -212,7 +213,7 @@ h1 .by { font-size: 12px; font-weight: 500; letter-spacing: .08em; color: var(--
 <div class="wrap">
   <header>
     <h1>Daily Stock Insights <span class="by">BY YOONSEUL</span></h1>
-    <span class="updated"><span id="updated">불러오는 중…</span> · <a class="easy-link" href="easy/">🌱 주식이 처음이라면 쉽게 보기</a></span>
+    <span class="updated"><span id="updated">불러오는 중…</span> · <a class="easy-link" href="easy/">🌱 주식이 처음이라면 쉽게 보기</a> <button type="button" class="reload" onclick="location.reload()" title="새로고침">↻ 새로고침</button></span>
   </header>
   <nav class="tabs" id="tabs" role="tablist"></nav>
   <div class="stamp" id="stamp"></div>
