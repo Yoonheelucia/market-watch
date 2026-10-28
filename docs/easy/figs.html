@@ -77,15 +77,18 @@ h2 { font-size: 40px; font-weight: 900; margin: 6px 0 6px; line-height: 1.3; }
 #cover { width: 1080px; height: 1920px; margin: 0 auto 30px; position: relative; background: linear-gradient(170deg, #eaf6f3 0%, #f7f6f2 45%, #f7f6f2 100%);
   display: flex; flex-direction: column; justify-content: center; padding: 0 90px; }
 #cover[data-skip] { display: none; }
-#cover .k { font-size: 44px; font-weight: 900; color: var(--accent); }
-#cover h1 { font-size: 96px; font-weight: 900; line-height: 1.22; margin: 22px 0 60px; text-wrap: balance; }
+#cover .hd { display: flex; flex-direction: column; align-items: flex-start; gap: 18px; margin-bottom: 50px; }
+#cover .hd .d { background: var(--ink); color: #fff; border-radius: 18px; padding: 12px 30px; font-size: 64px; font-weight: 900; }
+#cover .hd .t { font-size: 124px; font-weight: 900; line-height: 1.1; letter-spacing: -2px; }
+#cover .hd .one { background: var(--accent); color: #fff; border-radius: 999px; padding: 14px 44px; font-size: 76px; font-weight: 900; }
+#cover h1 { font-size: 74px; font-weight: 900; line-height: 1.25; margin: 0 0 46px; text-wrap: balance; }
 #cover h1 em { font-style: normal; color: var(--accent); display: block; text-wrap: balance; }
 #cover h1 span { display: block; text-wrap: balance; }
 #cover .rows { display: flex; flex-direction: column; gap: 22px; }
-#cover .row { display: flex; justify-content: space-between; align-items: baseline; background: var(--card); border: 3px solid var(--line); border-radius: 34px; padding: 30px 44px; }
+#cover .row { display: flex; justify-content: space-between; align-items: baseline; background: var(--card); border: 3px solid var(--line); border-radius: 30px; padding: 22px 40px; }
 #cover .row .n { font-size: 52px; font-weight: 900; }
-#cover .row .v { font-size: 72px; font-weight: 900; }
-#cover .foot2 { margin-top: 60px; display: flex; align-items: center; justify-content: space-between; }
+#cover .row .v { font-size: 64px; font-weight: 900; }
+#cover .foot2 { margin-top: 36px; display: flex; align-items: center; justify-content: space-between; }
 #cover .tag { background: var(--accent); color: #fff; border-radius: 999px; padding: 18px 40px; font-size: 42px; font-weight: 900; }
 #cover .b { font-size: 40px; font-weight: 900; color: var(--accent); }
 </style>
@@ -191,10 +194,10 @@ const range = vals => { const m = Math.ceil(Math.max(2, ...vals.map(Math.abs)) *
   else skip('check');
 
   // 5. 릴스 썸네일
-  add('cover', `<div class="k">${esc(head ? head[1] : md(day))} · 어젯밤 미국 증시</div>
+  add('cover', `<div class="hd"><span class="d">${esc(head ? head[1] : md(day))}</span><span class="t">어젯밤 미국 증시</span><span class="one">▶ 1분 정리</span></div>
     <h1><span>${esc(t1)}</span>${t2 ? `<em>${esc(t2)}</em>` : ''}</h1>
     <div class="rows">${idx.map(x => `<div class="row"><span class="n">${x.n}</span><span class="v num ${cls(x.ch)}">${sp(x.ch)}</span></div>`).join('')}</div>
-    <div class="foot2"><span class="tag">▶ 1분 정리</span><span class="b">윤슬 주식</span></div>`);
+    <div class="foot2"><span></span><span class="b">윤슬 주식</span></div>`);
 
   await document.fonts.ready;
   document.body.dataset.ready = '1';

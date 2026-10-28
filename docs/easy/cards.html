@@ -380,44 +380,47 @@ function reelSlides(g) {
   return out;
 }
 
+// 카드뉴스 캡션 (사용자가 직접 고친 모양 그대로: 문장마다 줄 바꿈, 항목 사이 빈 줄, '- ' 목록)
+const sentences = t => String(t).split(/(?<=[.!?])\s+/).filter(Boolean);
+const MORE_LINES = ['자세한 내용을 보고 싶다면?', '', `${MORE_URL} 에서 '윤슬'의 글을 확인하세요.`];
+const TAGS = '#미국주식 #미장 #주식공부 #주린이 #윤슬주식';
+
 function caption(g) {
-  const tags = US ? '#미국주식 #미장 #서학개미 #나스닥 #S&P500 #주식공부 #주린이 #오늘의시황 #윤슬주식'
-    : '#미국주식 #국내주식 #주식공부 #주린이 #오늘의시황 #나스닥 #코스피 #경제공부 #윤슬주식';
-  return [
-    `📅 ${today()} | 어젯밤 미국 증시 + 오늘 밤 체크 포인트 | ${BRAND}`,
-    '',
-    '🌤 시장 날씨',
-    ...g.wx.map(x => `${x.w.ico} ${x.name} ${level(x.close)} (${pct(x.ch)}, ${x.w.word})${x.live ? ' · 장중' : ''}`),
-    '',
-    ...(g.why.length ? ['🤔 왜 그랬을까?', ...g.why.map(s => `✔️ ${s}`), ''] : []),
-    ...(g.movers.length ? [`🏢 많이 들어 본 회사 중 가장 크게 움직인 곳: ${g.movers.slice(0, 3).map(s => `${s.name} ${pct(s.ch)}`).join(', ')}`, ''] : []),
-    ...(g.check.length ? ['🌙 오늘 밤 개장 전 체크 포인트', ...g.check.flatMap(c => [`• ${c.time ? `[${c.time}] ` : ''}${c.title}${c.why ? ` — ${c.why}` : ''}`, ...(c.watch ? [`  👀 ${c.watch}`] : []), ...(c.link ? [`  🔗 ${c.link}`] : [])]), ''] : []),
-    ...(g.week.length ? ['📅 앞으로 볼 일정', ...g.week.slice(0, 4).flatMap(r => [`• ${r.date} ${r.title}`, ...(r.link ? [`  🔗 ${r.link}`] : [])]), ''] : []),
-    `📖 오늘의 용어: ${g.term.w} — ${g.term.d}`,
-    '',
-    `${MORE_ASK} ${MORE_TEXT}`,
-    '❤️ 도움이 됐다면 좋아요 · 팔로우 · 🔔 알림 설정 해 두면 새 글을 바로 받아볼 수 있어요',
-    '※ 공부를 돕는 정보 정리이며 투자 추천이 아니에요. 투자 결정과 결과는 본인의 몫이에요.',
-    '',
-    tags,
-  ].join('\n');
+  const out = [`📅 ${today()} | 어젯밤 미국 증시 + 오늘 밤 체크 포인트 | ${BRAND}`, '',
+    '🌤 시장 날씨', ...g.wx.map(x => `${x.w.ico} ${x.name} ${level(x.close)} (${pct(x.ch)}, ${x.w.word})${x.live ? ' · 장중' : ''}`), ''];
+  if (g.why.length) out.push('🤔 왜 그랬을까?', ...g.why.map(s => `✔️ ${s}`), '');
+  if (g.movers.length) out.push('🏢 많이 들어 본 회사 중 가장 크게 움직인 곳:', g.movers.slice(0, 3).map(s => `${s.name} ${pct(s.ch)}`).join(', '), '');
+  if (g.check.length) {
+    out.push('🌙 오늘 밤 개장 전 체크 포인트');
+    g.check.forEach(c => {
+      out.push(`- ${c.time ? `[${c.time}] ` : ''}${c.title}${c.why ? ` — ${c.why}` : ''}`);
+      if (c.watch) out.push(` 👀 ${c.watch}`);
+      if (c.link) { const [f, ...r] = sentences(c.link); out.push(` 🔗 ${f}`, ...r); }
+      out.push('');
+    });
+  }
+  if (g.week.length) out.push('📅 앞으로 볼 일정', ...g.week.slice(0, 4).map(r => `- ${r.date} ${r.title}`), '');
+  const [d1, ...dr] = sentences(g.term.d);
+  out.push(`📖 오늘의 용어: ${g.term.w} — ${d1}`, ...dr, '',
+    ...MORE_LINES, '',
+    '❤️ 도움이 됐다면 좋아요 · 팔로우 · 🔔 알림 설정 해 두면 새 글을 바로 받아볼 수 있어요', '',
+    '※ 공부를 돕는 정보 정리이며 투자 추천이 아니에요.', '투자 결정과 결과는 본인의 몫이에요.', '',
+    TAGS);
+  return out.join('\n');
 }
 
 // 릴스 캡션: 짧게. 영상 내용 한눈에 + 오늘 밤 체크 2개 + 안내 + 태그
 function reelCaption(g) {
   const md = (() => { const d = kstNow(); return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`; })();
   return [
-    `🎬 [${md}] 어젯밤 미국 증시, 1분 정리`,
-    '',
+    `🎬 [${md}] 어젯밤 미국 증시, 1분 정리`, '',
     g.wx.map(x => `${x.name} ${level(x.close)} (${pct(x.ch)})`).join(' · '),
     ...(g.why.length ? ['', `🤔 ${g.why[0]}`] : []),
-    ...(g.check.length ? ['', '🌙 오늘 밤 체크', ...g.check.slice(0, 2).map(c => `• ${c.time ? `[${c.time}] ` : ''}${c.title}`)] : []),
-    '',
-    `${MORE_ASK} ${MORE_TEXT}`,
-    '❤️ 도움이 됐다면 좋아요 · 팔로우 · 🔔 알림 설정',
-    '※ 투자 추천이 아닌 정보 정리예요.',
-    '',
-    (US ? '#미국주식 #미장 #서학개미 #나스닥 #S&P500 #주식공부 #주린이 #오늘의시황 #윤슬주식' : '#미국주식 #국내주식 #주식공부 #주린이 #오늘의시황 #윤슬주식') + ' #주식릴스',
+    ...(g.check.length ? ['', '🌙 오늘 밤 체크', ...g.check.slice(0, 2).map(c => `- ${c.time ? `[${c.time}] ` : ''}${c.title}`)] : []),
+    '', ...MORE_LINES, '',
+    '❤️ 도움이 됐다면 좋아요 · 팔로우 · 🔔 알림 설정', '',
+    '※ 투자 추천이 아닌 정보 정리예요.', '',
+    TAGS,
   ].join('\n');
 }
 
