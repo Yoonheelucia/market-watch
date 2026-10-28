@@ -242,7 +242,7 @@ function gather(data, brief, earnings) {
   const term = TERMS[termOfDay(new Date(kstNow().toISOString().slice(0, 10) + 'T12:00:00')) % TERMS.length];
   return {
     wx, movers, term, fx: data.usdkrw,
-    why: pickList(easy, 'why').map(oil).map(withPrice), news: pickList(easy, 'news').map(oilAll).map(priceAll),
+    why: pickList(easy, 'why').map(oil).map(x => withPrice(x)), news: pickList(easy, 'news').map(oilAll).map(priceAll),
     past: pickList(easy, 'weekPast').map(oilAll).map(priceAll), week: pickList(easy, 'week').map(oilAll).map(tickerAll),
     check: (easy.us?.check?.length ? easy.us.check
       : pickList(easy, 'week').filter(r => /오늘|내일 새벽/.test(relDay(r.date))).map(r => ({ time: relDay(r.date), title: r.title, why: r.meaning, watch: '', link: r.link })))
