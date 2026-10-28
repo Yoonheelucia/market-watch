@@ -10,6 +10,8 @@
   --base http://localhost:8765/   내 컴퓨터에서 띄운 사이트로 만들기 (기본: 실제 사이트)
   --no-video                      카드뉴스·캡션만 만들기
   --voice Achird                  목소리 바꾸기 (gcloud-media 스킬 표 참고)
+  --wait                          오늘 아침 미국 주가·브리핑이 올라올 때까지 기다렸다가 만들기 (매일 자동 실행용)
+매일 아침 자동 실행: ~/Library/LaunchAgents/kr.yoonseul.insta.plist (07:10, 끝나면 맥 알림)
 처음 한 번만: .venv/bin/pip install playwright imageio-ffmpeg
 목소리는 구글 클라우드 TTS 를 쓴다. 로그인이 풀리면: gcloud auth application-default login
 """
@@ -19,6 +21,8 @@ import importlib.util
 import json
 import shutil
 import subprocess
+import time
+import urllib.request
 import wave
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -128,13 +132,41 @@ def make_reel(shots, audio, out, tmp):
     return total, speed
 
 
+def kst(s):
+    return datetime.strptime(s.replace(' KST', ''), '%Y-%m-%d %H:%M').replace(tzinfo=KST)
+
+
+def ready(base):
+    """오늘 아침 미국 주가(06:37)와 브리핑(06:30 이후)이 올라왔는지"""
+    def get(name):
+        with urllib.request.urlopen(f'{base}{name}?t={time.time():.0f}', timeout=30) as r:
+            return json.load(r)
+    now = datetime.now(KST)
+    data, brief = get('data.json'), get('briefing.json')
+    sp = next(m for m in data['markets'] if m['id'] == 'sp500')
+    return (kst(sp.get('updated', data['updated'])) >= now.replace(hour=6, minute=37, second=0, microsecond=0)
+            and kst(brief['updated']) >= now.replace(hour=6, minute=30, second=0, microsecond=0))
+
+
+def notify(text):
+    subprocess.run(['osascript', '-e', f'display notification "{text}" with title "윤슬 주식 인스타"'], check=False)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--base', default='https://yoonheelucia.github.io/market-watch/')
     ap.add_argument('--voice', default='Achird')
     ap.add_argument('--no-video', action='store_true')
+    ap.add_argument('--wait', action='store_true')
     a = ap.parse_args()
     base = a.base.rstrip('/') + '/'
+    if a.wait:  # 10분마다 확인, 낮 12시까지
+        while not ready(base):
+            if datetime.now(KST).hour >= 12:
+                notify('오늘 자료가 아직 안 올라와서 못 만들었어요')
+                raise SystemExit('오늘 자료가 12시까지 올라오지 않았어요')
+            print(datetime.now(KST).strftime('%H:%M'), '자료 기다리는 중…', flush=True)
+            time.sleep(600)
     out = ROOT / 'insta' / datetime.now(KST).strftime('%Y-%m-%d')
     if (out / 'post').exists():
         shutil.rmtree(out / 'post')
@@ -168,6 +200,9 @@ def main():
               + (f' — 목표 {TARGET}초보다 길어요. 대본을 줄여야 해요' if total > TARGET + 3 else ''))
 
     print(f'\n완성: {out}')
+    if a.wait:
+        notify('오늘 카드뉴스·릴스가 준비됐어요')
+        subprocess.run(['open', str(out)], check=False)
 
 
 if __name__ == '__main__':
