@@ -248,8 +248,7 @@ def article_html(out):
             if para:
                 out_.append(f'<p style="{PS}">' + '<br>'.join(color(html.escape(x, quote=False)) for x in para) + '</p>')
                 para.clear()
-        marked = '[[' in body
-        out_.append(img('1_thumb'))  # 대표 이미지도 본문 맨 위에 같이 넣는다
+        marked = '[[' in body  # 대표 이미지(1_thumb)는 발행할 때 본문 위에 자동으로 붙으므로 본문에는 넣지 않는다
         for ln in body.strip().splitlines():
             t = ln.strip()
             if not t:
