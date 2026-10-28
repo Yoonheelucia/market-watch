@@ -247,8 +247,7 @@ def article_html(out):
             if items:
                 out_.append('<ul>' + ''.join(f'<li>{color(html.escape(x))}</li>' for x in items) + '</ul>')
                 items.clear()
-        marked = '[[' in body
-        out_.append(img('1_thumb'))
+        marked = '[[' in body  # 대표 이미지(1_thumb)는 대표 이미지 칸에 따로 올리므로 본문에는 넣지 않는다
         for ln in body.strip().splitlines():
             t = ln.strip()
             if not t:
@@ -272,7 +271,8 @@ def article_html(out):
         flush()
         return ''.join(x for x in out_ if x)
 
-    code = blocks(lambda n: f'{SITE}articles/{out.name}/{n}.png')
+    ver = lambda n: int((out / 'article_images' / f'{n}.png').stat().st_mtime)  # 이미지를 고치면 주소가 바뀌어 예전 그림이 남지 않게
+    code = blocks(lambda n: f'{SITE}articles/{out.name}/{n}.png?v={ver(n)}')
     preview = blocks(lambda n: f'article_images/{n}.png')
     field = lambda key, label, val, rows=1: (
         f'<div class="f"><div class="lb">{label}<button type="button" data-copy="{key}">복사</button></div>'
