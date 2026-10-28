@@ -10,7 +10,7 @@
 - 가장 먼저 `git fetch origin main && git checkout -B main origin/main` 으로 원격 main 의 최신 상태에서 시작한다 (작업 공간이 옛 커밋에 멈춰 있을 수 있다. 다른 자동 작업이 데이터를 푸시한다).
 - "직전 브리핑이 얼마 안 됐다", "새 소식이 없다"는 이유로 건너뛰지 않는다. 새 뉴스가 없어도 매번 0-1 의 지수 숫자와 2 의 weekPast(회사별 주가 반응 포함)를 최신 data.json·earnings.json 으로 다시 계산해 반영하고, updated 를 바꿔 푸시한다.
 - 오늘 날짜: `TZ=Asia/Seoul date +%F` → asOf. 지금 시각: `TZ=Asia/Seoul date '+%F %H:%M'` → updated (asOf 바로 다음 키).
-- 지금 docs/briefing.json 을 읽고 구조(키 이름, 문체, 분량)를 그대로 따른다. 키: asOf, updated, summary, factors[{title, sign, head, detail, status}], week[{date, items[]}], weekPast[{date, items[{text, reaction}]}], month[{date, items[]}], sources[{name, url}], easy{why[], news[{sign, title, text}], week[{date, title, meaning}], weekPast[{date, title, result}], us{…, 2-2 참고}, article{title, body, 2-3 참고}}.
+- 지금 docs/briefing.json 을 읽고 구조(키 이름, 문체, 분량)를 그대로 따른다. 키: asOf, updated, summary, factors[{title, sign, head, detail, status}], week[{date, items[]}], weekPast[{date, items[{text, reaction}]}], month[{date, items[]}], sources[{name, url}], easy{why[], news[{sign, title, text}], week[{date, title, meaning}], weekPast[{date, title, result}], us{…, 2-2 참고}, article{title, tags, summary, body, 2-3 참고}}.
 
 ## 0-1. 주가 숫자는 사이트 데이터로 (뉴스 검색 숫자보다 우선)
 - S&P 500·나스닥·다우·코스피·코스닥 지수의 종가와 등락률은 뉴스에서 찾지 말고 docs/data.json 에서 읽어 쓴다. 아래를 실행해 나온 값을 그대로 쓴다:
@@ -99,7 +99,8 @@ E
 - 미국 소식에는 link 를 쓰지 않는다 (빈 문자열 또는 키 생략).
 
 ## 2-3. 윤슬의 해설 글 easy.article (thefirstclass.kr 에 '윤슬' 이름으로 올리는 글의 초안)
-- easy 안에 article{title, body} 를 만든다. 매일 한국시간 오후 9시에 발행되는 글이다 (19:00 실행 결과를 쓴다). 같은 게시판의 다른 필자는 '무슨 일이 있었나'를 짧게 정리한다. 윤슬 글은 같은 소식이라도 **왜 그런지, 그래서 미국 주식을 가진 사람에게 무슨 의미인지**를 풀어 주는 해설이 핵심이다. 다른 사람의 글을 베끼거나 문장을 가져오지 않는다.
+- easy 안에 article{title, tags, summary, body} 를 만든다. 매일 한국시간 오후 9시에 발행되는 글이다 (19:00 실행 결과를 쓴다).
+- tags: 3개 안팎을 ' / ' 로 이어서 (예: '미국 증시 / 실적 분석 / 오늘 밤 체크 포인트'). summary: 목록·알림에 보이는 2문장 요약, 어젯밤 핵심 숫자 1개와 오늘 밤 가장 큰 일정 1개를 넣는다. 같은 게시판의 다른 필자는 '무슨 일이 있었나'를 짧게 정리한다. 윤슬 글은 같은 소식이라도 **왜 그런지, 그래서 미국 주식을 가진 사람에게 무슨 의미인지**를 풀어 주는 해설이 핵심이다. 다른 사람의 글을 베끼거나 문장을 가져오지 않는다.
 - 독자: 미국 주식을 막 시작했거나 관심 있는 한국 사람. 말투는 '~해요' 체, 친절하지만 가볍지 않게. 전문용어는 처음 나올 때 괄호로 쉽게 풀어 준다 (예: '연준(미국 중앙은행)').
 - title: 30자 안팎, 오늘 핵심을 한 문장으로 (예: '앤트로픽 상장 소식에 나스닥 1.3%↑, 그런데 금리 걱정은 왜 남았을까').
 - body: 일반 텍스트 2,500~3,500자. 아래 순서와 소제목(■)을 그대로 쓴다. 문단 사이는 빈 줄.

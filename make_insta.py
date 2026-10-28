@@ -4,6 +4,7 @@
     post/01.png …     카드뉴스 (1080×1350) — 순서대로 캐러셀에 올리면 된다
     caption.txt       캡션 (복사해서 붙여 넣기)
     article.txt       thefirstclass.kr 에 올릴 '윤슬' 해설 글 초안 (브리핑 작업이 써 둔 것)
+    article_images/   글에 넣는 이미지 (대표 · 등락 · 실적 반응 · 오늘 밤 체크 포인트)
     article.html      글 + 이미지를 한 화면에. '전체 복사' 버튼으로 글쓰기 창에 바로 붙여 넣기
     reel.mp4          릴스 영상 (1080×1920, 목소리·자막 포함)
     narration.txt     영상 대본
@@ -154,103 +155,162 @@ def ready(base):
             and kst(brief['updated']) >= now.replace(hour=19, minute=0, second=0, microsecond=0))
 
 
+FIGS = [('thumb', '1_thumb'), ('movers', '2_movers'), ('earn', '3_earn'), ('check', '4_check')]
+
+
+def make_figs(browser, base, out):
+    """해설 글 이미지 4장 (docs/easy/figs.html). 이미 있으면(직접 고친 이미지) 그대로 둔다"""
+    dst = out / 'article_images'
+    if dst.exists():
+        return
+    page = browser.new_page(viewport={'width': 1300, 'height': 900}, device_scale_factor=2)
+    page.goto(f"{base}easy/figs.html{'?d=' + DAY if DAY else ''}", wait_until='domcontentloaded', timeout=30000)
+    page.wait_for_function('document.body.dataset.ready', timeout=30000)
+    dst.mkdir(parents=True)
+    made = []
+    for el, name in FIGS:
+        loc = page.locator(f'#{el}')
+        if loc.get_attribute('data-skip') is None:
+            loc.screenshot(path=str(dst / f'{name}.png'))
+            made.append(name)
+    page.close()
+    print(f'글 이미지 {len(made)}장: {", ".join(made)}')
+
+
 def save_article(base, out):
     with urllib.request.urlopen(f'{base}briefing.json?t={time.time():.0f}', timeout=30) as r:
         art = json.load(r).get('easy', {}).get('article')
     if art and art.get('body'):
         (out / 'article.txt').write_text(f"{art['title']}\n\n{art['body'].strip()}\n", encoding='utf-8')
+        meta = {'tags': art.get('tags', ''), 'summary': art.get('summary', '')}
+        (out / 'article_meta.json').write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding='utf-8')
         print(f"해설 글 초안 저장 ({len(art['body'])}자)")
     else:
         print('해설 글 초안이 아직 브리핑에 없어요')
 
 
-# 글 소제목에 맞춰 넣을 이미지. article_images/ 에 있으면 그것을, 없으면 카드뉴스 이미지를 쓴다
-ARTICLE_IMAGES = [('', ['article_images/1_thumb.png', 'post/01.png']),
-                  ('왜 이렇게', ['article_images/2_movers.png']),
-                  ('실적 발표', ['article_images/3_earn.png', 'post/04.png']),
-                  ('체크 포인트', ['article_images/4_check.png'])]
+SITE = 'https://yoonheelucia.github.io/market-watch/'
+
+
+def publish_images(out):
+    """글 이미지를 사이트(docs/articles/<날짜>/)에 올린다. 글쓰기 창에 HTML 로 넣을 때 이미지 주소가 필요해서"""
+    src = out / 'article_images'
+    if not src.exists():
+        return
+    dst = ROOT / 'docs' / 'articles' / out.name
+    dst.mkdir(parents=True, exist_ok=True)
+    for f in src.glob('*.png'):
+        shutil.copy2(f, dst / f.name)
+    git = lambda *a: subprocess.run(['git', '-C', str(ROOT), *a], capture_output=True, text=True)
+    git('add', str(dst))
+    if git('diff', '--cached', '--quiet').returncode == 0:
+        return
+    git('commit', '-m', f'해설 글 이미지 {out.name}')
+    for _ in range(3):
+        if git('pull', '--rebase', '--autostash').returncode == 0 and git('push').returncode == 0:
+            print(f'글 이미지 사이트에 올림: {SITE}articles/{out.name}/')
+            return
+        time.sleep(5)
+    print('글 이미지를 사이트에 올리지 못했어요 (git push 실패)')
+
+
+# 글 소제목에 맞춰 넣을 이미지 (글에 [[이미지 이름]] 줄이 없을 때)
+ARTICLE_IMAGES = [('', '1_thumb'), ('왜 이렇게', '2_movers'), ('실적 발표', '3_earn'), ('체크 포인트', '4_check')]
+UP, DOWN = '#e0314b', '#2463eb'
 
 
 def article_html(out):
-    """article.txt 와 이미지를 한 페이지로 묶는다. 이미지는 파일 안에 넣어서 복사·붙여 넣기 때 같이 따라가게 한다"""
-    import base64
+    """더퍼스트클래스에 올릴 것을 한 페이지에: 태그·제목·요약 칸, HTML 코드(이미지는 사이트 주소), 미리 보기"""
     import html
     import re
     src = out / 'article.txt'
     if not src.exists():
         return None
     title, _, body = src.read_text(encoding='utf-8').partition('\n')
+    meta_f = out / 'article_meta.json'
+    meta = json.loads(meta_f.read_text(encoding='utf-8')) if meta_f.exists() else {}
+    have = {f.stem for f in (out / 'article_images').glob('*.png')} if (out / 'article_images').exists() else set()
 
-    def img(key):
-        for cand in (dict(ARTICLE_IMAGES).get(key) or [f'article_images/{key}.png']):
-            f = out / cand
-            if f.exists():
-                data = base64.b64encode(f.read_bytes()).decode()
-                return (f'<figure><img src="data:image/png;base64,{data}" alt="">'
-                        f'<button type="button" class="ci">이미지만 복사</button></figure>')
-        return ''
+    def color(s):  # 오른 건 빨강, 내린 건 파랑
+        s = re.sub(r'(▲[\d.,]+%)', rf'<span style="color:{UP};font-weight:700">\1</span>', s)
+        return re.sub(r'(▼[\d.,]+%)', rf'<span style="color:{DOWN};font-weight:700">\1</span>', s)
 
-    marked = '[[' in body  # 글에 [[이미지 이름]] 줄이 있으면 그 자리에만 넣는다
-    parts, para = [img('')], []
-    flush = lambda: para and (parts.append('<p>' + '<br>'.join(html.escape(x) for x in para) + '</p>'), para.clear())
-    for ln in body.strip().splitlines():
-        t = ln.strip()
-        if not t:
-            flush()
-        elif t.startswith('[[') and t.endswith(']]'):
-            flush()
-            parts.append(img(t[2:-2]))
-        elif t.startswith('■'):
-            flush()
-            parts.append(f'<h2>{html.escape(t)}</h2>')
-            if not marked:
-                parts += [img(k) for k, _ in ARTICLE_IMAGES[1:] if k in t]
-        else:
-            para.append(ln.rstrip())
-    flush()
-    # 오른 건 빨강, 내린 건 파랑 (▲1.23% / ▼1.23%)
-    parts = [re.sub(r'(▲[\d.,]+%)', r'<b class="up">\1</b>', re.sub(r'(▼[\d.,]+%)', r'<b class="down">\1</b>', x)) for x in parts]
+    def blocks(img_src):
+        """글을 HTML 조각으로. img_src(이름) → 이미지 주소"""
+        out_, para, items = [], [], []
+        def img(name):
+            return f'<p><img src="{img_src(name)}" alt="" style="max-width:100%;height:auto"></p>' if name in have else ''
+        def flush():
+            if para:
+                out_.append('<p>' + '<br>'.join(color(html.escape(x)) for x in para) + '</p>')
+                para.clear()
+            if items:
+                out_.append('<ul>' + ''.join(f'<li>{color(html.escape(x))}</li>' for x in items) + '</ul>')
+                items.clear()
+        marked = '[[' in body
+        out_.append(img('1_thumb'))
+        for ln in body.strip().splitlines():
+            t = ln.strip()
+            if not t:
+                flush()
+            elif t.startswith('[[') and t.endswith(']]'):
+                flush(); out_.append(img(t[2:-2]))
+            elif t.startswith('■'):
+                flush(); out_.append(f'<h3>{html.escape(t.lstrip("■ ").strip())}</h3>')
+                if not marked:
+                    out_ += [img(n) for k, n in ARTICLE_IMAGES[1:] if k in t]
+            elif t.startswith('- '):
+                if para:
+                    flush()
+                items.append(t[2:])
+            elif re.match(r'^[①-⑩]', t):
+                flush(); out_.append(f'<p><strong>{html.escape(t)}</strong></p>')
+            else:
+                if items:
+                    flush()
+                para.append(t)
+        flush()
+        return ''.join(x for x in out_ if x)
+
+    code = blocks(lambda n: f'{SITE}articles/{out.name}/{n}.png')
+    preview = blocks(lambda n: f'article_images/{n}.png')
+    field = lambda key, label, val, rows=1: (
+        f'<div class="f"><div class="lb">{label}<button type="button" data-copy="{key}">복사</button></div>'
+        + (f'<textarea id="{key}" rows="{rows}" readonly>{html.escape(val)}</textarea>' if rows > 1 else f'<input id="{key}" readonly value="{html.escape(val)}">') + '</div>')
     page = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{html.escape(title)}</title>
 <style>
-:root {{ --bg: #f4f5f1; --paper: #fff; --ink: #1d1f24; --muted: #646b73; --accent: #0f8a7e; --line: #e2e4dc; }}
-body {{ margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.8 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; word-break: keep-all; }}
-.bar {{ position: sticky; top: 0; background: var(--ink); color: #fff; padding: 12px 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; z-index: 2; }}
-.bar button {{ font: inherit; font-size: 15px; font-weight: 700; border: 0; border-radius: 999px; padding: 8px 18px; cursor: pointer; background: #fff; color: var(--ink); }}
-.bar button.main {{ background: var(--accent); color: #fff; }}
-.bar span {{ font-size: 14px; opacity: .8; }}
-article {{ max-width: 760px; margin: 24px auto 80px; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 36px 40px; }}
-h1 {{ font-size: 27px; line-height: 1.4; margin: 0 0 20px; }}
-h2 {{ font-size: 20px; margin: 34px 0 10px; }}
-p {{ margin: 0 0 16px; }}
-.up {{ color: #e0314b; }} .down {{ color: #2463eb; }}
-figure {{ margin: 18px 0 24px; position: relative; }}
-figure img {{ width: 100%; border-radius: 10px; display: block; }}
-.ci {{ position: absolute; right: 10px; bottom: 10px; font-size: 13px; border: 0; border-radius: 999px; padding: 5px 12px; background: rgba(0,0,0,.65); color: #fff; cursor: pointer; }}
-</style></head><body>
-<div class="bar"><button type="button" class="main" id="all">글 전체 복사 (이미지 포함)</button><button type="button" id="title">제목만 복사</button><button type="button" id="text">글자만 복사</button><span id="msg">복사한 뒤 더퍼스트클래스 글쓰기 창에 붙여 넣으세요</span></div>
-<article><h1 id="h">{html.escape(title)}</h1><div id="body">{''.join(parts)}</div></article>
+body {{ margin: 0; background: #f4f5f1; color: #1d1f24; font: 16px/1.75 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; word-break: keep-all; }}
+.wrap {{ max-width: 820px; margin: 0 auto; padding: 24px 16px 80px; }}
+h1.pg {{ font-size: 20px; margin: 0 0 4px; }} .sub {{ color: #646b73; font-size: 14px; margin: 0 0 18px; }}
+.box {{ background: #fff; border: 1px solid #e2e4dc; border-radius: 14px; padding: 18px 20px; margin-bottom: 18px; }}
+.box h2 {{ font-size: 16px; margin: 0 0 12px; }}
+.f {{ margin-bottom: 12px; }} .lb {{ font-size: 14px; font-weight: 700; margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }}
+input, textarea {{ width: 100%; box-sizing: border-box; font: 14px/1.6 inherit; font-family: inherit; border: 1px solid #d7d9d1; border-radius: 10px; padding: 9px 12px; background: #fafaf8; }}
+textarea.code {{ font: 12px/1.5 ui-monospace, Menlo, monospace; height: 180px; }}
+button {{ font: inherit; font-size: 13px; font-weight: 700; border: 0; border-radius: 999px; padding: 4px 14px; cursor: pointer; background: #0f8a7e; color: #fff; }}
+.msg {{ font-size: 13px; color: #0f8a7e; min-height: 20px; }}
+article {{ background: #fff; border: 1px solid #e2e4dc; border-radius: 14px; padding: 28px 32px; }}
+article h1 {{ font-size: 24px; line-height: 1.4; margin: 0 0 16px; }} article h3 {{ font-size: 19px; margin: 30px 0 8px; }}
+article img {{ border-radius: 8px; }} article ul {{ padding-left: 22px; }}
+</style></head><body><div class="wrap">
+<h1 class="pg">더퍼스트클래스 올리기</h1>
+<p class="sub">칸마다 '복사'를 눌러 글쓰기 화면의 같은 칸에 붙여 넣으세요. 본문은 HTML 코드를 HTML 입력 칸에 넣으면 이미지까지 같이 들어가요.</p>
+<div class="box"><h2>① 태그 · 제목 · 요약</h2>
+{field('tags', '태그', meta.get('tags', ''))}
+{field('title', '제목', title)}
+{field('summary', '요약 — 목록·알림에 쓰여요', meta.get('summary', ''), 3)}
+</div>
+<div class="box"><h2>② 본문 HTML 코드</h2>
+<div class="f"><div class="lb">HTML<button type="button" data-copy="code">HTML 코드 복사</button></div><textarea id="code" class="code" readonly>{html.escape(code)}</textarea></div>
+<div class="msg" id="msg"></div></div>
+<div class="box"><h2>③ 미리 보기</h2><article><h1>{html.escape(title)}</h1>{preview}</article></div>
+</div>
 <script>
-const msg = t => {{ document.getElementById('msg').textContent = t; }};
-const body = document.getElementById('body');
-async function copyHtml(node) {{
-  const clone = node.cloneNode(true); clone.querySelectorAll('.ci').forEach(b => b.remove());
-  try {{
-    await navigator.clipboard.write([new ClipboardItem({{ 'text/html': new Blob([clone.innerHTML], {{ type: 'text/html' }}), 'text/plain': new Blob([clone.innerText], {{ type: 'text/plain' }}) }})]);
-    msg('✅ 복사했어요. 글쓰기 창에 붙여 넣으세요 (이미지가 안 붙으면 이미지만 따로 복사)');
-  }} catch (e) {{
-    const r = document.createRange(); r.selectNodeContents(node); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
-    document.execCommand('copy'); msg('✅ 선택해서 복사했어요');
-  }}
-}}
-document.getElementById('all').onclick = () => copyHtml(body);
-document.getElementById('title').onclick = () => navigator.clipboard.writeText(document.getElementById('h').innerText).then(() => msg('✅ 제목을 복사했어요'));
-document.getElementById('text').onclick = () => {{ const c = body.cloneNode(true); c.querySelectorAll('figure').forEach(f => f.remove());
-  navigator.clipboard.writeText(c.innerText).then(() => msg('✅ 글자만 복사했어요')); }};
-document.querySelectorAll('.ci').forEach(b => b.onclick = async () => {{
-  const blob = await (await fetch(b.previousElementSibling.src)).blob();
-  try {{ await navigator.clipboard.write([new ClipboardItem({{ 'image/png': blob }})]); msg('✅ 이미지를 복사했어요'); }}
-  catch (e) {{ msg('이미지 복사가 안 돼요. 이미지를 오른쪽 클릭 → 이미지 복사를 써 주세요'); }}
+document.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => {{
+  const el = document.getElementById(b.dataset.copy), m = document.getElementById('msg');
+  try {{ await navigator.clipboard.writeText(el.value); }} catch (e) {{ el.select(); document.execCommand('copy'); }}
+  const old = b.textContent; b.textContent = '✅ 복사됨'; setTimeout(() => b.textContent = old, 1500);
 }});
 </script></body></html>"""
     dst = out / 'article.html'
@@ -289,6 +349,7 @@ def main():
     with sync_playwright() as pw:
         browser = pw.chromium.launch(channel='chrome')
         make_post(browser, base, out)
+        make_figs(browser, base, out)
         if not a.no_video:
             tmp = out / '.work'
             shutil.rmtree(tmp, ignore_errors=True)
@@ -313,6 +374,7 @@ def main():
         print(f'릴스 저장: {total:.0f}초' + (f' (목소리 {speed:.2f}배속)' if speed > 1 else '')
               + (f' — 목표 {TARGET}초보다 길어요. 대본을 줄여야 해요' if total > TARGET + 3 else ''))
 
+    publish_images(out)
     page = article_html(out)
     if page:
         print(f'글 페이지: {page}')

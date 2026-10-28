@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1300">
+<meta name="robots" content="noindex">
+<title>Daily Stock Insights 해설 글 이미지</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<!--
+  더퍼스트클래스 해설 글에 넣는 이미지 4장. make_insta.py 가 열어서 한 장씩 캡처한다 (article_images/).
+    #thumb  대표 이미지: 글 제목 + 미국 지수 3개
+    #movers 어젯밤 크게 오른 회사 · 크게 내린 회사 (티커·종가·등락률)
+    #earn   어젯밤 실적 발표 회사의 예상 대비 결과와 주가 반응 (예상과 반대로 움직인 회사를 맨 위에)
+    #check  오늘 밤 체크 포인트 (briefing.easy.us.check)
+  자료가 없는 이미지는 data-skip 이 붙고 캡처하지 않는다.
+-->
+<style>
+:root { --bg: #f7f6f2; --card: #fff; --ink: #1d1f24; --ink2: #4b5058; --muted: #7a8089; --line: #e6e4dc;
+  --accent: #0f8a7e; --accent-soft: #e3f4f1; --up: #e0314b; --down: #2463eb; --good: #16a34a; --good-soft: #e8f7ee; --bad: #dc2626; --bad-soft: #fdecec; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #ccc; font-family: 'Noto Sans KR', sans-serif; color: var(--ink); word-break: keep-all; }
+.fig { width: 1200px; background: var(--bg); margin: 0 auto 30px; padding: 56px 64px 44px; position: relative; }
+.fig[data-skip] { display: none; }
+.brand { position: absolute; top: 26px; right: 64px; font-size: 22px; font-weight: 900; color: var(--accent); }
+.kicker { font-size: 22px; font-weight: 700; color: var(--accent); }
+h2 { font-size: 40px; font-weight: 900; margin: 6px 0 6px; line-height: 1.3; }
+.lead { font-size: 21px; color: var(--ink2); margin: 0 0 28px; }
+.src { font-size: 16px; color: var(--muted); margin-top: 24px; }
+.num { font-variant-numeric: tabular-nums; }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--muted); }
+
+#thumb { height: 675px; display: flex; flex-direction: column; justify-content: center; }
+#thumb .date { align-self: flex-start; background: var(--ink); color: #fff; border-radius: 999px; padding: 6px 20px; font-size: 22px; font-weight: 700; }
+#thumb h1 { font-size: 54px; font-weight: 900; line-height: 1.28; margin: 22px 0 34px; text-wrap: balance; }
+#thumb h1 em { font-style: normal; color: var(--accent); }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.tile { background: var(--card); border: 2px solid var(--line); border-radius: 22px; padding: 20px 26px; }
+.tile .nm { font-size: 22px; font-weight: 700; color: var(--ink2); }
+.tile .v { font-size: 46px; font-weight: 900; line-height: 1.2; }
+.tile .c { font-size: 19px; color: var(--muted); }
+
+.bars { display: grid; grid-template-columns: 300px 1fr; row-gap: 10px; align-items: center; }
+.bars .nm { font-size: 22px; font-weight: 700; text-align: right; padding-right: 18px; }
+.bars .nm small { display: block; font-size: 17px; color: var(--muted); font-weight: 500; }
+.track { position: relative; height: 40px; }
+.track .zero { position: absolute; top: -6px; bottom: -6px; width: 2px; background: #b9bcc2; }
+.track .bar { position: absolute; top: 6px; height: 28px; }
+.track .bar.up { background: var(--up); border-radius: 0 4px 4px 0; }
+.track .bar.down { background: var(--down); border-radius: 4px 0 0 4px; }
+.track .lab { position: absolute; top: 4px; font-size: 21px; font-weight: 900; color: var(--ink); white-space: nowrap; }
+.sep { grid-column: 1 / -1; height: 1px; background: var(--line); margin: 4px 0; }
+.axis { grid-column: 2; position: relative; height: 22px; font-size: 15px; color: var(--muted); }
+.axis span { position: absolute; transform: translateX(-50%); }
+
+.er { display: grid; gap: 14px; }
+.er .row { display: grid; grid-template-columns: 220px 300px 1fr; align-items: center; gap: 22px; background: var(--card); border: 2px solid var(--line); border-radius: 20px; padding: 18px 26px; }
+.er .co { font-size: 26px; font-weight: 900; }
+.er .co small { display: block; font-size: 17px; color: var(--muted); font-weight: 500; }
+.er .eps { font-size: 18px; color: var(--ink2); line-height: 1.5; }
+.badge { display: inline-block; border-radius: 999px; padding: 3px 14px; font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+.badge.g { background: var(--good-soft); color: var(--good); } .badge.b { background: var(--bad-soft); color: var(--bad); }
+.er .row.hl { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.callout { margin-top: 20px; background: var(--accent-soft); border-radius: 18px; padding: 18px 24px; font-size: 21px; line-height: 1.55; }
+
+.tl .ev { display: grid; grid-template-columns: 210px 28px 1fr; gap: 0 18px; }
+.tl .dt { font-size: 21px; font-weight: 900; color: var(--accent); text-align: right; padding-top: 14px; line-height: 1.35; }
+.tl .rail { position: relative; }
+.tl .rail::before { content: ''; position: absolute; left: 13px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.tl .rail::after { content: ''; position: absolute; left: 6px; top: 20px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); }
+.tl .ev:first-child .rail::before { top: 24px; } .tl .ev:last-child .rail::before { bottom: calc(100% - 24px); }
+.tl .box { padding: 12px 0 18px; }
+.tl .t { font-size: 25px; font-weight: 900; }
+.tl .m { font-size: 19px; color: var(--ink2); line-height: 1.5; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="fig" id="thumb"><div class="brand">윤슬 주식</div></div>
+<div class="fig" id="movers"><div class="brand">윤슬 주식</div></div>
+<div class="fig" id="earn"><div class="brand">윤슬 주식</div></div>
+<div class="fig" id="check"><div class="brand">윤슬 주식</div></div>
+
+<script src="common.js"></script>
+<script>
+const md = s => { const d = new Date(s + 'T00:00:00'); return `${d.getMonth() + 1}월 ${d.getDate()}일`; };
+const sp = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2) + '%';
+const usd = v => (v < 0 ? '−' : '') + '$' + Math.abs(v).toFixed(2);
+const px = v => '$' + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const add = (id, html) => document.getElementById(id).insertAdjacentHTML('beforeend', html);
+const skip = id => document.getElementById(id).dataset.skip = '1';
+
+// 0 을 기준으로 좌우로 뻗는 막대 (눈금 하나)
+function track(v, lo, hi) {
+  const x = p => (p - lo) / (hi - lo) * 100, z = x(0), e = x(v);
+  const bar = v >= 0 ? `left:${z}%;width:${e - z}%` : `left:${e}%;width:${z - e}%`;
+  const lab = v >= 0 ? `left:calc(${e}% + 10px)` : `right:calc(${100 - e}% + 10px)`;
+  return `<div class="track"><div class="zero" style="left:${z}%"></div><div class="bar ${v >= 0 ? 'up' : 'down'}" style="${bar}"></div><div class="lab num" style="${lab}">${sp(v)}</div></div>`;
+}
+// 숫자 글씨가 막대 끝 밖에 들어갈 자리까지 남긴다
+const range = vals => { const m = Math.ceil(Math.max(2, ...vals.map(Math.abs)) * 1.45 / 2) * 2; return [-m, m]; };
+
+(async () => {
+  const [data, brief, earn] = await Promise.all(['../data.json', '../briefing.json', '../earnings.json'].map(load));
+  const sp500 = data.markets.find(m => m.id === 'sp500');
+  const L = sp500.dates.length - 1, day = sp500.dates[L], prevDay = sp500.dates[L - 1];
+
+  // 미국 종목: 이름·티커·종가·하루 등락 (S&P 500 · 나스닥 · 다우 합쳐서 중복 제거)
+  const us = new Map();
+  for (const m of data.markets) if (m.currency === 'USD') for (const s of m.stocks) {
+    const i = m.dates.indexOf(day), j = m.dates.indexOf(prevDay);
+    if (i < 0 || j < 0 || s.c[i] == null || s.c[j] == null || us.has(s.ticker)) continue;
+    us.set(s.ticker, { name: s.name, ticker: s.ticker, close: s.c[i], ch: (s.c[i] / s.c[j] - 1) * 100 });
+  }
+
+  // 1. 대표 이미지
+  const title = brief?.easy?.article?.title || '어젯밤 미국 증시';
+  const [t1, t2] = title.split(/…|\.\.\./).map(s => s.trim());
+  const idx = [['sp500', 'S&P 500'], ['nasdaq', '나스닥'], ['dow', '다우']].map(([id, n]) => {
+    const m = data.markets.find(x => x.id === id), c = m.index.c, [a, b] = lastTwo(c);
+    return { n, v: c[b], ch: (c[b] / c[a] - 1) * 100 };
+  });
+  add('thumb', `<span class="date">${md(day)} 미국장 마감</span>
+    <h1>${esc(t1)}${t2 ? `<br><em>${esc(t2)}</em>` : ''}</h1>
+    <div class="tiles">${idx.map(x => `<div class="tile"><div class="nm">${x.n}</div><div class="v num ${cls(x.ch)}">${sp(x.ch)}</div><div class="c num">${x.v.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div></div>`).join('')}</div>`);
+
+  // 2. 크게 오른 곳 4 · 크게 내린 곳 3
+  const all = [...us.values()].sort((a, b) => b.ch - a.ch);
+  const ups = all.filter(s => s.ch > 0).slice(0, 4), downs = all.filter(s => s.ch < 0).slice(-3).reverse().sort((a, b) => b.ch - a.ch);
+  if (ups.length + downs.length >= 3) {
+    const [lo, hi] = range([...ups, ...downs].map(s => s.ch));
+    const row = s => `<div class="nm">${esc(s.name)}<small>${s.ticker} · ${px(s.close)}</small></div>${track(s.ch, lo, hi)}`;
+    const ticks = []; for (let t = Math.ceil(lo / 2) * 2; t <= hi; t += 2) ticks.push(t);
+    add('movers', `<div class="kicker">${md(day)} 미국장 · 하루 등락률</div>
+      <h2>어젯밤 크게 오른 회사 · 크게 내린 회사</h2>
+      <p class="lead">S&amp;P 500 · 나스닥 · 다우 주요 종목 · 티커 · ${md(day)} 종가</p>
+      <div class="bars">${ups.map(row).join('')}${ups.length && downs.length ? '<div class="sep"></div>' : ''}${downs.map(row).join('')}
+      <div class="axis">${ticks.map(t => `<span style="left:${(t - lo) / (hi - lo) * 100}%">${t > 0 ? '+' : ''}${t}%</span>`).join('')}</div></div>
+      <div class="src">자료: 야후 파이낸스 종가 · Daily Stock Insights</div>`);
+  } else skip('movers');
+
+  // 3. 어젯밤 실적 발표 회사: 장 시작 전·장중에 낸 곳은 그날, 전날 장 마감 뒤 낸 곳은 다음 날 반응
+  const er = [];
+  for (const [t, e] of Object.entries(earn?.stocks || {})) {
+    const s = us.get(t);
+    if (!s) continue;
+    const q = (e.quarters || []).find(q => q.act != null && q.est != null &&
+      ((q.date === day && q.when !== '장후') || (q.date === prevDay && q.when === '장후')));
+    if (q) er.push({ ...s, act: q.act, est: q.est, odd: (q.act > q.est) !== (s.ch > 0) });
+  }
+  er.sort((a, b) => b.odd - a.odd || Math.abs(b.ch) - Math.abs(a.ch));
+  const ers = er.slice(0, 5);
+  if (ers.length) {
+    const [lo, hi] = range(ers.map(s => s.ch));
+    const odd = ers.find(s => s.odd);
+    add('earn', `<div class="kicker">${md(day)} 실적 발표 · 발표 뒤 첫 거래일 주가</div>
+      <h2>${odd ? (odd.act > odd.est ? '예상보다 잘했는데 주가가 내린 회사도 있어요' : '예상보다 못했는데 주가가 오른 회사도 있어요') : '실적 발표 뒤 주가는 이렇게 움직였어요'}</h2>
+      <p class="lead">주당순이익(EPS): 실제 vs 전문가 예상 · 티커 · ${md(day)} 종가</p>
+      <div class="er">${ers.map(s => { const g = s.act > s.est;
+        return `<div class="row${s === odd ? ' hl' : ''}"><div class="co">${esc(s.name)}<small>${s.ticker} · ${px(s.close)}</small></div>
+          <div class="eps"><span class="badge ${g ? 'g' : 'b'}">${g ? '✓ 예상보다 좋음' : '✕ 예상보다 나쁨'}</span><br>실제 <b class="num">${usd(s.act)}</b> · 예상 <span class="num">${usd(s.est)}</span></div>
+          ${track(s.ch, lo, hi)}</div>`; }).join('')}</div>
+      ${odd ? `<div class="callout">💡 주가는 '숫자'보다 '기대'에 반응해요. 결과가 예상보다 좋아도 기대한 수준이나 앞으로의 전망이 아쉬우면 내릴 수 있어요.</div>` : ''}
+      <div class="src">자료: 각 회사 발표·야후 파이낸스 (실적 예상치·종가)</div>`);
+  } else skip('earn');
+
+  // 4. 오늘 밤 체크 포인트
+  const ck = brief?.easy?.us?.check || [];
+  if (ck.length) add('check', `<div class="kicker">미국 오늘 밤 장 · 개장 한국시간 밤 10시 30분 (서머타임이 끝나면 11시 30분)</div>
+    <h2>오늘 밤 체크 포인트</h2><p class="lead" style="margin-bottom:14px">&nbsp;</p>
+    <div class="tl">${ck.map(c => `<div class="ev"><div class="dt">${esc(c.time || '')}</div><div class="rail"></div>
+      <div class="box"><div class="t">${esc(c.title)}</div><div class="m">${esc(c.watch || c.why || '')}</div></div></div>`).join('')}</div>`);
+  else skip('check');
+
+  await document.fonts.ready;
+  document.body.dataset.ready = '1';
+})();
+</script>
+</body>
+</html>
