@@ -402,6 +402,24 @@ function caption(g) {
   ].join('\n');
 }
 
+// 릴스 캡션: 짧게. 영상 내용 한눈에 + 오늘 밤 체크 2개 + 안내 + 태그
+function reelCaption(g) {
+  const md = (() => { const d = kstNow(); return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`; })();
+  return [
+    `🎬 [${md}] 어젯밤 미국 증시, 1분 정리`,
+    '',
+    g.wx.map(x => `${x.name} ${level(x.close)} (${pct(x.ch)})`).join(' · '),
+    ...(g.why.length ? ['', `🤔 ${g.why[0]}`] : []),
+    ...(g.check.length ? ['', '🌙 오늘 밤 체크', ...g.check.slice(0, 2).map(c => `• ${c.time ? `[${c.time}] ` : ''}${c.title}`)] : []),
+    '',
+    `${MORE_ASK} ${MORE_TEXT}`,
+    '❤️ 도움이 됐다면 좋아요 · 팔로우 · 🔔 알림 설정',
+    '※ 투자 추천이 아닌 정보 정리예요.',
+    '',
+    (US ? '#미국주식 #미장 #서학개미 #나스닥 #S&P500 #주식공부 #주린이 #오늘의시황 #윤슬주식' : '#미국주식 #국내주식 #주식공부 #주린이 #오늘의시황 #윤슬주식') + ' #주식릴스',
+  ].join('\n');
+}
+
 // 글이 넘치면 글자 크기를 조금씩 줄여 화면 안에 맞춘다
 function fit(el) {
   const body = el.querySelector('.body');
@@ -431,6 +449,7 @@ function setSub(i, j) {
   document.querySelectorAll('.slide').forEach(fit);
   window.SLIDES = slides.map(s => ({ lines: s.lines }));
   window.CAPTION = caption(g);
+  window.REEL_CAPTION = reelCaption(g);
   document.body.dataset.ready = '1';
 })();
 </script>

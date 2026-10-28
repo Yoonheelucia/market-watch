@@ -2,7 +2,8 @@
 
   insta/<날짜>/
     post/01.png …     카드뉴스 (1080×1350) — 순서대로 캐러셀에 올리면 된다
-    caption.txt       캡션 (복사해서 붙여 넣기)
+    caption.txt       카드뉴스 캡션 (복사해서 붙여 넣기)
+    reel_caption.txt  릴스 캡션 (짧은 버전)
     article.txt       thefirstclass.kr 에 올릴 '윤슬' 해설 글 초안 (브리핑 작업이 써 둔 것)
     article_images/   글에 넣는 이미지 (대표 · 등락 · 실적 반응 · 오늘 밤 체크 포인트)
     article.html      글 + 이미지를 한 화면에. '전체 복사' 버튼으로 글쓰기 창에 바로 붙여 넣기
@@ -63,6 +64,7 @@ def make_post(browser, base, out):
     for i in range(slides.count()):
         slides.nth(i).screenshot(path=str(out / 'post' / f'{i + 1:02d}.png'))
     (out / 'caption.txt').write_text(page.evaluate('window.CAPTION'), encoding='utf-8')
+    (out / 'reel_caption.txt').write_text(page.evaluate('window.REEL_CAPTION'), encoding='utf-8')
     print(f'카드뉴스 {slides.count()}장 · 캡션 저장')
     page.close()
 
