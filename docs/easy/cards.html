@@ -20,7 +20,7 @@
   --accent: #0f8a7e; --accent-soft: #e3f4f1; --up: #e0314b; --down: #2463eb;
   --good: #16a34a; --good-soft: #e8f7ee; --bad: #dc2626; --bad-soft: #fdecec; --mix: #b45309; --mix-soft: #fdf3e2;
   --chip: #f1f0ea;
-  --w: 1080px; --h: 1350px; --pad-top: 96px; --pad-bottom: 96px; --pad-x: 84px;
+  --w: 1080px; --h: 1350px; --pad-top: 150px; --pad-bottom: 96px; --pad-x: 84px;
 }
 /* 릴스: 위쪽 계정 이름·아래쪽 캡션·오른쪽 아이콘 자리를 피한다 */
 html.reel { --h: 1920px; --pad-top: 370px; --pad-bottom: 680px; --pad-x: 110px; }
@@ -41,16 +41,20 @@ h1 { font-size: calc(var(--s) * 70px); line-height: 1.25; margin: 10px 0 36px; f
 .brand { position: absolute; top: 40px; right: var(--pad-x); font-size: 30px; font-weight: 900; color: var(--accent); letter-spacing: .02em; }
 .foot { position: absolute; left: var(--pad-x); right: var(--pad-x); bottom: 36px; display: flex; justify-content: space-between;
   font-size: 24px; color: var(--muted); font-weight: 500; }
-.foot b { font-weight: 900; }
+.foot b { font-weight: 900; color: var(--accent); }
 .foot { align-items: center; }
 .more-pill { background: var(--accent); color: #fff; border-radius: 999px; padding: 8px 22px; font-size: 22px; font-weight: 700; }
 .bar { position: absolute; left: var(--pad-x); right: 130px; top: 312px; height: 8px; display: flex; gap: 8px; }
 .bar i { flex: 1; border-radius: 4px; background: var(--line); }
 .bar i.on { background: var(--accent); }
 /* 릴스: 위쪽에 항상 보이는 안내 띠 (인스타 위쪽 계정 이름 자리 아래) */
-.topline { display: none; }
+/* 위쪽에 항상 보이는 더퍼스트클래스 안내 띠 (카드뉴스·릴스 공통) */
+.topline { position: absolute; left: var(--pad-x); right: var(--pad-x); top: 34px; background: var(--accent); color: #fff; border-radius: 999px;
+  padding: 12px 24px; font-size: 25px; font-weight: 700; line-height: 1.35; text-align: center; }
+.topline b { font-weight: 900; }
+html:not(.reel) .brand { display: none; }
 html.reel .brand { display: none; }
-html.reel .topline { display: block; position: absolute; left: 80px; right: 100px; top: 160px; background: var(--accent); color: #fff; border-radius: 20px;
+html.reel .topline { left: 80px; right: 100px; top: 160px; border-radius: 20px;
   padding: 16px 22px; font-size: 31px; font-weight: 700; line-height: 1.35; text-align: center; }
 html.reel .topline b { font-weight: 900; }
 html.reel .foot, html:not(.reel) .bar { display: none; }
@@ -417,7 +421,7 @@ function setSub(i, j) {
     <div class="bar">${Array.from({ length: n }, (_, k) => `<i class="${k <= i ? 'on' : ''}"></i>`).join('')}</div>
     ${s.html.includes('class="body') ? s.html : `<div class="body">${s.html}</div>`}
     <div class="sub"><span></span></div>
-    <div class="foot"><span class="more-pill">자세한 내용은 <b>${esc(MORE_URL.replace(/^https:\/\//, ''))}</b> 에서 '윤슬'을 확인하세요</span><span class="num">${i + 1} / ${n}</span></div>
+    <div class="foot"><span><b>${BRAND}</b> · Daily Stock Insights</span><span class="num">${i + 1} / ${n}</span></div>
   </section>`).join('');
   await document.fonts.ready;
   document.querySelectorAll('.slide').forEach(fit);
