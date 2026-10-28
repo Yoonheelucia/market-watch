@@ -161,7 +161,7 @@ const say = s => String(s)
   .replace(/(\d{1,2})\/(\d{1,2})\s*\((.)\)/g, (_, m, d, w) => `${m}월 ${d}일 ${w}요일`)
   .replace(/(\d{1,2})\/(\d{1,2})/g, '$1월 $2일')
   .replace(/S&P\s?500/g, '에스앤피 500').replace(/AI/g, '에이아이').replace(/PER/g, '퍼')
-  .replace(/\([^)]*\)/g, '').replace(/[·→]/g, ', ').replace(/—/g, ', ').replace(/\s+/g, ' ').trim();
+  .replace(/\([^)]*\)/g, '').replace(/\s\+\s/g, ' 그리고 ').replace(/[·→]/g, ', ').replace(/—/g, ', ').replace(/([?!])\s*\./g, '$1').replace(/\s+/g, ' ').trim();
 // '10/29 (목) 새벽' → 오늘·내일·모레면 그 말로 (말로 할 때 짧게)
 function relDay(s) {
   const m = String(s).match(/(\d{1,2})\/(\d{1,2})\s*(\(.\))?\s*(.*)/);
@@ -235,7 +235,7 @@ function postSlides(g) {
     </div>`).join('')}</div>
     <div class="note">신호등은 지금 주가가 지난 5년 보통 수준보다 비싼지 싼지만 비교한 거예요. 사고팔라는 뜻이 아니에요.</div>`);
   const past = g.past.slice(0, 4);
-  if (past.length) out.push(`<div class="kicker">⏪ 지난 일정</div><h1>그 일이 있고 나서,<br>주가는 어땠을까?</h1>
+  if (past.length) out.push(`<div class="kicker">⏪ 지난 일정</div><h1>주요 이벤트 이후<br>주가는?</h1>
     <div class="stack">${past.map(r => `<div class="card cal done"><div class="dt">${esc(r.date)}</div>
       <div><div class="t">${esc(r.title)}</div><div class="m">↳ ${esc(r.result || '반응 확인 중')}</div>${linkHtml(r)}</div></div>`).join('')}</div>`);
   if (g.check.length) out.push(`<div class="kicker">🌙 오늘 밤 개장 전</div><h1>오늘 밤<br>체크 포인트</h1>
@@ -259,7 +259,7 @@ function postSlides(g) {
 // ── 릴스: 60초 안팎, 장면마다 핵심 하나 ──
 function reelSlides(g) {
   const out = [];
-  const line = (text, voice = say(text)) => ({ text, voice });
+  const line = (text, voice = say(text)) => ({ text, voice: voice.replace(/([?!])\s*\./g, '$1') });
   const [a, b, c] = g.wx, hero = a.w;
 
   // 1. 훅: 결론부터
@@ -280,10 +280,10 @@ function reelSlides(g) {
   const why = g.why.slice(0, 2);
   if (why.length) out.push({ html: `<div class="r-kicker">🤔 왜 그랬을까</div><div class="r-title">왜 이렇게<br>움직였을까?</div>
     ${why.map((s, i) => `<div class="r-text"><span class="n">${i + 1}</span>${esc(s)}</div>`).join('')}`,
-    lines: why.map((s, i) => line(s, (i ? '' : '왜 그랬을까요? ') + say(s))) });
+    lines: [line(why[0], '왜 그랬을까요? ' + say(why[0]))] });  // 60초에 맞추려고 목소리는 첫 이유만
 
-  // 4. 소식 3가지: 제목만
-  const news = g.news.slice(0, 3);
+  // 4. 소식 3가지: 제목만 (오늘 밤 체크 포인트가 있으면 60초에 맞추려고 뺀다. 카드뉴스에는 그대로 있다)
+  const news = g.check.length ? [] : g.news.slice(0, 3);
   if (news.length) out.push({ html: `<div class="r-kicker">📰 주요 소식</div><div class="r-title">오늘 알아 둘<br>소식 ${news.length}가지</div>
     <div class="stack">${news.map(n => { const [k, tag] = SIGN[n.sign] || SIGN['±'];
       return `<div class="r-news ${k}"><div class="tag">${tag}</div><div class="t">${esc(n.title)}</div>${n.link ? `<div class="link" style="font-size:30px">🔗 ${esc(n.link)}</div>` : ''}</div>`; }).join('')}</div>`,
@@ -307,7 +307,7 @@ function reelSlides(g) {
   // 7. 오늘 밤 개장 전 체크 포인트 3개 (자료가 없으면 앞으로 일정 2개)
   const ck = g.check.slice(0, 3);
   if (ck.length) out.push({ html: `<div class="r-kicker">🌙 오늘 밤 개장 전</div><div class="r-title">오늘 밤<br>체크 포인트</div>
-    <div class="stack">${ck.map(c => `<div class="r-big"><div class="dt">${esc(c.time || '')}</div><div class="t">${esc(c.title)}</div>${c.watch ? `<div class="m">👀 ${esc(c.watch)}</div>` : ''}</div>`).join('')}</div>`,
+    <div class="stack">${ck.map(c => `<div class="r-big"><div class="dt">${esc(c.time || '')}</div><div class="t">${esc(c.title)}</div></div>`).join('')}</div>`,
     lines: ck.map((c, i) => line(`${c.time ? c.time + ' · ' : ''}${c.title}`,
       `${i ? '' : '오늘 밤 체크 포인트예요. '}${c.time ? say(c.time) + ', ' : ''}${say(c.title)}.${i === 0 && c.watch ? ' ' + say(firstSentence(c.watch)) : ''}`)) });
   const wk = ck.length ? [] : g.week.slice(0, 2);
