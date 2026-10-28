@@ -33,17 +33,21 @@ import imageio_ffmpeg
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).parent
+DAY = None  # --date 로 정한 날짜 (없으면 오늘)
 KST = timezone(timedelta(hours=9))
 FF = imageio_ffmpeg.get_ffmpeg_exe()
 GMEDIA = Path.home() / '.claude/skills/gcloud-media/scripts/gmedia.py'
-STYLE = '밝고 친근한 20~30대 한국 여성 경제 크리에이터. 또렷하고 자연스럽게, 살짝 빠른 속도로 설명하듯이'
-GAP, SLIDE_GAP, LEAD = 0.25, 0.5, 0.3  # 문장 사이·장면 사이·처음 쉬는 시간(초)
+STYLE = '차분하고 신뢰감 있는 30대 한국 여성 경제 뉴스 앵커. 또렷한 표준어, 자연스러운 속도'
+GAP, SLIDE_GAP, LEAD = 0.2, 0.4, 0.3  # 문장 사이·장면 사이·처음 쉬는 시간(초)
 TARGET, MAX_SPEED = 60, 1.15  # 릴스 목표 길이(초). 넘으면 목소리를 최대 1.15배까지 빠르게 한다
 
 
 def open_cards(browser, base, fmt):
     page = browser.new_page(viewport={'width': 1080, 'height': 1920}, device_scale_factor=1)
-    page.goto(f"{base}easy/cards.html{'?f=reel' if fmt == 'reel' else ''}", wait_until='domcontentloaded', timeout=30000)
+    q = [('f', 'reel')] if fmt == 'reel' else []
+    if DAY:
+        q.append(('d', DAY))
+    page.goto(f"{base}easy/cards.html" + ('?' + '&'.join(f'{k}={v}' for k, v in q) if q else ''), wait_until='domcontentloaded', timeout=30000)
     page.wait_for_function('document.body.dataset.ready', timeout=30000)
     if page.evaluate('document.body.dataset.ready') != '1':
         raise SystemExit('카드 자료를 불러오지 못했어요. 사이트가 열리는지 확인해 주세요.')
@@ -166,10 +170,13 @@ def notify(text):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--base', default='https://yoonheelucia.github.io/market-watch/')
-    ap.add_argument('--voice', default='Achird')
+    ap.add_argument('--voice', default='Vindemiatrix')  # 목소리 샘플: insta/voice_samples/
     ap.add_argument('--no-video', action='store_true')
     ap.add_argument('--wait', action='store_true')
+    ap.add_argument('--date', help='YYYY-MM-DD. 자정을 넘겨 전날 것을 만들 때')
     a = ap.parse_args()
+    global DAY
+    DAY = a.date
     base = a.base.rstrip('/') + '/'
     if a.wait:  # 5분마다 확인, 20:40 까지 (21:00 발행)
         while not ready(base):
@@ -178,7 +185,7 @@ def main():
                 raise SystemExit('저녁 브리핑이 20:40 까지 올라오지 않았어요')
             print(datetime.now(KST).strftime('%H:%M'), '자료 기다리는 중…', flush=True)
             time.sleep(300)
-    out = ROOT / 'insta' / datetime.now(KST).strftime('%Y-%m-%d')
+    out = ROOT / 'insta' / (DAY or datetime.now(KST).strftime('%Y-%m-%d'))
     if (out / 'post').exists():
         shutil.rmtree(out / 'post')
     out.mkdir(parents=True, exist_ok=True)

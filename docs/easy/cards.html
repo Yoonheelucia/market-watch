@@ -23,7 +23,7 @@
   --w: 1080px; --h: 1350px; --pad-top: 96px; --pad-bottom: 96px; --pad-x: 84px;
 }
 /* 릴스: 위쪽 계정 이름·아래쪽 캡션·오른쪽 아이콘 자리를 피한다 */
-html.reel { --h: 1920px; --pad-top: 280px; --pad-bottom: 680px; --pad-x: 110px; }
+html.reel { --h: 1920px; --pad-top: 330px; --pad-bottom: 680px; --pad-x: 110px; }
 * { box-sizing: border-box; }
 body { margin: 0; background: #ccc; font-family: 'Noto Sans KR', system-ui, -apple-system, sans-serif; color: var(--text); word-break: keep-all; }
 .slide { --s: 1; position: relative; width: var(--w); height: var(--h); overflow: hidden; background: var(--bg); margin: 0 auto 40px;
@@ -42,10 +42,15 @@ h1 { font-size: calc(var(--s) * 70px); line-height: 1.25; margin: 10px 0 36px; f
 .foot { position: absolute; left: var(--pad-x); right: var(--pad-x); bottom: 36px; display: flex; justify-content: space-between;
   font-size: 24px; color: var(--muted); font-weight: 500; }
 .foot b { color: var(--text); font-weight: 700; }
-.bar { position: absolute; left: var(--pad-x); right: 130px; top: 190px; height: 8px; display: flex; gap: 8px; }
+.bar { position: absolute; left: var(--pad-x); right: 130px; top: 270px; height: 8px; display: flex; gap: 8px; }
 .bar i { flex: 1; border-radius: 4px; background: var(--line); }
 .bar i.on { background: var(--accent); }
+/* 릴스: 위쪽에 항상 보이는 안내 띠 (인스타 위쪽 계정 이름 자리 아래) */
+.topline { display: none; }
 html.reel .brand { display: none; }
+html.reel .topline { display: block; position: absolute; left: 80px; right: 100px; top: 160px; background: var(--accent); color: #fff; border-radius: 20px;
+  padding: 16px 22px; font-size: 31px; font-weight: 700; line-height: 1.35; text-align: center; }
+html.reel .topline b { font-weight: 900; }
 html.reel .foot, html:not(.reel) .bar { display: none; }
 
 /* ── 카드뉴스 ── */
@@ -175,7 +180,8 @@ const oil = s => String(s).replace(/기름값(?!\s*\(유가\))/, '기름값(유�
 const oilAll = x => Object.fromEntries(Object.entries(x).map(([k, v]) => [k, typeof v === 'string' && k !== 'date' ? oil(v) : v]));
 const firstSentence = s => String(s).split(/(?<=[.!?])\s/)[0];
 const moved = (v, end) => v > 0.05 ? `${Math.abs(v).toFixed(1)}% 올랐${end}` : v < -0.05 ? `${Math.abs(v).toFixed(1)}% 내렸${end}` : `거의 그대로${end === '고' ? '였고' : '였어요'}`;
-const kstNow = () => new Date(Date.now() + 9 * 3600e3);
+// ?d=2026-10-28 이면 그 날짜 저녁 기준으로 만든다 (자정을 넘겨 만들 때)
+const kstNow = () => Q.get('d') ? new Date(Q.get('d') + 'T20:00:00Z') : new Date(Date.now() + 9 * 3600e3);
 const today = () => { const d = kstNow(); return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 ${DAYS[d.getUTCDay()]}요일`; };
 function dayChange(c) { const [a, b] = lastTwo(c); return { ch: (c[b] / c[a] - 1) * 100, i: b }; }
 
@@ -249,7 +255,7 @@ function postSlides(g) {
   out.push(`<div class="kicker">📖 오늘의 용어</div>
     <div class="term"><div class="w">${esc(t.w)}</div><div class="en">${esc(t.en)}</div>
     <div class="d">${esc(t.d)}</div><div class="ex">💡 예를 들면 — ${esc(t.ex)}</div></div>`);
-  out.push(`<div class="body outro"><div class="big">주식이 처음이라도<br>매일 저녁 5분이면 충분해요</div>
+  out.push(`<div class="body outro"><div class="big">주식이 처음이라도<br>하루 5분이면 충분해요</div>
     <div class="url">${MORE_ASK}</div>
     <div class="more">${esc(MORE_URL)} 에서<br>'윤슬'의 글을 확인하세요.</div>
     <div class="small">이 내용은 공부를 돕는 정보 정리이고, 어떤 종목을 사거나 팔라는 추천이 아니에요.<br>주가: 야후 파이낸스 · 숫자가 늦거나 틀릴 수 있어요.</div></div>`);
@@ -309,29 +315,27 @@ function reelSlides(g) {
   if (ck.length) out.push({ html: `<div class="r-kicker">🌙 오늘 밤 개장 전</div><div class="r-title">오늘 밤<br>체크 포인트</div>
     <div class="stack">${ck.map(c => `<div class="r-big"><div class="dt">${esc(c.time || '')}</div><div class="t">${esc(c.title)}</div></div>`).join('')}</div>`,
     lines: ck.map((c, i) => line(`${c.time ? c.time + ' · ' : ''}${c.title}`,
-      `${i ? '' : '오늘 밤 체크 포인트예요. '}${c.time ? say(c.time) + ', ' : ''}${say(c.title)}.${i === 0 && c.watch ? ' ' + say(firstSentence(c.watch)) : ''}`)) });
+      `${i ? '' : '오늘 밤 체크 포인트예요. '}${c.time ? say(c.time) + ', ' : ''}${say(c.title)}.`)) });
   const wk = ck.length ? [] : g.week.slice(0, 2);
   if (wk.length) out.push({ html: `<div class="r-kicker">📅 앞으로 볼 일정</div><div class="r-title">주요 이벤트</div>
     <div class="stack">${wk.map(r => `<div class="r-big"><div class="dt">${esc(r.date)}</div><div class="t">${esc(r.title)}</div>${linkHtml(r)}</div>`).join('')}</div>`,
     lines: wk.map((r, i) => line(`${r.date} ${r.title}`,
       `${i ? '' : '앞으로 볼 일정이에요. '}${relDay(r.date)}, ${say(r.title)}.${r.link ? ' ' + say(firstSentence(r.link)) : ''}`)) });
 
-  // 8. 오늘의 용어 + 마무리
+  // 8. 오늘의 용어
   const t = g.term, tw = t.w.replace(/\s*\(.*\)/, '');
   out.push({ html: `<div class="r-kicker">📖 오늘의 용어</div>
-    <div class="r-term"><div class="w">${esc(t.w)}</div><div class="d">${esc(t.d)}</div></div>
-    <div class="r-end">자세한 내용은<br><span class="url2">${esc(MORE_URL)}</span><br>에서 '윤슬'을 확인하세요.</div>`,
-    lines: [line(`오늘의 용어: ${t.w}`, `오늘의 용어, ${say(tw)}. ${say(firstSentence(t.d))}`),
-      line(`자세한 내용은 thefirstclass.kr 에서 '윤슬'을 확인하세요`, '자세한 내용은 더퍼스트클래스에서 윤슬을 확인하세요.')] });
+    <div class="r-term"><div class="w">${esc(t.w)}</div><div class="d">${esc(t.d)}</div></div>`,
+    lines: [line(`오늘의 용어: ${t.w}`, `오늘의 용어, ${say(tw)}. ${say(firstSentence(t.d))}`)] });
 
-  // 9. 마지막: 다시 한 번 안내 + 좋아요·팔로우·알림 설정
+  // 9. 마지막: 윤슬 안내 + 좋아요·팔로우·알림 설정
   out.push({ html: `<div class="body r-cta">
     <div class="r-title" style="margin-bottom:56px">오늘 이야기가<br>도움이 됐다면</div>
     <div class="acts"><div><span>❤️</span>좋아요</div><div><span>➕</span>팔로우</div><div><span>🔔</span>알림 설정</div></div>
     <div class="r-end">자세한 내용은<br><span class="url2">${esc(MORE_URL)}</span><br>에서 '윤슬'을 확인하세요.</div>
-    <div class="note" style="font-size:26px;text-align:center">투자 추천이 아닌 정보 정리예요 · 매일 밤 9시에 올라와요</div></div>`,
-    lines: [line(`자세한 내용은 thefirstclass.kr 에서 '윤슬'`, '다시 한 번, 자세한 내용은 더퍼스트클래스에서 윤슬을 확인하세요.'),
-      line('❤️ 좋아요 · ➕ 팔로우 · 🔔 알림 설정', '도움이 됐다면 좋아요와 팔로우, 알림 설정 부탁드려요. 내일 밤에 또 만나요!')] });
+    <div class="note" style="font-size:26px;text-align:center">투자 추천이 아닌 정보 정리예요</div></div>`,
+    lines: [line(`자세한 내용은 thefirstclass.kr 에서 '윤슬'`, '자세한 내용은 더퍼스트클래스에서 윤슬을 확인하세요.'),
+      line('❤️ 좋아요 · ➕ 팔로우 · 🔔 알림 설정', '도움이 됐다면 좋아요와 팔로우, 알림 설정 부탁드려요. 다음에 또 만나요!')] });
   return out;
 }
 
@@ -351,7 +355,7 @@ function caption(g) {
     `📖 오늘의 용어: ${g.term.w} — ${g.term.d}`,
     '',
     `${MORE_ASK} ${MORE_TEXT}`,
-    '❤️ 도움이 됐다면 좋아요 · 팔로우 · 🔔 알림 설정 해 두면 매일 밤 9시에 받아볼 수 있어요',
+    '❤️ 도움이 됐다면 좋아요 · 팔로우 · 🔔 알림 설정 해 두면 새 글을 바로 받아볼 수 있어요',
     '※ 공부를 돕는 정보 정리이며 투자 추천이 아니에요. 투자 결정과 결과는 본인의 몫이에요.',
     '',
     tags,
@@ -377,6 +381,7 @@ function setSub(i, j) {
   const n = slides.length;
   $('#slides').innerHTML = slides.map((s, i) => `<section class="slide" id="s${i + 1}">
     <div class="brand">${BRAND}</div>
+    <div class="topline">자세한 내용은 <b>${esc(MORE_URL.replace(/^https:\/\//, ''))}</b> 에서 '윤슬'을 확인하세요</div>
     <div class="bar">${Array.from({ length: n }, (_, k) => `<i class="${k <= i ? 'on' : ''}"></i>`).join('')}</div>
     ${s.html.includes('class="body') ? s.html : `<div class="body">${s.html}</div>`}
     <div class="sub"><span></span></div>
