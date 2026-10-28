@@ -296,6 +296,9 @@ article img {{ border-radius: 8px; }} article ul {{ padding-left: 22px; }}
 </style></head><body><div class="wrap">
 <h1 class="pg">더퍼스트클래스 올리기</h1>
 <p class="sub">칸마다 '복사'를 눌러 글쓰기 화면의 같은 칸에 붙여 넣으세요. 본문은 HTML 코드를 HTML 입력 칸에 넣으면 이미지까지 같이 들어가요.</p>
+<div class="box"><h2>⓪ 대표 이미지</h2>
+<p class="sub" style="margin:0 0 10px">이미지를 끌어다 글쓰기 화면의 대표 이미지 칸에 놓으세요. 파일: {html.escape(str((out / 'article_images' / '1_thumb.png').resolve()))}</p>
+<img src="article_images/1_thumb.png" alt="대표 이미지" style="width:100%;border-radius:10px;display:block"></div>
 <div class="box"><h2>① 태그 · 제목 · 요약</h2>
 {field('tags', '태그', meta.get('tags', ''))}
 {field('title', '제목', title)}
