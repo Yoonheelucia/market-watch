@@ -122,7 +122,7 @@ const range = vals => { const m = Math.ceil(Math.max(2, ...vals.map(Math.abs)) *
     const m = data.markets.find(x => x.id === id), c = m.index.c, [a, b] = lastTwo(c);
     return { n, v: c[b], ch: (c[b] / c[a] - 1) * 100 };
   });
-  add('thumb', `<span class="date">${esc(head ? head[1] : md(day) + ' 미국장 체크')}</span>
+  add('thumb', `<span class="date">${esc((head ? head[1] : md(day)).replace(/\s*미국장 체크$/, '') + ' 미국장 체크')}</span>
     <h1>${esc(t1)}${t2 ? `<br><em>${esc(t2)}</em>` : ''}</h1>
     <div class="tiles">${idx.map(x => `<div class="tile"><div class="nm">${x.n}</div><div class="v num ${cls(x.ch)}">${sp(x.ch)}</div><div class="c num">${x.v.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div></div>`).join('')}</div>`);
 
