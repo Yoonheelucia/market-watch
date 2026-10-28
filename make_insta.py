@@ -217,7 +217,7 @@ h2 {{ font-size: 20px; margin: 34px 0 10px; }}
 p {{ margin: 0 0 16px; }}
 figure {{ margin: 18px 0 24px; position: relative; }}
 figure img {{ width: 100%; border-radius: 10px; display: block; }}
-.ci {{ position: absolute; right: 10px; top: 10px; font-size: 13px; border: 0; border-radius: 999px; padding: 5px 12px; background: rgba(0,0,0,.65); color: #fff; cursor: pointer; }}
+.ci {{ position: absolute; right: 10px; bottom: 10px; font-size: 13px; border: 0; border-radius: 999px; padding: 5px 12px; background: rgba(0,0,0,.65); color: #fff; cursor: pointer; }}
 </style></head><body>
 <div class="bar"><button type="button" class="main" id="all">글 전체 복사 (이미지 포함)</button><button type="button" id="title">제목만 복사</button><button type="button" id="text">글자만 복사</button><span id="msg">복사한 뒤 더퍼스트클래스 글쓰기 창에 붙여 넣으세요</span></div>
 <article><h1 id="h">{html.escape(title)}</h1><div id="body">{''.join(parts)}</div></article>
