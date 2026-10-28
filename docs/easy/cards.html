@@ -105,6 +105,7 @@ ol.why li::before { content: counter(n); width: calc(var(--s) * 64px); height: c
 .r-hero .chg { font-size: calc(var(--s) * 52px); font-weight: 700; margin-top: 10px; }
 .r-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; background: var(--card); border: 2px solid var(--line); border-radius: 32px; padding: calc(var(--s) * 34px) 40px; }
 .r-row .nm { font-size: calc(var(--s) * 50px); font-weight: 900; line-height: 1.2; }
+.r-row .lvl { font-size: calc(var(--s) * 40px); font-weight: 700; line-height: 1.25; margin-top: 2px; }
 .r-row .sub2 { font-size: calc(var(--s) * 30px); color: var(--muted); font-weight: 500; }
 .r-row .chg { font-size: calc(var(--s) * 72px); font-weight: 900; white-space: nowrap; }
 .r-row .ico { font-size: calc(var(--s) * 70px); }
@@ -195,7 +196,7 @@ function gather(data, brief, earnings) {
     : [['sp500', '🇺🇸 미국 대표 500', 'S&P 500'], ['nasdaq', '🇺🇸 미국 기술주', '나스닥'], ['kospi', '🇰🇷 한국', '코스피']];
   const wx = pick.map(([id, where, name]) => {
     const m = data.markets.find(x => x.id === id), { ch, i } = dayChange(m.index.c);
-    return { where, name, ch, w: WEATHER.find(x => ch >= x.min), day: m.dates[i], live: sessionState(data, id, m.dates[i]).startsWith('장중') };
+    return { where, name, ch, close: m.index.c[i], w: WEATHER.find(x => ch >= x.min), day: m.dates[i], live: sessionState(data, id, m.dates[i]).startsWith('장중') };
   });
   const stocks = {};
   for (const m of data.markets) for (const s of m.stocks) stocks[s.ticker] ??= { ...s, currency: m.currency };
@@ -213,6 +214,7 @@ function gather(data, brief, earnings) {
   };
 }
 
+const level = v => v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const money = s => s.currency === 'USD' ? '$' + s.last.toLocaleString(undefined, { maximumFractionDigits: 2 }) : Math.round(s.last).toLocaleString() + '원';
 const flag = s => US ? '' : s.currency === 'USD' ? '🇺🇸 ' : '🇰🇷 ';
 
@@ -223,7 +225,7 @@ function postSlides(g) {
     <h1>${US ? '어젯밤 미국 증시<br>날씨는?' : '오늘의<br>시장 날씨'}</h1>
     <div class="stack">${g.wx.map(x => `<div class="card wx">
       <div class="ico">${x.w.ico}</div>
-      <div><div class="where">${x.where}</div><div class="what">${x.name} · ${fmtDate(x.day)}${x.live ? ' 장중' : ''}</div></div>
+      <div><div class="where">${x.where}</div><div class="what">${x.name} <b class="num">${level(x.close)}</b> · ${fmtDate(x.day)}${x.live ? ' 장중' : ''}</div></div>
       <div><div class="chg num ${cls(x.ch)}">${pct(x.ch)}</div><div class="word">${x.w.word}</div></div>
     </div>`).join('')}</div>
     ${g.fx ? `<div class="fx">💵 환율 1달러 = <b class="num">${Math.round(g.fx).toLocaleString()}원</b></div>` : ''}`);
@@ -277,11 +279,11 @@ function reelSlides(g) {
     lines: [line(`어젯밤 미국 증시 = ${hero.ico} ${hero.word}`, `어젯밤 미국 증시, 날씨로 치면 ${hero.word}${jo(hero.word, '이에요', '예요')}.`)] });
 
   // 2. 지수 3개
-  out.push({ html: `<div class="r-kicker">📊 ${US ? '미국 지수' : '지수'}</div><div class="r-title">숫자로 보면</div>
-    <div class="stack">${g.wx.map(x => `<div class="r-row"><div><div class="nm">${x.name}</div><div class="sub2">${x.where}${x.live ? ' · 장중' : ''}</div></div>
+  out.push({ html: `<div class="r-kicker">📊 ${US ? '미국 지수' : '지수'} · ${fmtDate(a.day)} ${a.live ? '장중' : '마감'}</div><div class="r-title">숫자로 보면</div>
+    <div class="stack">${g.wx.map(x => `<div class="r-row"><div><div class="nm">${x.name}</div><div class="lvl num">${level(x.close)}</div><div class="sub2">${x.where}${x.live ? ' · 장중' : ''}</div></div>
       <div class="chg num ${cls(x.ch)}">${pct(x.ch)}</div></div>`).join('')}</div>
     ${g.fx ? `<div class="fx" style="font-size:34px">💵 환율 1달러 = <b class="num">${Math.round(g.fx).toLocaleString()}원</b></div>` : ''}`,
-    lines: [line(g.wx.map(x => `${x.name} ${pct(x.ch)}`).join(' · '),
+    lines: [line(g.wx.map(x => `${x.name} ${level(x.close)} (${pct(x.ch)})`).join(' · '),
       `${say(a.name)}은 ${moved(a.ch, '고')}, ${b.name}${jo(b.name, '은', '는')} ${moved(b.ch, '고')}, ${c.name}${jo(c.name, '은', '는')} ${moved(c.ch, '어요')}.`)] });
 
   // 3. 왜? (앞의 2개)
@@ -348,7 +350,7 @@ function caption(g) {
     `📅 ${today()} | 어젯밤 미국 증시 + 오늘 밤 체크 포인트 | ${BRAND}`,
     '',
     '🌤 시장 날씨',
-    ...g.wx.map(x => `${x.w.ico} ${x.name} ${pct(x.ch)} (${x.w.word})${x.live ? ' · 장중' : ''}`),
+    ...g.wx.map(x => `${x.w.ico} ${x.name} ${level(x.close)} (${pct(x.ch)}, ${x.w.word})${x.live ? ' · 장중' : ''}`),
     '',
     ...(g.why.length ? ['🤔 왜 그랬을까?', ...g.why.map(s => `✔️ ${s}`), ''] : []),
     ...(g.movers.length ? [`🏢 많이 들어 본 회사 중 가장 크게 움직인 곳: ${g.movers.slice(0, 3).map(s => `${s.name} ${pct(s.ch)}`).join(', ')}`, ''] : []),
