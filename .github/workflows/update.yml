@@ -2,10 +2,16 @@ name: 매일 주식 데이터 업데이트
 
 on:
   schedule:
-    # 미국 시장: 한국시간 화~토 06:37 (UTC 월~금 21:37) — 미국장 마감 후. 정각은 GitHub 실행이 자주 밀려서 피함
+    # GitHub 예약 실행은 몇 시간씩 밀리거나 아예 빠질 때가 있어서, 지역마다 예비 시간을 두 번 더 둔다.
+    # 예비 실행은 그날 이미 업데이트됐으면 아무것도 하지 않는다 (아래 '실행할지 정하기').
+    # 미국 시장: 한국시간 화~토 06:37 (UTC 월~금 21:37) — 미국장 마감 후. 예비 08:07, 09:37
     - cron: '37 21 * * 1-5'
-    # 한국 시장: 한국시간 월~금 18:03 (UTC 09:03) — 한국장 마감 후
+    - cron: '7 23 * * 1-5'
+    - cron: '37 0 * * 2-6'
+    # 한국 시장: 한국시간 월~금 18:03 (UTC 09:03) — 한국장 마감 후. 예비 19:33, 21:03
     - cron: '3 9 * * 1-5'
+    - cron: '33 10 * * 1-5'
+    - cron: '3 12 * * 1-5'
   workflow_dispatch:  # Actions 탭에서 수동 실행
     inputs:
       region:
@@ -20,15 +26,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: 실행할지 정하기
+        id: plan
+        env:
+          SCHED: ${{ github.event.schedule }}
+          REGION: ${{ inputs.region }}
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import datetime as dt, json, os
+          sched, region = os.environ['SCHED'], os.environ['REGION'] or 'all'
+          if sched:
+              region = 'kr' if int(sched.split()[1]) in (9, 10, 12) else 'us'
+              h, m = {'kr': (18, 3), 'us': (6, 37)}[region]
+              due = (dt.datetime.utcnow() + dt.timedelta(hours=9)).replace(hour=h, minute=m, second=0, microsecond=0)
+              data = json.load(open('docs/data.json'))
+              mk = next(x for x in data['markets'] if x['id'] == {'kr': 'kospi', 'us': 'sp500'}[region])
+              last = dt.datetime.strptime(mk.get('updated', data['updated']).replace(' KST', ''), '%Y-%m-%d %H:%M')
+              if last >= due:
+                  print('skip=true')
+          print(f'region={region}')
+          EOF
+          cat "$GITHUB_OUTPUT"
+      - if: steps.plan.outputs.skip != 'true'
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
-      - run: pip install -r requirements.txt
-      - run: python build.py ${{ github.event.schedule == '3 9 * * 1-5' && 'kr' || github.event.schedule && 'us' || inputs.region || 'all' }}
+      - if: steps.plan.outputs.skip != 'true'
+        run: pip install -r requirements.txt
+      - if: steps.plan.outputs.skip != 'true'
+        run: python build.py ${{ steps.plan.outputs.region }}
         env:
           SEC_EMAIL: ${{ secrets.SEC_EMAIL }}  # SEC 공시 요청에 필요한 연락처
       - name: 변경사항 커밋
+        if: steps.plan.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898279+github-actions[bot]@users.noreply.github.com"
