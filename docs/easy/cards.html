@@ -45,7 +45,7 @@ h1 { font-size: calc(var(--s) * 70px); line-height: 1.25; margin: 10px 0 36px; f
 .bar { position: absolute; left: var(--pad-x); right: 130px; top: 190px; height: 8px; display: flex; gap: 8px; }
 .bar i { flex: 1; border-radius: 4px; background: var(--line); }
 .bar i.on { background: var(--accent); }
-html.reel .brand { top: 214px; left: var(--pad-x); right: auto; font-size: 28px; }
+html.reel .brand { display: none; }
 html.reel .foot, html:not(.reel) .bar { display: none; }
 
 /* ── 카드뉴스 ── */
@@ -117,7 +117,11 @@ ol.why li::before { content: counter(n); width: calc(var(--s) * 64px); height: c
 .r-term .w { font-size: calc(var(--s) * 110px); font-weight: 900; line-height: 1.15; }
 .r-term .d { font-size: calc(var(--s) * 48px); font-weight: 700; line-height: 1.5; margin-top: 24px; }
 .r-end { margin-top: 70px; background: var(--accent); color: #fff; border-radius: 32px; padding: 34px 40px; font-size: calc(var(--s) * 44px); font-weight: 900; line-height: 1.4; }
-.r-end small { display: block; font-size: 30px; font-weight: 500; opacity: .9; margin-top: 8px; }
+.r-end .url2 { display: inline-block; font-size: calc(var(--s) * 32px); font-weight: 700; opacity: .95; margin: 6px 0; word-break: break-all; }
+.r-cta { text-align: center; align-items: center; }
+.acts { display: flex; gap: 26px; justify-content: center; }
+.acts div { background: var(--card); border: 2px solid var(--line); border-radius: 28px; padding: 26px 0 22px; width: 220px; font-size: calc(var(--s) * 38px); font-weight: 900; }
+.acts span { display: block; font-size: calc(var(--s) * 84px); line-height: 1.2; margin-bottom: 6px; }
 
 /* 자막 (릴스만): 아래 캡션 자리 위쪽 */
 .sub { display: none; }
@@ -166,6 +170,9 @@ function relDay(s) {
   const word = ['오늘', '내일', '모레'][diff];
   return word ? `${word}${m[4] ? ' ' + m[4] : ''}` : say(s);
 }
+// '기름값' 이 처음 나올 때 '기름값(유가)' 로 (뉴스에서 쓰는 말도 같이 익히게)
+const oil = s => String(s).replace(/기름값(?!\s*\(유가\))/, '기름값(유가)');
+const oilAll = x => Object.fromEntries(Object.entries(x).map(([k, v]) => [k, typeof v === 'string' && k !== 'date' ? oil(v) : v]));
 const firstSentence = s => String(s).split(/(?<=[.!?])\s/)[0];
 const moved = (v, end) => v > 0.05 ? `${Math.abs(v).toFixed(1)}% 올랐${end}` : v < -0.05 ? `${Math.abs(v).toFixed(1)}% 내렸${end}` : `거의 그대로${end === '고' ? '였고' : '였어요'}`;
 const kstNow = () => new Date(Date.now() + 9 * 3600e3);
@@ -190,8 +197,8 @@ function gather(data, brief, earnings) {
   const term = TERMS[termOfDay(new Date(kstNow().toISOString().slice(0, 10) + 'T12:00:00')) % TERMS.length];
   return {
     wx, movers, term, fx: data.usdkrw,
-    why: pickList(easy, 'why'), news: pickList(easy, 'news'),
-    past: pickList(easy, 'weekPast'), week: pickList(easy, 'week'),
+    why: pickList(easy, 'why').map(oil), news: pickList(easy, 'news').map(oilAll),
+    past: pickList(easy, 'weekPast').map(oilAll), week: pickList(easy, 'week').map(oilAll),
   };
 }
 
@@ -287,13 +294,13 @@ function reelSlides(g) {
 
   // 6. 지난 일정 1개
   const p = g.past[0];
-  if (p) out.push({ html: `<div class="r-kicker">⏪ 지난 일정</div><div class="r-title">그 일 뒤<br>주가는?</div>
+  if (p) out.push({ html: `<div class="r-kicker">⏪ 지난 일정</div><div class="r-title">주요 이벤트 이후<br>주가는?</div>
     <div class="r-big"><div class="dt">${esc(p.date)}</div><div class="t">${esc(p.title)}</div><div class="m">↳ ${esc(p.result || '반응 확인 중')}</div>${linkHtml(p)}</div>`,
     lines: [line(`${p.title} → ${p.result || '반응 확인 중'}`, `${say(p.title)}. ${say(p.result || '반응은 아직 확인 중이에요.')}`)] });
 
   // 7. 앞으로 일정 2개
   const wk = g.week.slice(0, 2);
-  if (wk.length) out.push({ html: `<div class="r-kicker">📅 앞으로 볼 일정</div><div class="r-title">이날은<br>꼭 체크</div>
+  if (wk.length) out.push({ html: `<div class="r-kicker">📅 앞으로 볼 일정</div><div class="r-title">주요 이벤트</div>
     <div class="stack">${wk.map(r => `<div class="r-big"><div class="dt">${esc(r.date)}</div><div class="t">${esc(r.title)}</div>${linkHtml(r)}</div>`).join('')}</div>`,
     lines: wk.map((r, i) => line(`${r.date} ${r.title}`,
       `${i ? '' : '앞으로 볼 일정이에요. '}${relDay(r.date)}, ${say(r.title)}.${r.link ? ' ' + say(firstSentence(r.link)) : ''}`)) });
@@ -302,10 +309,18 @@ function reelSlides(g) {
   const t = g.term, tw = t.w.replace(/\s*\(.*\)/, '');
   out.push({ html: `<div class="r-kicker">📖 오늘의 용어</div>
     <div class="r-term"><div class="w">${esc(t.w)}</div><div class="d">${esc(t.d)}</div></div>
-    <div class="r-end">${MORE_ASK}<small>${esc(MORE_URL)} 에서 '윤슬'의 글을 확인하세요.</small></div>
-    <div class="note" style="font-size:26px">투자 추천이 아닌 정보 정리예요</div>`,
+    <div class="r-end">자세한 내용은<br><span class="url2">${esc(MORE_URL)}</span><br>에서 '윤슬'을 확인하세요.</div>`,
     lines: [line(`오늘의 용어: ${t.w}`, `오늘의 용어, ${say(tw)}. ${say(firstSentence(t.d))}`),
-      line(`${MORE_ASK} 👉 thefirstclass.kr 에서 '윤슬'`, '자세한 내용을 보고 싶다면, 더퍼스트클래스에서 윤슬의 글을 확인하세요. 내일 아침에 만나요!')] });
+      line(`자세한 내용은 thefirstclass.kr 에서 '윤슬'을 확인하세요`, '자세한 내용은 더퍼스트클래스에서 윤슬을 확인하세요.')] });
+
+  // 9. 마지막: 다시 한 번 안내 + 좋아요·팔로우·알림 설정
+  out.push({ html: `<div class="body r-cta">
+    <div class="r-title" style="margin-bottom:56px">오늘 이야기가<br>도움이 됐다면</div>
+    <div class="acts"><div><span>❤️</span>좋아요</div><div><span>➕</span>팔로우</div><div><span>🔔</span>알림 설정</div></div>
+    <div class="r-end">자세한 내용은<br><span class="url2">${esc(MORE_URL)}</span><br>에서 '윤슬'을 확인하세요.</div>
+    <div class="note" style="font-size:26px;text-align:center">투자 추천이 아닌 정보 정리예요 · 매일 아침 새로 올라와요</div></div>`,
+    lines: [line(`자세한 내용은 thefirstclass.kr 에서 '윤슬'`, '다시 한 번, 자세한 내용은 더퍼스트클래스에서 윤슬을 확인하세요.'),
+      line('❤️ 좋아요 · ➕ 팔로우 · 🔔 알림 설정', '도움이 됐다면 좋아요와 팔로우, 알림 설정 부탁드려요. 내일 아침에 또 만나요!')] });
   return out;
 }
 
@@ -324,6 +339,7 @@ function caption(g) {
     `📖 오늘의 용어: ${g.term.w} — ${g.term.d}`,
     '',
     `${MORE_ASK} ${MORE_TEXT}`,
+    '❤️ 도움이 됐다면 좋아요 · 팔로우 · 🔔 알림 설정 해 두면 매일 아침 받아볼 수 있어요',
     '※ 공부를 돕는 정보 정리이며 투자 추천이 아니에요. 투자 결정과 결과는 본인의 몫이에요.',
     '',
     tags,
