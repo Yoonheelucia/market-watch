@@ -113,6 +113,7 @@ E
   ■ 오늘의 한 걸음 — 오늘 글에 나온 용어나 개념 하나를 예시와 함께 풀이.
   마지막 줄: '※ 공부를 돕는 정보 정리이며 특정 종목의 매수·매도 추천이 아닙니다.'
 - 숫자는 모두 위 data.json·weekPast 숫자와 같아야 한다. 확인되지 않은 전망을 사실처럼 쓰지 않는다.
+- 회사 이름이 글에 처음 나올 때는 괄호로 최근 종가를 붙인다 (예: '보잉($168.16)', 'SK하이닉스(1,487,000원)'). 값은 data.json 의 그 회사 마지막 종가(c 의 마지막 값)를 쓰고, data.json 에 없는 회사는 붙이지 않는다. 끝의 출처 줄에 '괄호 안 주가는 ○월 ○일 종가' 라고 적는다.
 
 ## 3. 저장과 배포
 - docs/briefing.json 을 덮어쓴다 (UTF-8, 한글 그대로, ensure_ascii=False, indent=2). 쓴 뒤 `python3 -c "import json;b=json.load(open('docs/briefing.json'));assert b['updated'] and b['easy']['why'] and b['easy']['news'] and b['easy']['week'] and 'weekPast' in b and b['easy']['us']['why'] and b['easy']['us']['news'] and b['easy']['us']['check'] and len(b['easy']['article']['body']) > 1500"` 로 JSON 과 필수 키가 제대로 있는지 확인한다.

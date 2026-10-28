@@ -188,9 +188,37 @@ const kstNow = () => Q.get('d') ? new Date(Q.get('d') + 'T20:00:00Z') : new Date
 const today = () => { const d = kstNow(); return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 ${DAYS[d.getUTCDay()]}요일`; };
 function dayChange(c) { const [a, b] = lastTwo(c); return { ch: (c[b] / c[a] - 1) * 100, i: b }; }
 
+// 회사 이름 → 최근 종가 (data.json 의 마지막 값). '알파벳(구글)' 은 '알파벳'·'구글' 로도 찾는다
+let PRICES = [];
+function buildPrices(data) {
+  const map = new Map();
+  for (const m of data.markets) for (const s of m.stocks) {
+    const v = s.c[lastTwo(s.c)[1]];
+    if (v == null) continue;
+    const txt = m.currency === 'USD' ? '$' + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.round(v).toLocaleString() + '원';
+    for (const n of [s.name, ...(s.name.match(/^(.+)\((.+)\)$/)?.slice(1) || [])]) if (n.length >= 2 && !map.has(n)) map.set(n, txt);
+  }
+  PRICES = [...map].sort((a, b) => b[0].length - a[0].length);
+}
+// 글에 회사 이름이 처음 나올 때 '보잉($168.16)' 처럼 종가를 붙인다 (화면 글자만. 목소리는 say() 가 괄호를 뺀다)
+function withPrice(text) {
+  let out = String(text), used = new Set();
+  for (const [name, px] of PRICES) {
+    if ([...used].some(u => u.includes(name))) continue;
+    const i = out.indexOf(name);
+    if (i < 0 || /[가-힣A-Za-z]/.test(out[i - 1] || '')) continue;
+    const j = i + name.length;  // 이미 괄호가 있으면 그 안 앞쪽에 넣는다: 'AMD(+5.49%)' → 'AMD($560.45, +5.49%)'
+    out = out[j] === '(' ? out.slice(0, j + 1) + `${px}, ` + out.slice(j + 1) : out.slice(0, j) + `(${px})` + out.slice(j);
+    used.add(name);
+  }
+  return out;
+}
+const priceAll = x => Object.fromEntries(Object.entries(x).map(([k, v]) => [k, typeof v === 'string' && ['title', 'text', 'result'].includes(k) ? withPrice(v) : v]));
+
 // 카드뉴스와 릴스가 함께 쓰는 재료
 function gather(data, brief, earnings) {
   const easy = brief.easy || {};
+  buildPrices(data);
   const pick = US
     ? [['sp500', '미국 대표 500', 'S&P 500'], ['nasdaq', '미국 기술주', '나스닥'], ['dow', '미국 전통 우량주 30', '다우']]
     : [['sp500', '🇺🇸 미국 대표 500', 'S&P 500'], ['nasdaq', '🇺🇸 미국 기술주', '나스닥'], ['kospi', '🇰🇷 한국', '코스피']];
@@ -206,8 +234,8 @@ function gather(data, brief, earnings) {
   const term = TERMS[termOfDay(new Date(kstNow().toISOString().slice(0, 10) + 'T12:00:00')) % TERMS.length];
   return {
     wx, movers, term, fx: data.usdkrw,
-    why: pickList(easy, 'why').map(oil), news: pickList(easy, 'news').map(oilAll),
-    past: pickList(easy, 'weekPast').map(oilAll), week: pickList(easy, 'week').map(oilAll),
+    why: pickList(easy, 'why').map(oil).map(withPrice), news: pickList(easy, 'news').map(oilAll).map(priceAll),
+    past: pickList(easy, 'weekPast').map(oilAll).map(priceAll), week: pickList(easy, 'week').map(oilAll),
     check: (easy.us?.check?.length ? easy.us.check
       : pickList(easy, 'week').filter(r => /오늘|내일 새벽/.test(relDay(r.date))).map(r => ({ time: relDay(r.date), title: r.title, why: r.meaning, watch: '', link: r.link })))
       .slice(0, 4).map(oilAll),
@@ -303,9 +331,9 @@ function reelSlides(g) {
   // 5. 아는 회사 3곳
   const m = g.movers.slice(0, 3);
   if (m.length) out.push({ html: `<div class="r-kicker">🏢 아는 회사</div><div class="r-title">어제 가장 크게<br>움직인 곳</div>
-    <div class="stack">${m.map(s => `<div class="r-row"><div><div class="nm">${flag(s)}${esc(s.name)}</div><div class="sub2 num">${money(s)}</div></div>
+    <div class="stack">${m.map(s => `<div class="r-row"><div><div class="nm">${flag(s)}${esc(s.name)}</div><div class="lvl num">${money(s)}</div></div>
       <div class="chg num ${cls(s.ch)}">${pct(s.ch)}</div></div>`).join('')}</div>`,
-    lines: [line(m.map(s => `${s.name} ${pct(s.ch)}`).join(' · '),
+    lines: [line(m.map(s => `${s.name} ${money(s)} (${pct(s.ch)})`).join(' · '),
       '익숙한 회사 중에선 ' + m.slice(0, 2).map((s, i) => `${s.name}${jo(s.name, '이', '가')} ${moved(s.ch, i ? '어요' : '고')}`).join(', ') + '.')] });
 
   // 6. 지난 일정 1개
