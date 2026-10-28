@@ -8,8 +8,8 @@
 | 시각 | 무엇 | 어디서 |
 |---|---|---|
 | 06:15 | 미국 주가 업데이트 (예비 08:07·09:37) | GitHub Actions `update.yml` |
-| 16:30 | 브리핑 작성: 오늘 쓸 글·체크 포인트·태그·요약 (`docs/briefing.json` 의 `easy.us`, `easy.article`) | 클라우드 브리핑 작업 |
-| 17:00~ | 맥에서 자동 제작 (`make_insta.py --wait`, 16:30 브리핑이 올라올 때까지 3분마다 확인, 17:45 까지) → 끝나면 맥 알림 + 폴더·글 페이지가 열림 | 맥 launchd `kr.yoonseul.insta` |
+| 15:00 | 브리핑 작성 (사이트에는 15:15~15:25쯤 보임): 오늘 쓸 글·체크 포인트·태그·요약 (`docs/briefing.json` 의 `easy.us`, `easy.article`) | 클라우드 브리핑 작업 |
+| 15:20~ | 맥에서 자동 제작 (`make_insta.py --wait`, 15:00 브리핑이 올라올 때까지 3분마다 확인, 17:45 까지) → 끝나면 맥 알림 + 폴더·글 페이지가 열림 | 맥 launchd `kr.yoonseul.insta` |
 | 18:00 | 발행 (사람이 직접): 더퍼스트클래스 글 → 릴스 → 카드뉴스 | |
 
 - 결과물: `Stock/insta/<날짜>/`
@@ -17,7 +17,8 @@
   - `article.txt`, `article_meta.json`, `article_images/`(1_thumb·2_movers·3_earn·4_check)
   - `reel.mp4`, `post/01~09.png`, `caption.txt`, `narration.txt`
 - 자정이 넘어 전날 것을 다시 만들 때: `.venv/bin/python make_insta.py --date YYYY-MM-DD`
-- 맥이 17:00~17:45 사이에 켜져 있어야 자동으로 만들어진다.
+- 맥이 15:20~17:45 사이에 켜져 있어야 자동으로 만들어진다.
+- 사이트 브리핑은 하루 7번 (02:00, 06:30, 11:00, 15:00, 19:00, 22:00, 23:30).
 
 ## 1. 공통 규칙
 
