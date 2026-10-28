@@ -240,17 +240,14 @@ def article_html(out):
         return re.sub(r'(▼[\d.,]+%)', rf'<span style="color:{DOWN};font-weight:700">\1</span>', s)
 
     def blocks(img_src):
-        """글을 HTML 조각으로. img_src(이름) → 이미지 주소"""
-        out_, para, items = [], [], []
+        """글을 HTML 조각으로 (article.txt 모양 그대로: 빈 줄로 나뉜 문단, ■ 소제목, '- ' 줄도 글자 그대로). img_src(이름) → 이미지 주소"""
+        out_, para = [], []
         def img(name):
             return f'<p style="{PS}"><img src="{img_src(name)}" alt="" style="max-width:100%;height:auto"></p>' if name in have else ''
         def flush():
             if para:
                 out_.append(f'<p style="{PS}">' + '<br>'.join(color(html.escape(x, quote=False)) for x in para) + '</p>')
                 para.clear()
-            if items:
-                out_.append(f'<ul style="{US}">' + ''.join(f'<li style="margin:0 0 6px">{color(html.escape(x, quote=False))}</li>' for x in items) + '</ul>')
-                items.clear()
         marked = '[[' in body
         out_.append(img('1_thumb'))  # 대표 이미지도 본문 맨 위에 같이 넣는다
         for ln in body.strip().splitlines():
@@ -260,18 +257,10 @@ def article_html(out):
             elif t.startswith('[[') and t.endswith(']]'):
                 flush(); out_.append(img(t[2:-2]))
             elif t.startswith('■'):
-                flush(); out_.append(('<p><br></p>' if out_ else '') + f'<h3 style="{HS}">{html.escape(t.lstrip("■ ").strip(), quote=False)}</h3>')
+                flush(); out_.append(('<p><br></p>' if out_ else '') + f'<h3 style="{HS}">{html.escape(t, quote=False)}</h3>')
                 if not marked:
                     out_ += [img(n) for k, n in ARTICLE_IMAGES[1:] if k in t]
-            elif t.startswith('- '):
-                if para:
-                    flush()
-                items.append(t[2:])
-            elif re.match(r'^[①-⑩]', t):
-                flush(); out_.append(f'<p style="{PS};margin-top:22px"><strong>{html.escape(t, quote=False)}</strong></p>')
             else:
-                if items:
-                    flush()
                 para.append(t)
         flush()
         return ''.join(x for x in out_ if x)
