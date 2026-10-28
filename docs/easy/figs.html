@@ -30,13 +30,11 @@ h2 { font-size: 40px; font-weight: 900; margin: 6px 0 6px; line-height: 1.3; }
 .num { font-variant-numeric: tabular-nums; }
 .up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--muted); }
 
-#thumb { height: 675px; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 60px; background: linear-gradient(160deg, #23211c, #141310); color: #f3efe6; }
-#thumb .brand { color: #d9b45a; }
-#thumb .date { align-self: flex-start; color: #d9b45a; font-size: 26px; font-weight: 900; letter-spacing: .02em; }
+#thumb { height: 675px; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 60px; }
+#thumb .cat { position: absolute; top: 34px; left: 40px; background: #1d1b16; color: #e2c27a; border-radius: 10px; padding: 10px 22px; font-size: 30px; font-weight: 700; }
+#thumb .date { align-self: flex-start; color: var(--accent); font-size: 26px; font-weight: 900; letter-spacing: .02em; }
 #thumb h1 { font-size: 56px; font-weight: 900; line-height: 1.28; margin: 12px 0 34px; text-wrap: balance; }
-#thumb h1 em { font-style: normal; color: #5fd3bf; }
-#thumb .tile { background: #2b2924; border-color: #3a372f; } #thumb .tile .nm, #thumb .tile .c { color: #b9b2a3; }
-#thumb .up { color: #ff5c73; } #thumb .down { color: #6b9bff; } #thumb .flat { color: #b9b2a3; }
+#thumb h1 em { font-style: normal; color: var(--accent); }
 .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .tile { background: var(--card); border: 2px solid var(--line); border-radius: 22px; padding: 20px 26px; }
 .tile .nm { font-size: 22px; font-weight: 700; color: var(--ink2); }
@@ -78,7 +76,7 @@ h2 { font-size: 40px; font-weight: 900; margin: 6px 0 6px; line-height: 1.3; }
 </style>
 </head>
 <body>
-<div class="fig" id="thumb"><div class="brand">윤슬 주식</div></div>
+<div class="fig" id="thumb"><span class="cat">주식 분석</span><div class="brand">윤슬 주식</div></div>
 <div class="fig" id="movers"><div class="brand">윤슬 주식</div></div>
 <div class="fig" id="earn"><div class="brand">윤슬 주식</div></div>
 <div class="fig" id="check"><div class="brand">윤슬 주식</div></div>
