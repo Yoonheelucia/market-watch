@@ -76,7 +76,7 @@ if 'data.json' in files:
     for m in data['markets']:
         kr = m['id'] in ('kospi', 'kosdaq')
         upd = kst(m.get('updated', data['updated']))
-        fresh(f"주가 최신: {m['label']}", upd, ['18:03'] if kr else ['06:37'], [1, 2, 3, 4, 5] if kr else [2, 3, 4, 5, 6])
+        fresh(f"주가 최신: {m['label']}", upd, ['18:03'] if kr else ['06:15'], [1, 2, 3, 4, 5] if kr else [2, 3, 4, 5, 6])
         empty = [s['name'] for s in m['stocks'] if s['c'][-1] is None]
         check(not empty and m['index']['c'][-1] is not None, f"마지막 날 값: {m['label']}",
               f"{m['dates'][-1]} 기준" + (f", 빈 종목 {len(empty)}개: {', '.join(empty[:5])}" if empty else ''))

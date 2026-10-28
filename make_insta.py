@@ -11,7 +11,7 @@
   --no-video                      카드뉴스·캡션만 만들기
   --voice Achird                  목소리 바꾸기 (gcloud-media 스킬 표 참고)
   --wait                          오늘 아침 미국 주가·브리핑이 올라올 때까지 기다렸다가 만들기 (매일 자동 실행용)
-매일 아침 자동 실행: ~/Library/LaunchAgents/kr.yoonseul.insta.plist (07:10, 끝나면 맥 알림)
+매일 아침 자동 실행: ~/Library/LaunchAgents/kr.yoonseul.insta.plist (06:50, 끝나면 맥 알림)
 처음 한 번만: .venv/bin/pip install playwright imageio-ffmpeg
 목소리는 구글 클라우드 TTS 를 쓴다. 로그인이 풀리면: gcloud auth application-default login
 """
@@ -137,14 +137,14 @@ def kst(s):
 
 
 def ready(base):
-    """오늘 아침 미국 주가(06:37)와 브리핑(06:30 이후)이 올라왔는지"""
+    """오늘 아침 미국 주가(06:15)와 브리핑(06:30 이후)이 올라왔는지"""
     def get(name):
         with urllib.request.urlopen(f'{base}{name}?t={time.time():.0f}', timeout=30) as r:
             return json.load(r)
     now = datetime.now(KST)
     data, brief = get('data.json'), get('briefing.json')
     sp = next(m for m in data['markets'] if m['id'] == 'sp500')
-    return (kst(sp.get('updated', data['updated'])) >= now.replace(hour=6, minute=37, second=0, microsecond=0)
+    return (kst(sp.get('updated', data['updated'])) >= now.replace(hour=6, minute=15, second=0, microsecond=0)
             and kst(brief['updated']) >= now.replace(hour=6, minute=30, second=0, microsecond=0))
 
 
