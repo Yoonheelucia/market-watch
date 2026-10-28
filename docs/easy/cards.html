@@ -215,6 +215,7 @@ function withPrice(text, list = PRICES) {
     const i = out.indexOf(name);
     if (i < 0 || /[가-힣A-Za-z]/.test(out[i - 1] || '')) continue;
     const j = i + name.length;  // 이미 괄호가 있으면 그 안 앞쪽에 넣는다: 'AMD(+5.49%)' → 'AMD($560.45, +5.49%)'
+    if (out[j] === '(' && out.slice(j + 1, out.indexOf(')', j)).includes(px)) continue;  // 이미 같은 값이 있으면 그대로
     out = out[j] === '(' ? out.slice(0, j + 1) + `${px}, ` + out.slice(j + 1) : out.slice(0, j) + `(${px})` + out.slice(j);
     used.add(name);
   }

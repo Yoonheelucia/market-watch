@@ -4,6 +4,7 @@
     post/01.png …     카드뉴스 (1080×1350) — 순서대로 캐러셀에 올리면 된다
     caption.txt       카드뉴스 캡션 (복사해서 붙여 넣기)
     reel_caption.txt  릴스 캡션 (짧은 버전)
+    reel_cover.png    릴스 썸네일 (1080×1920, 가운데 3:4 안에 핵심)
     article.txt       thefirstclass.kr 에 올릴 '윤슬' 해설 글 초안 (브리핑 작업이 써 둔 것)
     article_images/   글에 넣는 이미지 (대표 · 등락 · 실적 반응 · 오늘 밤 체크 포인트)
     article.html      글 + 이미지를 한 화면에. '전체 복사' 버튼으로 글쓰기 창에 바로 붙여 넣기
@@ -175,8 +176,10 @@ def make_figs(browser, base, out):
         if loc.get_attribute('data-skip') is None:
             loc.screenshot(path=str(dst / f'{name}.png'))
             made.append(name)
+    page.set_viewport_size({"width": 1300, "height": 900})
+    page.locator("#cover").screenshot(path=str(out / "reel_cover.png"), scale="css")  # 릴스 썸네일 (1080×1920)
     page.close()
-    print(f'글 이미지 {len(made)}장: {", ".join(made)}')
+    print(f'글 이미지 {len(made)}장: {", ".join(made)} · 릴스 썸네일')
 
 
 def save_article(base, out):
