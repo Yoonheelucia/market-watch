@@ -23,7 +23,7 @@
   --w: 1080px; --h: 1350px; --pad-top: 96px; --pad-bottom: 96px; --pad-x: 84px;
 }
 /* 릴스: 위쪽 계정 이름·아래쪽 캡션·오른쪽 아이콘 자리를 피한다 */
-html.reel { --h: 1920px; --pad-top: 330px; --pad-bottom: 680px; --pad-x: 110px; }
+html.reel { --h: 1920px; --pad-top: 370px; --pad-bottom: 680px; --pad-x: 110px; }
 * { box-sizing: border-box; }
 body { margin: 0; background: #ccc; font-family: 'Noto Sans KR', system-ui, -apple-system, sans-serif; color: var(--text); word-break: keep-all; }
 .slide { --s: 1; position: relative; width: var(--w); height: var(--h); overflow: hidden; background: var(--bg); margin: 0 auto 40px;
@@ -41,8 +41,10 @@ h1 { font-size: calc(var(--s) * 70px); line-height: 1.25; margin: 10px 0 36px; f
 .brand { position: absolute; top: 40px; right: var(--pad-x); font-size: 30px; font-weight: 900; color: var(--accent); letter-spacing: .02em; }
 .foot { position: absolute; left: var(--pad-x); right: var(--pad-x); bottom: 36px; display: flex; justify-content: space-between;
   font-size: 24px; color: var(--muted); font-weight: 500; }
-.foot b { color: var(--text); font-weight: 700; }
-.bar { position: absolute; left: var(--pad-x); right: 130px; top: 270px; height: 8px; display: flex; gap: 8px; }
+.foot b { font-weight: 900; }
+.foot { align-items: center; }
+.more-pill { background: var(--accent); color: #fff; border-radius: 999px; padding: 8px 22px; font-size: 22px; font-weight: 700; }
+.bar { position: absolute; left: var(--pad-x); right: 130px; top: 312px; height: 8px; display: flex; gap: 8px; }
 .bar i { flex: 1; border-radius: 4px; background: var(--line); }
 .bar i.on { background: var(--accent); }
 /* 릴스: 위쪽에 항상 보이는 안내 띠 (인스타 위쪽 계정 이름 자리 아래) */
@@ -385,7 +387,7 @@ function setSub(i, j) {
     <div class="bar">${Array.from({ length: n }, (_, k) => `<i class="${k <= i ? 'on' : ''}"></i>`).join('')}</div>
     ${s.html.includes('class="body') ? s.html : `<div class="body">${s.html}</div>`}
     <div class="sub"><span></span></div>
-    <div class="foot"><span><b>Daily Stock Insights</b> · BY YOONSEUL</span><span class="num">${i + 1} / ${n}</span></div>
+    <div class="foot"><span class="more-pill">자세한 내용은 <b>${esc(MORE_URL.replace(/^https:\/\//, ''))}</b> 에서 '윤슬'을 확인하세요</span><span class="num">${i + 1} / ${n}</span></div>
   </section>`).join('');
   await document.fonts.ready;
   document.querySelectorAll('.slide').forEach(fit);

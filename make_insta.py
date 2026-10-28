@@ -4,6 +4,7 @@
     post/01.png …     카드뉴스 (1080×1350) — 순서대로 캐러셀에 올리면 된다
     caption.txt       캡션 (복사해서 붙여 넣기)
     article.txt       thefirstclass.kr 에 올릴 '윤슬' 해설 글 초안 (브리핑 작업이 써 둔 것)
+    article.html      글 + 이미지를 한 화면에. '전체 복사' 버튼으로 글쓰기 창에 바로 붙여 넣기
     reel.mp4          릴스 영상 (1080×1920, 목소리·자막 포함)
     narration.txt     영상 대본
 
@@ -163,6 +164,91 @@ def save_article(base, out):
         print('해설 글 초안이 아직 브리핑에 없어요')
 
 
+# 글 소제목에 맞춰 넣을 이미지. article_images/ 에 있으면 그것을, 없으면 카드뉴스 이미지를 쓴다
+ARTICLE_IMAGES = [('', ['article_images/1_thumb.png', 'post/01.png']),
+                  ('왜 이렇게', ['article_images/2_movers.png']),
+                  ('눈에 띈 회사', ['article_images/3_earn.png', 'post/04.png']),
+                  ('체크 포인트', ['article_images/4_check.png'])]
+
+
+def article_html(out):
+    """article.txt 와 이미지를 한 페이지로 묶는다. 이미지는 파일 안에 넣어서 복사·붙여 넣기 때 같이 따라가게 한다"""
+    import base64
+    import html
+    src = out / 'article.txt'
+    if not src.exists():
+        return None
+    title, _, body = src.read_text(encoding='utf-8').partition('\n')
+
+    def img(key):
+        for cand in dict(ARTICLE_IMAGES)[key]:
+            f = out / cand
+            if f.exists():
+                data = base64.b64encode(f.read_bytes()).decode()
+                return (f'<figure><img src="data:image/png;base64,{data}" alt="">'
+                        f'<button type="button" class="ci">이미지만 복사</button></figure>')
+        return ''
+
+    parts, para = [img('')], []
+    flush = lambda: para and (parts.append('<p>' + '<br>'.join(html.escape(x) for x in para) + '</p>'), para.clear())
+    for ln in body.strip().splitlines():
+        t = ln.strip()
+        if not t:
+            flush()
+        elif t.startswith('■'):
+            flush()
+            parts.append(f'<h2>{html.escape(t)}</h2>')
+            parts += [img(k) for k, _ in ARTICLE_IMAGES[1:] if k in t]
+        else:
+            para.append(ln.rstrip())
+    flush()
+    page = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{html.escape(title)}</title>
+<style>
+:root {{ --bg: #f4f5f1; --paper: #fff; --ink: #1d1f24; --muted: #646b73; --accent: #0f8a7e; --line: #e2e4dc; }}
+body {{ margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.8 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; word-break: keep-all; }}
+.bar {{ position: sticky; top: 0; background: var(--ink); color: #fff; padding: 12px 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; z-index: 2; }}
+.bar button {{ font: inherit; font-size: 15px; font-weight: 700; border: 0; border-radius: 999px; padding: 8px 18px; cursor: pointer; background: #fff; color: var(--ink); }}
+.bar button.main {{ background: var(--accent); color: #fff; }}
+.bar span {{ font-size: 14px; opacity: .8; }}
+article {{ max-width: 760px; margin: 24px auto 80px; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 36px 40px; }}
+h1 {{ font-size: 27px; line-height: 1.4; margin: 0 0 20px; }}
+h2 {{ font-size: 20px; margin: 34px 0 10px; }}
+p {{ margin: 0 0 16px; }}
+figure {{ margin: 18px 0 24px; position: relative; }}
+figure img {{ width: 100%; border-radius: 10px; display: block; }}
+.ci {{ position: absolute; right: 10px; top: 10px; font-size: 13px; border: 0; border-radius: 999px; padding: 5px 12px; background: rgba(0,0,0,.65); color: #fff; cursor: pointer; }}
+</style></head><body>
+<div class="bar"><button type="button" class="main" id="all">글 전체 복사 (이미지 포함)</button><button type="button" id="title">제목만 복사</button><button type="button" id="text">글자만 복사</button><span id="msg">복사한 뒤 더퍼스트클래스 글쓰기 창에 붙여 넣으세요</span></div>
+<article><h1 id="h">{html.escape(title)}</h1><div id="body">{''.join(parts)}</div></article>
+<script>
+const msg = t => {{ document.getElementById('msg').textContent = t; }};
+const body = document.getElementById('body');
+async function copyHtml(node) {{
+  const clone = node.cloneNode(true); clone.querySelectorAll('.ci').forEach(b => b.remove());
+  try {{
+    await navigator.clipboard.write([new ClipboardItem({{ 'text/html': new Blob([clone.innerHTML], {{ type: 'text/html' }}), 'text/plain': new Blob([clone.innerText], {{ type: 'text/plain' }}) }})]);
+    msg('✅ 복사했어요. 글쓰기 창에 붙여 넣으세요 (이미지가 안 붙으면 이미지만 따로 복사)');
+  }} catch (e) {{
+    const r = document.createRange(); r.selectNodeContents(node); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    document.execCommand('copy'); msg('✅ 선택해서 복사했어요');
+  }}
+}}
+document.getElementById('all').onclick = () => copyHtml(body);
+document.getElementById('title').onclick = () => navigator.clipboard.writeText(document.getElementById('h').innerText).then(() => msg('✅ 제목을 복사했어요'));
+document.getElementById('text').onclick = () => {{ const c = body.cloneNode(true); c.querySelectorAll('figure').forEach(f => f.remove());
+  navigator.clipboard.writeText(c.innerText).then(() => msg('✅ 글자만 복사했어요')); }};
+document.querySelectorAll('.ci').forEach(b => b.onclick = async () => {{
+  const blob = await (await fetch(b.previousElementSibling.src)).blob();
+  try {{ await navigator.clipboard.write([new ClipboardItem({{ 'image/png': blob }})]); msg('✅ 이미지를 복사했어요'); }}
+  catch (e) {{ msg('이미지 복사가 안 돼요. 이미지를 오른쪽 클릭 → 이미지 복사를 써 주세요'); }}
+}});
+</script></body></html>"""
+    dst = out / 'article.html'
+    dst.write_text(page, encoding='utf-8')
+    return dst
+
+
 def notify(text):
     subprocess.run(['osascript', '-e', f'display notification "{text}" with title "윤슬 주식 인스타"'], check=False)
 
@@ -218,10 +304,15 @@ def main():
         print(f'릴스 저장: {total:.0f}초' + (f' (목소리 {speed:.2f}배속)' if speed > 1 else '')
               + (f' — 목표 {TARGET}초보다 길어요. 대본을 줄여야 해요' if total > TARGET + 3 else ''))
 
+    page = article_html(out)
+    if page:
+        print(f'글 페이지: {page}')
     print(f'\n완성: {out}')
     if a.wait:
         notify('오늘 밤 9시에 올릴 글·카드뉴스·릴스가 준비됐어요')
         subprocess.run(['open', str(out)], check=False)
+        if page:
+            subprocess.run(['open', '-a', 'Google Chrome', str(page)], check=False)
 
 
 if __name__ == '__main__':
