@@ -217,6 +217,10 @@ def publish_images(out):
 # 글 소제목에 맞춰 넣을 이미지 (글에 [[이미지 이름]] 줄이 없을 때)
 ARTICLE_IMAGES = [('', '1_thumb'), ('왜 이렇게', '2_movers'), ('실적 발표', '3_earn'), ('체크 포인트', '4_check')]
 UP, DOWN = '#e0314b', '#2463eb'
+# 글쓰기 창이 CSS 를 버려도 문단 모양이 남도록 모든 문단에 직접 스타일을 단다 (+ 소제목 앞 빈 줄)
+PS = 'margin:0 0 16px;line-height:1.8'
+HS = 'margin:28px 0 12px;font-size:20px;font-weight:700;line-height:1.5'
+US = 'margin:0 0 16px;padding-left:22px;line-height:1.8'
 
 
 def article_html(out):
@@ -239,13 +243,13 @@ def article_html(out):
         """글을 HTML 조각으로. img_src(이름) → 이미지 주소"""
         out_, para, items = [], [], []
         def img(name):
-            return f'<p><img src="{img_src(name)}" alt="" style="max-width:100%;height:auto"></p>' if name in have else ''
+            return f'<p style="{PS}"><img src="{img_src(name)}" alt="" style="max-width:100%;height:auto"></p>' if name in have else ''
         def flush():
             if para:
-                out_.append('<p>' + '<br>'.join(color(html.escape(x)) for x in para) + '</p>')
+                out_.append(f'<p style="{PS}">' + '<br>'.join(color(html.escape(x)) for x in para) + '</p>')
                 para.clear()
             if items:
-                out_.append('<ul>' + ''.join(f'<li>{color(html.escape(x))}</li>' for x in items) + '</ul>')
+                out_.append(f'<ul style="{US}">' + ''.join(f'<li style="margin:0 0 6px">{color(html.escape(x))}</li>' for x in items) + '</ul>')
                 items.clear()
         marked = '[[' in body  # 대표 이미지(1_thumb)는 대표 이미지 칸에 따로 올리므로 본문에는 넣지 않는다
         for ln in body.strip().splitlines():
@@ -255,7 +259,7 @@ def article_html(out):
             elif t.startswith('[[') and t.endswith(']]'):
                 flush(); out_.append(img(t[2:-2]))
             elif t.startswith('■'):
-                flush(); out_.append(f'<h3>{html.escape(t.lstrip("■ ").strip())}</h3>')
+                flush(); out_.append(('<p><br></p>' if out_ else '') + f'<h3 style="{HS}">{html.escape(t.lstrip("■ ").strip())}</h3>')
                 if not marked:
                     out_ += [img(n) for k, n in ARTICLE_IMAGES[1:] if k in t]
             elif t.startswith('- '):
@@ -263,7 +267,7 @@ def article_html(out):
                     flush()
                 items.append(t[2:])
             elif re.match(r'^[①-⑩]', t):
-                flush(); out_.append(f'<p><strong>{html.escape(t)}</strong></p>')
+                flush(); out_.append(f'<p style="{PS};margin-top:22px"><strong>{html.escape(t)}</strong></p>')
             else:
                 if items:
                     flush()
