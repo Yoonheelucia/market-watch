@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1080">
+<meta name="robots" content="noindex">
+<title>Daily Stock Insights 인스타 카드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<!--
+  인스타그램용 화면. make_insta.py 가 이 페이지를 열어 한 장씩 캡처한다.
+    cards.html          → 카드뉴스 (1080×1350, 4:5). 자세히 읽는 용도
+    cards.html?f=reel   → 릴스 장면 (1080×1920, 9:16). 장면마다 핵심 하나만 크게, 아래쪽에 자막
+    &m=all              → 한국 시장도 함께 (기본은 미국 주식 위주)
+  내용·내레이션 대본·캡션은 모두 사이트 자료(data.json, briefing.json …)에서 자동으로 만든다.
+-->
+<style>
+:root {
+  --bg: #f7f6f2; --card: #ffffff; --text: #1d1f24; --muted: #6b7280; --line: #e8e6df;
+  --accent: #0f8a7e; --accent-soft: #e3f4f1; --up: #e0314b; --down: #2463eb;
+  --good: #16a34a; --good-soft: #e8f7ee; --bad: #dc2626; --bad-soft: #fdecec; --mix: #b45309; --mix-soft: #fdf3e2;
+  --chip: #f1f0ea;
+  --w: 1080px; --h: 1350px; --pad-top: 96px; --pad-bottom: 96px; --pad-x: 84px;
+}
+/* 릴스: 위쪽 계정 이름·아래쪽 캡션·오른쪽 아이콘 자리를 피한다 */
+html.reel { --h: 1920px; --pad-top: 280px; --pad-bottom: 680px; --pad-x: 110px; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #ccc; font-family: 'Noto Sans KR', system-ui, -apple-system, sans-serif; color: var(--text); word-break: keep-all; }
+.slide { --s: 1; position: relative; width: var(--w); height: var(--h); overflow: hidden; background: var(--bg); margin: 0 auto 40px;
+  display: flex; flex-direction: column; padding: var(--pad-top) var(--pad-x) var(--pad-bottom); }
+html.reel .slide { padding-right: 130px; }
+.slide .body { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+.kicker { font-size: calc(var(--s) * 30px); font-weight: 700; color: var(--accent); letter-spacing: .02em; }
+h1 { font-size: calc(var(--s) * 70px); line-height: 1.25; margin: 10px 0 36px; font-weight: 900; }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+.card { background: var(--card); border: 2px solid var(--line); border-radius: 28px; padding: calc(var(--s) * 30px) 36px; }
+.stack { display: flex; flex-direction: column; gap: calc(var(--s) * 20px); }
+
+/* 테두리 정보: 브랜드(오른쪽 위), 쪽 번호(아래), 진행 막대(릴스) */
+.brand { position: absolute; top: 40px; right: var(--pad-x); font-size: 30px; font-weight: 900; color: var(--accent); letter-spacing: .02em; }
+.foot { position: absolute; left: var(--pad-x); right: var(--pad-x); bottom: 36px; display: flex; justify-content: space-between;
+  font-size: 24px; color: var(--muted); font-weight: 500; }
+.foot b { color: var(--text); font-weight: 700; }
+.bar { position: absolute; left: var(--pad-x); right: 130px; top: 190px; height: 8px; display: flex; gap: 8px; }
+.bar i { flex: 1; border-radius: 4px; background: var(--line); }
+.bar i.on { background: var(--accent); }
+html.reel .brand { top: 214px; left: var(--pad-x); right: auto; font-size: 28px; }
+html.reel .foot, html:not(.reel) .bar { display: none; }
+
+/* ── 카드뉴스 ── */
+.date { display: inline-block; align-self: flex-start; background: var(--text); color: #fff; border-radius: 999px; padding: 8px 24px; font-size: 30px; font-weight: 700; }
+.wx { display: grid; grid-template-columns: calc(var(--s) * 120px) 1fr auto; align-items: center; gap: 24px; }
+.wx .ico { font-size: calc(var(--s) * 92px); line-height: 1; text-align: center; }
+.wx .where { font-size: calc(var(--s) * 38px); font-weight: 700; }
+.wx .what { font-size: calc(var(--s) * 26px); color: var(--muted); }
+.wx .chg { text-align: right; font-size: calc(var(--s) * 50px); font-weight: 900; line-height: 1.1; }
+.wx .word { text-align: right; font-size: calc(var(--s) * 28px); font-weight: 700; color: var(--muted); }
+.fx { margin-top: 26px; font-size: calc(var(--s) * 30px); color: var(--muted); }
+ol.why { margin: 0; padding: 0; list-style: none; counter-reset: n; display: flex; flex-direction: column; gap: calc(var(--s) * 26px); }
+ol.why li { counter-increment: n; display: grid; grid-template-columns: calc(var(--s) * 64px) 1fr; gap: 20px; font-size: calc(var(--s) * 38px); line-height: 1.55; }
+ol.why li::before { content: counter(n); width: calc(var(--s) * 64px); height: calc(var(--s) * 64px); border-radius: 50%; background: var(--accent); color: #fff;
+  font-weight: 900; display: grid; place-items: center; font-size: calc(var(--s) * 32px); margin-top: 4px; }
+.news { border-radius: 28px; padding: calc(var(--s) * 28px) 36px; }
+.news.p { background: var(--good-soft); } .news.m { background: var(--bad-soft); } .news.x { background: var(--mix-soft); }
+.news .tag { font-size: calc(var(--s) * 26px); font-weight: 700; }
+.news.p .tag { color: var(--good); } .news.m .tag { color: var(--bad); } .news.x .tag { color: var(--mix); }
+.news .t { font-size: calc(var(--s) * 40px); font-weight: 900; margin: 4px 0 8px; }
+.news .d { font-size: calc(var(--s) * 31px); line-height: 1.55; }
+.co { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 20px; padding: calc(var(--s) * 22px) 32px; }
+.co .nm { font-size: calc(var(--s) * 38px); font-weight: 900; }
+.co .px { font-size: calc(var(--s) * 26px); color: var(--muted); }
+.co .chg { grid-row: span 2; text-align: right; font-size: calc(var(--s) * 48px); font-weight: 900; }
+.co .lv { grid-column: 1 / -1; font-size: calc(var(--s) * 25px); color: var(--muted); }
+.note { margin-top: 22px; font-size: calc(var(--s) * 24px); color: var(--muted); line-height: 1.5; }
+.cal { display: grid; grid-template-columns: calc(var(--s) * 230px) 1fr; gap: 8px 24px; padding: calc(var(--s) * 26px) 32px; }
+.cal .dt { font-size: calc(var(--s) * 30px); font-weight: 900; color: var(--accent); line-height: 1.4; }
+.cal .t { font-size: calc(var(--s) * 36px); font-weight: 900; line-height: 1.35; }
+.cal .m { font-size: calc(var(--s) * 29px); line-height: 1.5; margin-top: 6px; }
+.cal.done .dt { color: var(--muted); }
+.link { margin-top: 10px; background: var(--accent-soft); color: var(--text); border-radius: 14px; padding: 10px 16px; font-size: calc(var(--s) * 26px); line-height: 1.5; }
+.term .w { font-size: calc(var(--s) * 76px); font-weight: 900; line-height: 1.2; }
+.term .en { font-size: calc(var(--s) * 30px); color: var(--muted); margin-top: 6px; }
+.term .d { font-size: calc(var(--s) * 40px); line-height: 1.6; margin: 34px 0; }
+.term .ex { background: var(--chip); border-radius: 24px; padding: 28px 32px; font-size: calc(var(--s) * 33px); line-height: 1.6; }
+.outro { text-align: center; align-items: center; }
+.outro .big { font-size: calc(var(--s) * 64px); font-weight: 900; line-height: 1.35; }
+.outro .url { margin-top: 40px; display: inline-block; background: var(--accent); color: #fff; border-radius: 999px; padding: 18px 40px; font-size: 34px; font-weight: 700; }
+.outro .more { margin-top: 24px; font-size: 34px; font-weight: 700; line-height: 1.5; }
+.outro .small { margin-top: 48px; font-size: 27px; color: var(--muted); line-height: 1.6; }
+
+/* ── 릴스 장면: 핵심 하나만 크게 ── */
+.r-kicker { font-size: calc(var(--s) * 38px); font-weight: 700; color: var(--accent); }
+.r-title { font-size: calc(var(--s) * 84px); font-weight: 900; line-height: 1.22; margin: 12px 0 44px; }
+.r-hero { text-align: center; }
+.r-hero .ico { font-size: calc(var(--s) * 260px); line-height: 1.1; }
+.r-hero .word { font-size: calc(var(--s) * 104px); font-weight: 900; margin-top: 10px; }
+.r-hero .chg { font-size: calc(var(--s) * 52px); font-weight: 700; margin-top: 10px; }
+.r-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; background: var(--card); border: 2px solid var(--line); border-radius: 32px; padding: calc(var(--s) * 34px) 40px; }
+.r-row .nm { font-size: calc(var(--s) * 50px); font-weight: 900; line-height: 1.2; }
+.r-row .sub2 { font-size: calc(var(--s) * 30px); color: var(--muted); font-weight: 500; }
+.r-row .chg { font-size: calc(var(--s) * 72px); font-weight: 900; white-space: nowrap; }
+.r-row .ico { font-size: calc(var(--s) * 70px); }
+.r-text { font-size: calc(var(--s) * 54px); font-weight: 700; line-height: 1.5; }
+.r-text + .r-text { margin-top: 40px; }
+.r-text .n { color: var(--accent); font-weight: 900; margin-right: 8px; }
+.r-news { border-radius: 32px; padding: calc(var(--s) * 34px) 40px; }
+.r-news.p { background: var(--good-soft); } .r-news.m { background: var(--bad-soft); } .r-news.x { background: var(--mix-soft); }
+.r-news .tag { font-size: calc(var(--s) * 32px); font-weight: 700; }
+.r-news.p .tag { color: var(--good); } .r-news.m .tag { color: var(--bad); } .r-news.x .tag { color: var(--mix); }
+.r-news .t { font-size: calc(var(--s) * 58px); font-weight: 900; line-height: 1.3; }
+.r-big { background: var(--card); border: 2px solid var(--line); border-radius: 32px; padding: calc(var(--s) * 40px) 44px; }
+.r-big .dt { font-size: calc(var(--s) * 36px); font-weight: 900; color: var(--accent); }
+.r-big .t { font-size: calc(var(--s) * 60px); font-weight: 900; line-height: 1.3; margin: 8px 0 18px; }
+.r-big .m { font-size: calc(var(--s) * 42px); font-weight: 700; line-height: 1.5; }
+.r-big .link { font-size: calc(var(--s) * 34px); padding: 16px 22px; border-radius: 20px; margin-top: 20px; }
+.r-term .w { font-size: calc(var(--s) * 110px); font-weight: 900; line-height: 1.15; }
+.r-term .d { font-size: calc(var(--s) * 48px); font-weight: 700; line-height: 1.5; margin-top: 24px; }
+.r-end { margin-top: 70px; background: var(--accent); color: #fff; border-radius: 32px; padding: 34px 40px; font-size: calc(var(--s) * 44px); font-weight: 900; line-height: 1.4; }
+.r-end small { display: block; font-size: 30px; font-weight: 500; opacity: .9; margin-top: 8px; }
+
+/* 자막 (릴스만): 아래 캡션 자리 위쪽 */
+.sub { display: none; }
+html.reel .sub { display: flex; position: absolute; left: 80px; right: 130px; bottom: 420px; min-height: 140px; align-items: center; justify-content: center; }
+html.reel .sub span { background: rgba(29, 31, 36, .92); color: #fff; border-radius: 22px; padding: 16px 30px; font-size: 42px; font-weight: 700; line-height: 1.45; text-align: center; }
+html.reel .sub span:empty { display: none; }
+</style>
+</head>
+<body>
+<main id="slides"></main>
+
+<script src="../schedule.js"></script>
+<script src="common.js"></script>
+<script>
+const Q = new URLSearchParams(location.search);
+const REEL = Q.get('f') === 'reel';
+const US = Q.get('m') !== 'all';
+if (REEL) document.documentElement.classList.add('reel');
+const BRAND = '윤슬 주식';
+// 마지막 장·캡션의 '자세히 보러 오세요' 안내
+const MORE_ASK = '자세한 내용을 보고 싶다면?';
+const MORE_URL = 'https://thefirstclass.kr/first/home';
+const MORE_TEXT = `${MORE_URL} 에서 '윤슬'의 글을 확인하세요.`;
+const SIGN = { '+': ['p', '👍 좋은 소식'], '-': ['m', '👎 걱정거리'], '±': ['x', '🤔 둘 다 가능'] };
+
+// 미국 위주 자료(briefing.easy.us)가 있으면 그걸 쓰고, 없으면 일반 자료에서 한국 이야기를 뺀다.
+// easy.us 의 한국 소식에는 '미국 주식과 무슨 관계인지(link)'가 꼭 붙어 있다.
+const KR_WORDS = /한국|코스피|코스닥|삼성|SK|하이닉스|현대차|네이버|카카오|LG|신한|KB/;
+const usOnly = list => (list || []).filter(x => !KR_WORDS.test(typeof x === 'string' ? x : [x.title, x.text, x.result, x.meaning].join(' ')));
+const pickList = (easy, key) => !US ? easy[key] || [] : easy.us?.[key]?.length ? easy.us[key] : usOnly(easy[key]);
+const linkHtml = x => x.link ? `<div class="link">🔗 미국 주식과의 관계: ${esc(x.link)}</div>` : '';
+
+// 받침이 있으면 a, 없으면 b (은/는, 이/가, 이에요/예요)
+const jo = (w, a, b) => { const c = w.charCodeAt(w.length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? a : b; };
+// 화면 글자를 읽기 좋은 말로 바꾼다 (자막은 화면 글자 그대로, 목소리는 이 말로)
+const say = s => String(s)
+  .replace(/(\d{1,2})\/(\d{1,2})\s*\((.)\)/g, (_, m, d, w) => `${m}월 ${d}일 ${w}요일`)
+  .replace(/(\d{1,2})\/(\d{1,2})/g, '$1월 $2일')
+  .replace(/S&P\s?500/g, '에스앤피 500').replace(/AI/g, '에이아이').replace(/PER/g, '퍼')
+  .replace(/\([^)]*\)/g, '').replace(/[·→]/g, ', ').replace(/—/g, ', ').replace(/\s+/g, ' ').trim();
+// '10/29 (목) 새벽' → 오늘·내일·모레면 그 말로 (말로 할 때 짧게)
+function relDay(s) {
+  const m = String(s).match(/(\d{1,2})\/(\d{1,2})\s*(\(.\))?\s*(.*)/);
+  if (!m) return say(s);
+  const k = kstNow(), diff = Math.round((Date.UTC(k.getUTCFullYear(), m[1] - 1, +m[2]) - Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate())) / 864e5);
+  const word = ['오늘', '내일', '모레'][diff];
+  return word ? `${word}${m[4] ? ' ' + m[4] : ''}` : say(s);
+}
+const firstSentence = s => String(s).split(/(?<=[.!?])\s/)[0];
+const moved = (v, end) => v > 0.05 ? `${Math.abs(v).toFixed(1)}% 올랐${end}` : v < -0.05 ? `${Math.abs(v).toFixed(1)}% 내렸${end}` : `거의 그대로${end === '고' ? '였고' : '였어요'}`;
+const kstNow = () => new Date(Date.now() + 9 * 3600e3);
+const today = () => { const d = kstNow(); return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 ${DAYS[d.getUTCDay()]}요일`; };
+function dayChange(c) { const [a, b] = lastTwo(c); return { ch: (c[b] / c[a] - 1) * 100, i: b }; }
+
+// 카드뉴스와 릴스가 함께 쓰는 재료
+function gather(data, brief, earnings) {
+  const easy = brief.easy || {};
+  const pick = US
+    ? [['sp500', '미국 대표 500', 'S&P 500'], ['nasdaq', '미국 기술주', '나스닥'], ['dow', '미국 전통 우량주 30', '다우']]
+    : [['sp500', '🇺🇸 미국 대표 500', 'S&P 500'], ['nasdaq', '🇺🇸 미국 기술주', '나스닥'], ['kospi', '🇰🇷 한국', '코스피']];
+  const wx = pick.map(([id, where, name]) => {
+    const m = data.markets.find(x => x.id === id), { ch, i } = dayChange(m.index.c);
+    return { where, name, ch, w: WEATHER.find(x => ch >= x.min), day: m.dates[i], live: sessionState(data, id, m.dates[i]).startsWith('장중') };
+  });
+  const stocks = {};
+  for (const m of data.markets) for (const s of m.stocks) stocks[s.ticker] ??= { ...s, currency: m.currency };
+  const movers = (US ? COMPANIES.us : [...COMPANIES.kr, ...COMPANIES.us]).map(t => stocks[t]).filter(Boolean)
+    .map(s => { const { ch, i } = dayChange(s.c); return { ...s, ch, last: s.c[i], lv: priceLevel(earnings?.[s.ticker]) }; })
+    .sort((a, b) => Math.abs(b.ch) - Math.abs(a.ch));
+  const term = TERMS[termOfDay(new Date(kstNow().toISOString().slice(0, 10) + 'T12:00:00')) % TERMS.length];
+  return {
+    wx, movers, term, fx: data.usdkrw,
+    why: pickList(easy, 'why'), news: pickList(easy, 'news'),
+    past: pickList(easy, 'weekPast'), week: pickList(easy, 'week'),
+  };
+}
+
+const money = s => s.currency === 'USD' ? '$' + s.last.toLocaleString(undefined, { maximumFractionDigits: 2 }) : Math.round(s.last).toLocaleString() + '원';
+const flag = s => US ? '' : s.currency === 'USD' ? '🇺🇸 ' : '🇰🇷 ';
+
+// ── 카드뉴스: 자세히 읽는 용도 ──
+function postSlides(g) {
+  const out = [];
+  out.push(`<span class="date">${today()} 아침</span>
+    <h1>${US ? '어젯밤 미국 증시<br>날씨는?' : '오늘의<br>시장 날씨'}</h1>
+    <div class="stack">${g.wx.map(x => `<div class="card wx">
+      <div class="ico">${x.w.ico}</div>
+      <div><div class="where">${x.where}</div><div class="what">${x.name} · ${fmtDate(x.day)}${x.live ? ' 장중' : ''}</div></div>
+      <div><div class="chg num ${cls(x.ch)}">${pct(x.ch)}</div><div class="word">${x.w.word}</div></div>
+    </div>`).join('')}</div>
+    ${g.fx ? `<div class="fx">💵 환율 1달러 = <b class="num">${Math.round(g.fx).toLocaleString()}원</b></div>` : ''}`);
+  if (g.why.length) out.push(`<div class="kicker">🤔 왜 그랬을까</div><h1>요즘 시장,<br>왜 이럴까?</h1>
+    <ol class="why">${g.why.map(s => `<li>${esc(s)}</li>`).join('')}</ol>`);
+  const news = g.news.slice(0, 3);
+  if (news.length) out.push(`<div class="kicker">📰 주요 소식</div><h1>꼭 알아 둘<br>소식 ${news.length}가지</h1>
+    <div class="stack">${news.map(n => { const [k, tag] = SIGN[n.sign] || SIGN['±'];
+      return `<div class="news ${k}"><div class="tag">${tag}</div><div class="t">${esc(n.title)}</div><div class="d">${esc(n.text)}</div>${linkHtml(n)}</div>`; }).join('')}</div>`);
+  const movers = g.movers.slice(0, 4);
+  if (movers.length) out.push(`<div class="kicker">🏢 아는 회사</div><h1>많이 들어 본 회사,<br>어제 가장 크게 움직인 곳</h1>
+    <div class="stack">${movers.map(s => `<div class="card co">
+      <div class="nm">${flag(s)}${esc(s.name)}</div>
+      <div class="chg num ${cls(s.ch)}">${pct(s.ch)}</div>
+      <div class="px num">${money(s)}</div>
+      <div class="lv">${s.lv.dot} ${s.lv.text}</div>
+    </div>`).join('')}</div>
+    <div class="note">신호등은 지금 주가가 지난 5년 보통 수준보다 비싼지 싼지만 비교한 거예요. 사고팔라는 뜻이 아니에요.</div>`);
+  const past = g.past.slice(0, 4);
+  if (past.length) out.push(`<div class="kicker">⏪ 지난 일정</div><h1>그 일이 있고 나서,<br>주가는 어땠을까?</h1>
+    <div class="stack">${past.map(r => `<div class="card cal done"><div class="dt">${esc(r.date)}</div>
+      <div><div class="t">${esc(r.title)}</div><div class="m">↳ ${esc(r.result || '반응 확인 중')}</div>${linkHtml(r)}</div></div>`).join('')}</div>`);
+  const week = g.week.slice(0, 4);
+  if (week.length) out.push(`<div class="kicker">📅 앞으로 볼 일정</div><h1>이런 날엔<br>주가가 크게 움직여요</h1>
+    <div class="stack">${week.map(r => `<div class="card cal"><div class="dt">${esc(r.date)}</div>
+      <div><div class="t">${esc(r.title)}</div>${r.meaning ? `<div class="m">${esc(r.meaning)}</div>` : ''}${linkHtml(r)}</div></div>`).join('')}</div>`);
+  const t = g.term;
+  out.push(`<div class="kicker">📖 오늘의 용어</div>
+    <div class="term"><div class="w">${esc(t.w)}</div><div class="en">${esc(t.en)}</div>
+    <div class="d">${esc(t.d)}</div><div class="ex">💡 예를 들면 — ${esc(t.ex)}</div></div>`);
+  out.push(`<div class="body outro"><div class="big">주식이 처음이라도<br>매일 아침 5분이면 충분해요</div>
+    <div class="url">${MORE_ASK}</div>
+    <div class="more">${esc(MORE_URL)} 에서<br>'윤슬'의 글을 확인하세요.</div>
+    <div class="small">이 내용은 공부를 돕는 정보 정리이고, 어떤 종목을 사거나 팔라는 추천이 아니에요.<br>주가: 야후 파이낸스 · 숫자가 늦거나 틀릴 수 있어요.</div></div>`);
+  return out.map(html => ({ html, lines: [] }));
+}
+
+// ── 릴스: 60초 안팎, 장면마다 핵심 하나 ──
+function reelSlides(g) {
+  const out = [];
+  const line = (text, voice = say(text)) => ({ text, voice });
+  const [a, b, c] = g.wx, hero = a.w;
+
+  // 1. 훅: 결론부터
+  out.push({ html: `<span class="date">${today()} 아침</span>
+    <div class="r-title">어젯밤<br>미국 증시 날씨는?</div>
+    <div class="r-hero"><div class="ico">${hero.ico}</div><div class="word">${hero.word}</div></div>`,
+    lines: [line(`어젯밤 미국 증시 = ${hero.ico} ${hero.word}`, `어젯밤 미국 증시, 날씨로 치면 ${hero.word}${jo(hero.word, '이에요', '예요')}.`)] });
+
+  // 2. 지수 3개
+  out.push({ html: `<div class="r-kicker">📊 ${US ? '미국 지수' : '지수'}</div><div class="r-title">숫자로 보면</div>
+    <div class="stack">${g.wx.map(x => `<div class="r-row"><div><div class="nm">${x.name}</div><div class="sub2">${x.where}${x.live ? ' · 장중' : ''}</div></div>
+      <div class="chg num ${cls(x.ch)}">${pct(x.ch)}</div></div>`).join('')}</div>
+    ${g.fx ? `<div class="fx" style="font-size:34px">💵 환율 1달러 = <b class="num">${Math.round(g.fx).toLocaleString()}원</b></div>` : ''}`,
+    lines: [line(g.wx.map(x => `${x.name} ${pct(x.ch)}`).join(' · '),
+      `${say(a.name)}은 ${moved(a.ch, '고')}, ${b.name}${jo(b.name, '은', '는')} ${moved(b.ch, '고')}, ${c.name}${jo(c.name, '은', '는')} ${moved(c.ch, '어요')}.`)] });
+
+  // 3. 왜? (앞의 2개)
+  const why = g.why.slice(0, 2);
+  if (why.length) out.push({ html: `<div class="r-kicker">🤔 왜 그랬을까</div><div class="r-title">왜 이렇게<br>움직였을까?</div>
+    ${why.map((s, i) => `<div class="r-text"><span class="n">${i + 1}</span>${esc(s)}</div>`).join('')}`,
+    lines: why.map((s, i) => line(s, (i ? '' : '왜 그랬을까요? ') + say(s))) });
+
+  // 4. 소식 3가지: 제목만
+  const news = g.news.slice(0, 3);
+  if (news.length) out.push({ html: `<div class="r-kicker">📰 주요 소식</div><div class="r-title">오늘 알아 둘<br>소식 ${news.length}가지</div>
+    <div class="stack">${news.map(n => { const [k, tag] = SIGN[n.sign] || SIGN['±'];
+      return `<div class="r-news ${k}"><div class="tag">${tag}</div><div class="t">${esc(n.title)}</div>${n.link ? `<div class="link" style="font-size:30px">🔗 ${esc(n.link)}</div>` : ''}</div>`; }).join('')}</div>`,
+    lines: [line(news.map(n => n.title).join(' · '),
+      `소식 ${['', '한', '두', '세'][news.length]} 가지. ` + news.map((n, i) => `${['첫째', '둘째', '셋째'][i]}, ${say(n.title)}.${n.link ? ' ' + say(firstSentence(n.link)) : ''}`).join(' '))] });
+
+  // 5. 아는 회사 3곳
+  const m = g.movers.slice(0, 3);
+  if (m.length) out.push({ html: `<div class="r-kicker">🏢 아는 회사</div><div class="r-title">어제 가장 크게<br>움직인 곳</div>
+    <div class="stack">${m.map(s => `<div class="r-row"><div><div class="nm">${flag(s)}${esc(s.name)}</div><div class="sub2 num">${money(s)}</div></div>
+      <div class="chg num ${cls(s.ch)}">${pct(s.ch)}</div></div>`).join('')}</div>`,
+    lines: [line(m.map(s => `${s.name} ${pct(s.ch)}`).join(' · '),
+      '익숙한 회사 중에선 ' + m.slice(0, 2).map((s, i) => `${s.name}${jo(s.name, '이', '가')} ${moved(s.ch, i ? '어요' : '고')}`).join(', ') + '.')] });
+
+  // 6. 지난 일정 1개
+  const p = g.past[0];
+  if (p) out.push({ html: `<div class="r-kicker">⏪ 지난 일정</div><div class="r-title">그 일 뒤<br>주가는?</div>
+    <div class="r-big"><div class="dt">${esc(p.date)}</div><div class="t">${esc(p.title)}</div><div class="m">↳ ${esc(p.result || '반응 확인 중')}</div>${linkHtml(p)}</div>`,
+    lines: [line(`${p.title} → ${p.result || '반응 확인 중'}`, `${say(p.title)}. ${say(p.result || '반응은 아직 확인 중이에요.')}`)] });
+
+  // 7. 앞으로 일정 2개
+  const wk = g.week.slice(0, 2);
+  if (wk.length) out.push({ html: `<div class="r-kicker">📅 앞으로 볼 일정</div><div class="r-title">이날은<br>꼭 체크</div>
+    <div class="stack">${wk.map(r => `<div class="r-big"><div class="dt">${esc(r.date)}</div><div class="t">${esc(r.title)}</div>${linkHtml(r)}</div>`).join('')}</div>`,
+    lines: wk.map((r, i) => line(`${r.date} ${r.title}`,
+      `${i ? '' : '앞으로 볼 일정이에요. '}${relDay(r.date)}, ${say(r.title)}.${r.link ? ' ' + say(firstSentence(r.link)) : ''}`)) });
+
+  // 8. 오늘의 용어 + 마무리
+  const t = g.term, tw = t.w.replace(/\s*\(.*\)/, '');
+  out.push({ html: `<div class="r-kicker">📖 오늘의 용어</div>
+    <div class="r-term"><div class="w">${esc(t.w)}</div><div class="d">${esc(t.d)}</div></div>
+    <div class="r-end">${MORE_ASK}<small>${esc(MORE_URL)} 에서 '윤슬'의 글을 확인하세요.</small></div>
+    <div class="note" style="font-size:26px">투자 추천이 아닌 정보 정리예요</div>`,
+    lines: [line(`오늘의 용어: ${t.w}`, `오늘의 용어, ${say(tw)}. ${say(firstSentence(t.d))}`),
+      line(`${MORE_ASK} 👉 thefirstclass.kr 에서 '윤슬'`, '자세한 내용을 보고 싶다면, 더퍼스트클래스에서 윤슬의 글을 확인하세요. 내일 아침에 만나요!')] });
+  return out;
+}
+
+function caption(g) {
+  const tags = US ? '#미국주식 #미장 #서학개미 #나스닥 #S&P500 #주식공부 #주린이 #오늘의시황 #윤슬주식'
+    : '#미국주식 #국내주식 #주식공부 #주린이 #오늘의시황 #나스닥 #코스피 #경제공부 #윤슬주식';
+  return [
+    `📅 ${today()} ${US ? '어젯밤 미국 증시' : '아침 시황'} | ${BRAND}`,
+    '',
+    '🌤 시장 날씨',
+    ...g.wx.map(x => `${x.w.ico} ${x.name} ${pct(x.ch)} (${x.w.word})${x.live ? ' · 장중' : ''}`),
+    '',
+    ...(g.why.length ? ['🤔 왜 그랬을까?', ...g.why.map(s => `✔️ ${s}`), ''] : []),
+    ...(g.movers.length ? [`🏢 많이 들어 본 회사 중 가장 크게 움직인 곳: ${g.movers.slice(0, 3).map(s => `${s.name} ${pct(s.ch)}`).join(', ')}`, ''] : []),
+    ...(g.week.length ? ['📅 앞으로 볼 일정', ...g.week.slice(0, 4).flatMap(r => [`• ${r.date} ${r.title}`, ...(r.link ? [`  🔗 ${r.link}`] : [])]), ''] : []),
+    `📖 오늘의 용어: ${g.term.w} — ${g.term.d}`,
+    '',
+    `${MORE_ASK} ${MORE_TEXT}`,
+    '※ 공부를 돕는 정보 정리이며 투자 추천이 아니에요. 투자 결정과 결과는 본인의 몫이에요.',
+    '',
+    tags,
+  ].join('\n');
+}
+
+// 글이 넘치면 글자 크기를 조금씩 줄여 화면 안에 맞춘다
+function fit(el) {
+  const body = el.querySelector('.body');
+  for (let s = 1; s >= 0.6 && body.scrollHeight > body.clientHeight + 1; s -= 0.04) el.style.setProperty('--s', s.toFixed(2));
+}
+
+// make_insta.py 가 자막을 바꿀 때 부른다
+function setSub(i, j) {
+  document.querySelectorAll('.slide')[i].querySelector('.sub span').textContent = j == null ? '' : window.SLIDES[i].lines[j].text;
+}
+
+(async () => {
+  const [data, brief, earnings] = await Promise.all(['../data.json', '../briefing.json', '../earnings.json'].map(load));
+  if (!data || !brief) { document.body.textContent = '자료를 불러오지 못했어요.'; document.body.dataset.ready = 'error'; return; }
+  const g = gather(data, brief, earnings?.stocks);
+  const slides = REEL ? reelSlides(g) : postSlides(g);
+  const n = slides.length;
+  $('#slides').innerHTML = slides.map((s, i) => `<section class="slide" id="s${i + 1}">
+    <div class="brand">${BRAND}</div>
+    <div class="bar">${Array.from({ length: n }, (_, k) => `<i class="${k <= i ? 'on' : ''}"></i>`).join('')}</div>
+    ${s.html.includes('class="body') ? s.html : `<div class="body">${s.html}</div>`}
+    <div class="sub"><span></span></div>
+    <div class="foot"><span><b>Daily Stock Insights</b> · BY YOONSEUL</span><span class="num">${i + 1} / ${n}</span></div>
+  </section>`).join('');
+  await document.fonts.ready;
+  document.querySelectorAll('.slide').forEach(fit);
+  window.SLIDES = slides.map(s => ({ lines: s.lines }));
+  window.CAPTION = caption(g);
+  document.body.dataset.ready = '1';
+})();
+</script>
+</body>
+</html>

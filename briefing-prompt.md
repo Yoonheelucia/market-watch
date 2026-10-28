@@ -10,7 +10,7 @@
 - 가장 먼저 `git fetch origin main && git checkout -B main origin/main` 으로 원격 main 의 최신 상태에서 시작한다 (작업 공간이 옛 커밋에 멈춰 있을 수 있다. 다른 자동 작업이 데이터를 푸시한다).
 - "직전 브리핑이 얼마 안 됐다", "새 소식이 없다"는 이유로 건너뛰지 않는다. 새 뉴스가 없어도 매번 0-1 의 지수 숫자와 2 의 weekPast(회사별 주가 반응 포함)를 최신 data.json·earnings.json 으로 다시 계산해 반영하고, updated 를 바꿔 푸시한다.
 - 오늘 날짜: `TZ=Asia/Seoul date +%F` → asOf. 지금 시각: `TZ=Asia/Seoul date '+%F %H:%M'` → updated (asOf 바로 다음 키).
-- 지금 docs/briefing.json 을 읽고 구조(키 이름, 문체, 분량)를 그대로 따른다. 키: asOf, updated, summary, factors[{title, sign, head, detail, status}], week[{date, items[]}], weekPast[{date, items[{text, reaction}]}], month[{date, items[]}], sources[{name, url}], easy{why[], news[{sign, title, text}], week[{date, title, meaning}], weekPast[{date, title, result}]}.
+- 지금 docs/briefing.json 을 읽고 구조(키 이름, 문체, 분량)를 그대로 따른다. 키: asOf, updated, summary, factors[{title, sign, head, detail, status}], week[{date, items[]}], weekPast[{date, items[{text, reaction}]}], month[{date, items[]}], sources[{name, url}], easy{why[], news[{sign, title, text}], week[{date, title, meaning}], weekPast[{date, title, result}], us{…, 2-2 참고}}.
 
 ## 0-1. 주가 숫자는 사이트 데이터로 (뉴스 검색 숫자보다 우선)
 - S&P 500·나스닥·다우·코스피·코스닥 지수의 종가와 등락률은 뉴스에서 찾지 말고 docs/data.json 에서 읽어 쓴다. 아래를 실행해 나온 값을 그대로 쓴다:
@@ -88,8 +88,16 @@ E
 - weekPast: 이번 주 이미 지난 큰 일정 3~5개, 최근 것이 위로. {date, title, result: '성적표가 예상보다 좋아서 다음 날 주가가 3% 올랐어요' 처럼 쉬운 한 문장}. 숫자는 위 weekPast 와 같아야 한다.
 - 특정 종목을 사라/팔라고 권하는 표현은 쓰지 않는다.
 
+## 2-2. 미국 주식 위주 easy.us (인스타그램 카드·릴스에 그대로 쓰인다)
+- easy 안에 us 를 만든다: us{why[], news[{sign, title, text, link}], week[{date, title, meaning, link}], weekPast[{date, title, result, link}]}. 말투·규칙은 2-1 과 같다.
+- 미국 주식을 사는 한국 초보자가 읽는다. 기본은 미국 시장(S&P 500·나스닥·다우, 미국 회사, 연준, 미국 경제 발표) 이야기만 쓴다.
+- why: 어젯밤 미국 시장이 왜 그렇게 움직였는지 정확히 3문장. 위 data.json 의 미국 지수 숫자를 쓴다.
+- news 4~5개, week 3~5개, weekPast 2~4개 (최근 것이 위로, 숫자는 위 weekPast 와 같아야 한다).
+- 한국 소식(코스피, 삼성전자·SK하이닉스 실적, 한국 정책 등)은 미국 주식에 실제로 영향을 주는 경우에만 넣고, 그때는 반드시 link 에 '미국 주식과 무슨 관계인지'를 쉬운 한 문장으로 쓴다. 예: 'SK하이닉스는 엔비디아에 AI용 메모리를 팔아요. 여기 실적이 좋으면 AI 칩이 잘 팔린다는 뜻이라 엔비디아 같은 미국 반도체주에도 좋은 신호예요.' 관계를 한 문장으로 설명할 수 없으면 넣지 않는다.
+- 미국 소식에는 link 를 쓰지 않는다 (빈 문자열 또는 키 생략).
+
 ## 3. 저장과 배포
-- docs/briefing.json 을 덮어쓴다 (UTF-8, 한글 그대로, ensure_ascii=False, indent=2). 쓴 뒤 `python3 -c "import json;b=json.load(open('docs/briefing.json'));assert b['updated'] and b['easy']['why'] and b['easy']['news'] and b['easy']['week'] and 'weekPast' in b"` 로 JSON 과 필수 키가 제대로 있는지 확인한다.
+- docs/briefing.json 을 덮어쓴다 (UTF-8, 한글 그대로, ensure_ascii=False, indent=2). 쓴 뒤 `python3 -c "import json;b=json.load(open('docs/briefing.json'));assert b['updated'] and b['easy']['why'] and b['easy']['news'] and b['easy']['week'] and 'weekPast' in b and b['easy']['us']['why'] and b['easy']['us']['news']"` 로 JSON 과 필수 키가 제대로 있는지 확인한다.
 - `git add docs/briefing.json && git commit -m "시장 브리핑 업데이트 $(TZ=Asia/Seoul date '+%F %H:%M')"` 후 `git pull --rebase && git push` 로 main 에 바로 푸시한다.
 - pull --rebase 중 docs/briefing.json 이 충돌하면, 내 커밋을 버리지 말고 `git rebase --abort` → `git fetch origin main` → 방금 쓴 내 briefing.json 내용을 잠시 저장 → `git reset --hard origin/main` → 저장한 내 내용으로 docs/briefing.json 을 덮어쓴 뒤 다시 커밋·푸시한다 (내 실행이 더 최신이다). 최대 3번 시도한다.
 - 마지막에 바뀐 요인(추가/삭제/부호 변경)과 이번 주 핵심 일정을 3~5줄로 요약해서 보고한다.
