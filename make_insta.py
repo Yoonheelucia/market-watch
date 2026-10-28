@@ -3,6 +3,7 @@
   insta/<날짜>/
     post/01.png …     카드뉴스 (1080×1350) — 순서대로 캐러셀에 올리면 된다
     caption.txt       캡션 (복사해서 붙여 넣기)
+    article.txt       thefirstclass.kr 에 올릴 '윤슬' 해설 글 초안 (브리핑 작업이 써 둔 것)
     reel.mp4          릴스 영상 (1080×1920, 목소리·자막 포함)
     narration.txt     영상 대본
 
@@ -148,6 +149,16 @@ def ready(base):
             and kst(brief['updated']) >= now.replace(hour=6, minute=30, second=0, microsecond=0))
 
 
+def save_article(base, out):
+    with urllib.request.urlopen(f'{base}briefing.json?t={time.time():.0f}', timeout=30) as r:
+        art = json.load(r).get('easy', {}).get('article')
+    if art and art.get('body'):
+        (out / 'article.txt').write_text(f"{art['title']}\n\n{art['body'].strip()}\n", encoding='utf-8')
+        print(f"해설 글 초안 저장 ({len(art['body'])}자)")
+    else:
+        print('해설 글 초안이 아직 브리핑에 없어요')
+
+
 def notify(text):
     subprocess.run(['osascript', '-e', f'display notification "{text}" with title "윤슬 주식 인스타"'], check=False)
 
@@ -172,6 +183,7 @@ def main():
         shutil.rmtree(out / 'post')
     out.mkdir(parents=True, exist_ok=True)
 
+    save_article(base, out)
     with sync_playwright() as pw:
         browser = pw.chromium.launch(channel='chrome')
         make_post(browser, base, out)
