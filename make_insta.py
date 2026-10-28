@@ -37,7 +37,7 @@ DAY = None  # --date 로 정한 날짜 (없으면 오늘)
 KST = timezone(timedelta(hours=9))
 FF = imageio_ffmpeg.get_ffmpeg_exe()
 GMEDIA = Path.home() / '.claude/skills/gcloud-media/scripts/gmedia.py'
-STYLE = '차분하고 신뢰감 있는 30대 한국 여성 경제 뉴스 앵커. 또렷한 표준어, 자연스러운 속도'
+STYLE = '다정하고 자연스러운 30대 한국 여성. 친구에게 설명하듯 편안하게, 과장 없이'
 GAP, SLIDE_GAP, LEAD = 0.2, 0.4, 0.3  # 문장 사이·장면 사이·처음 쉬는 시간(초)
 TARGET, MAX_SPEED = 60, 1.15  # 릴스 목표 길이(초). 넘으면 목소리를 최대 1.15배까지 빠르게 한다
 
@@ -170,7 +170,7 @@ def notify(text):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--base', default='https://yoonheelucia.github.io/market-watch/')
-    ap.add_argument('--voice', default='Vindemiatrix')  # 목소리 샘플: insta/voice_samples/
+    ap.add_argument('--voice', default='Sulafat')  # 목소리 샘플: insta/voice_samples/
     ap.add_argument('--no-video', action='store_true')
     ap.add_argument('--wait', action='store_true')
     ap.add_argument('--date', help='YYYY-MM-DD. 자정을 넘겨 전날 것을 만들 때')
