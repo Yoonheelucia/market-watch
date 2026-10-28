@@ -193,7 +193,7 @@ const today = () => { const d = kstNow(); return `${d.getUTCMonth() + 1}월 ${d.
 function dayChange(c) { const [a, b] = lastTwo(c); return { ch: (c[b] / c[a] - 1) * 100, i: b }; }
 
 // 회사 이름 → 최근 종가 (data.json 의 마지막 값). '알파벳(구글)' 은 '알파벳'·'구글' 로도 찾는다
-let PRICES = [];
+let PRICES = [], TICKERS = [];
 function buildPrices(data) {
   const map = new Map();
   for (const m of data.markets) for (const s of m.stocks) {
@@ -203,11 +203,14 @@ function buildPrices(data) {
     for (const n of [s.name, ...(s.name.match(/^(.+)\((.+)\)$/)?.slice(1) || [])]) if (n.length >= 2 && !map.has(n)) map.set(n, txt);
   }
   PRICES = [...map].sort((a, b) => b[0].length - a[0].length);
+  const tk = new Map([['알파벳', 'GOOGL'], ['구글', 'GOOGL']]);
+  for (const m of data.markets) if (m.currency === 'USD') for (const s of m.stocks) if (!tk.has(s.name)) tk.set(s.name, s.ticker);
+  TICKERS = [...tk].sort((a, b) => b[0].length - a[0].length);
 }
 // 글에 회사 이름이 처음 나올 때 '보잉($168.16)' 처럼 종가를 붙인다 (화면 글자만. 목소리는 say() 가 괄호를 뺀다)
-function withPrice(text) {
+function withPrice(text, list = PRICES) {
   let out = String(text), used = new Set();
-  for (const [name, px] of PRICES) {
+  for (const [name, px] of list) {
     if ([...used].some(u => u.includes(name))) continue;
     const i = out.indexOf(name);
     if (i < 0 || /[가-힣A-Za-z]/.test(out[i - 1] || '')) continue;
@@ -217,6 +220,7 @@ function withPrice(text) {
   }
   return out;
 }
+const tickerAll = x => ({ ...x, title: withPrice(x.title, TICKERS) });
 const priceAll = x => Object.fromEntries(Object.entries(x).map(([k, v]) => [k, typeof v === 'string' && ['title', 'text', 'result'].includes(k) ? withPrice(v) : v]));
 
 // 카드뉴스와 릴스가 함께 쓰는 재료
@@ -239,10 +243,10 @@ function gather(data, brief, earnings) {
   return {
     wx, movers, term, fx: data.usdkrw,
     why: pickList(easy, 'why').map(oil).map(withPrice), news: pickList(easy, 'news').map(oilAll).map(priceAll),
-    past: pickList(easy, 'weekPast').map(oilAll).map(priceAll), week: pickList(easy, 'week').map(oilAll),
+    past: pickList(easy, 'weekPast').map(oilAll).map(priceAll), week: pickList(easy, 'week').map(oilAll).map(tickerAll),
     check: (easy.us?.check?.length ? easy.us.check
       : pickList(easy, 'week').filter(r => /오늘|내일 새벽/.test(relDay(r.date))).map(r => ({ time: relDay(r.date), title: r.title, why: r.meaning, watch: '', link: r.link })))
-      .slice(0, 4).map(oilAll),
+      .slice(0, 4).map(oilAll).map(tickerAll),
   };
 }
 

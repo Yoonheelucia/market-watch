@@ -167,7 +167,7 @@ def save_article(base, out):
 # 글 소제목에 맞춰 넣을 이미지. article_images/ 에 있으면 그것을, 없으면 카드뉴스 이미지를 쓴다
 ARTICLE_IMAGES = [('', ['article_images/1_thumb.png', 'post/01.png']),
                   ('왜 이렇게', ['article_images/2_movers.png']),
-                  ('눈에 띈 회사', ['article_images/3_earn.png', 'post/04.png']),
+                  ('실적 발표', ['article_images/3_earn.png', 'post/04.png']),
                   ('체크 포인트', ['article_images/4_check.png'])]
 
 
@@ -175,13 +175,14 @@ def article_html(out):
     """article.txt 와 이미지를 한 페이지로 묶는다. 이미지는 파일 안에 넣어서 복사·붙여 넣기 때 같이 따라가게 한다"""
     import base64
     import html
+    import re
     src = out / 'article.txt'
     if not src.exists():
         return None
     title, _, body = src.read_text(encoding='utf-8').partition('\n')
 
     def img(key):
-        for cand in dict(ARTICLE_IMAGES)[key]:
+        for cand in (dict(ARTICLE_IMAGES).get(key) or [f'article_images/{key}.png']):
             f = out / cand
             if f.exists():
                 data = base64.b64encode(f.read_bytes()).decode()
@@ -189,19 +190,26 @@ def article_html(out):
                         f'<button type="button" class="ci">이미지만 복사</button></figure>')
         return ''
 
+    marked = '[[' in body  # 글에 [[이미지 이름]] 줄이 있으면 그 자리에만 넣는다
     parts, para = [img('')], []
     flush = lambda: para and (parts.append('<p>' + '<br>'.join(html.escape(x) for x in para) + '</p>'), para.clear())
     for ln in body.strip().splitlines():
         t = ln.strip()
         if not t:
             flush()
+        elif t.startswith('[[') and t.endswith(']]'):
+            flush()
+            parts.append(img(t[2:-2]))
         elif t.startswith('■'):
             flush()
             parts.append(f'<h2>{html.escape(t)}</h2>')
-            parts += [img(k) for k, _ in ARTICLE_IMAGES[1:] if k in t]
+            if not marked:
+                parts += [img(k) for k, _ in ARTICLE_IMAGES[1:] if k in t]
         else:
             para.append(ln.rstrip())
     flush()
+    # 오른 건 빨강, 내린 건 파랑 (▲1.23% / ▼1.23%)
+    parts = [re.sub(r'(▲[\d.,]+%)', r'<b class="up">\1</b>', re.sub(r'(▼[\d.,]+%)', r'<b class="down">\1</b>', x)) for x in parts]
     page = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{html.escape(title)}</title>
 <style>
@@ -215,6 +223,7 @@ article {{ max-width: 760px; margin: 24px auto 80px; background: var(--paper); b
 h1 {{ font-size: 27px; line-height: 1.4; margin: 0 0 20px; }}
 h2 {{ font-size: 20px; margin: 34px 0 10px; }}
 p {{ margin: 0 0 16px; }}
+.up {{ color: #e0314b; }} .down {{ color: #2463eb; }}
 figure {{ margin: 18px 0 24px; position: relative; }}
 figure img {{ width: 100%; border-radius: 10px; display: block; }}
 .ci {{ position: absolute; right: 10px; bottom: 10px; font-size: 13px; border: 0; border-radius: 999px; padding: 5px 12px; background: rgba(0,0,0,.65); color: #fff; cursor: pointer; }}
