@@ -329,7 +329,8 @@ def article_html(out):
                 para.clear()
                 out_.extend(img(n) for n in later)
                 later.clear()
-        marked = '[[' in body  # 대표 이미지(1_thumb)는 발행할 때 본문 위에 자동으로 붙으므로 본문에는 넣지 않는다
+        # [[이름]] 줄로 자리를 정한 이미지는 그 자리에, 나머지는 소제목 기준 자동 자리에. 대표 이미지(1_thumb)는 발행할 때 본문 위에 자동으로 붙으므로 본문에는 넣지 않는다
+        marked = set(re.findall(r'^\s*\[\[(.+?)\]\]\s*$', body, re.M))
         for ln in body.strip().splitlines():
             t = ln.strip()
             if not t:
@@ -338,9 +339,8 @@ def article_html(out):
                 flush(); out_.append(img(t[2:-2]))
             elif t.startswith('■'):
                 flush(); out_.append(('<p><br></p>' if out_ else '') + f'<h3 style="{HS}">{html.escape(t, quote=False)}</h3>')
-                if not marked:
-                    out_ += [img(n) for k, n in ARTICLE_IMAGES[1:] if k in t]
-                    later.extend(n for k, n in AFTER_FIRST if k in t)
+                out_ += [img(n) for k, n in ARTICLE_IMAGES[1:] if k in t and n not in marked]
+                later.extend(n for k, n in AFTER_FIRST if k in t and n not in marked)
             else:
                 para.append(t)
         flush()
