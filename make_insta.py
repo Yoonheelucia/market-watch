@@ -182,6 +182,77 @@ def make_figs(browser, base, out):
     print(f'글 이미지 {len(made)}장: {", ".join(made)} · 릴스 썸네일')
 
 
+THUMB_HTML = """<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@700;900&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+#t{width:1200px;height:675px;position:relative;overflow:hidden;font-family:'Noto Sans KR',sans-serif;color:#fff;background:#111 url(__BG__) center/cover}
+#t::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 42%,rgba(8,10,16,.9) 100%)}
+.tag{position:absolute;z-index:1;right:46px;top:44px;background:rgba(10,14,24,.78);border:2px solid rgba(255,255,255,.18);border-radius:18px;padding:14px 24px 16px;text-align:right}
+.tag .tk{font-size:26px;font-weight:900;letter-spacing:.06em;opacity:.9}
+.tag .mv{font-size:64px;font-weight:900;line-height:1.05}
+.tag .when{font-size:20px;font-weight:700;opacity:.8}
+.dn{color:#5b9bff}.up{color:#ff5a6e}
+.foot{position:absolute;z-index:1;left:48px;right:200px;bottom:40px}
+.date{display:inline-block;background:#d9b45a;color:#16130c;font-size:22px;font-weight:900;border-radius:8px;padding:4px 12px}
+h1{margin:12px 0 0;font-size:50px;font-weight:900;line-height:1.25;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+h1 em{font-style:normal;color:#ffd77a}
+.brand{position:absolute;z-index:1;right:48px;bottom:44px;font-size:20px;font-weight:700;opacity:.75}
+</style></head><body><div id="t">__TAG__
+<div class="foot"><span class="date">__DATE__</span><h1>__L1__<br><em>__L2__</em></h1></div>
+<div class="brand">윤슬 주식</div></div>
+<script>document.fonts.ready.then(()=>document.body.dataset.ready=1)</script></body></html>"""
+THUMB_SCENE = ('Cinematic photorealistic editorial stock-market news image, wide 16:9. {scene} '
+               'Dramatic dusk light, deep blue and warm orange tones, high contrast, sharp detail. '
+               'Keep the bottom third darker and simple for text overlay. No text other than real logos, no numbers, no watermark.')
+
+
+def make_thumb(browser, base, out):
+    """대표 이미지: 그날 이야기에 맞는 사진 느낌 배경(AI) + 큰 등락 숫자 + 제목 두 줄.
+    배경을 못 만들면 figs.html 의 밝은 대표 이미지를 그대로 쓴다"""
+    import base64
+    import html as h
+    with urllib.request.urlopen(f'{base}briefing.json?t={time.time():.0f}', timeout=30) as r:
+        easy = json.load(r).get('easy', {})
+    art, focus = easy.get('article') or {}, (easy.get('us') or {}).get('focus') or {}
+    th = art.get('thumb') or {}
+    title = art.get('title', '')
+    date = title[1:title.index(']')] if title.startswith('[') and ']' in title else ''
+    rest = title.split(']', 1)[-1].strip()
+    l1, l2 = th.get('line1'), th.get('line2')
+    if not (l1 and l2):
+        l1, _, l2 = rest.partition('…')
+        l1, l2 = (l1.strip() + ('…' if l2 else '')), l2.strip()
+    scene = th.get('scene') or ('A Wall Street scene: the New York Stock Exchange facade with flags, '
+                                'a glowing trading monitor with stock charts in the foreground.')
+    bg = out / 'thumb_bg.png'
+    if not bg.exists():
+        r = subprocess.run(['python3', str(GMEDIA), 'image', THUMB_SCENE.format(scene=scene), '-o', str(bg), '--aspect', '16:9'],
+                           capture_output=True, text=True)
+        if not bg.exists():
+            print('대표 이미지 배경을 못 만들어서 기본 이미지를 써요:', (r.stderr or r.stdout).strip()[-200:])
+            return
+    tag = ''
+    if focus.get('move'):
+        mv = focus['move']
+        when = '장 마감 뒤 시간외' if mv.startswith('시간외') else ''
+        mv = mv.replace('시간외', '').strip()
+        c = 'dn' if '▼' in mv or focus.get('sign') == '-' else 'up'
+        tag = (f'<div class="tag"><div class="tk">{h.escape(focus.get("ticker", ""))}</div>'
+               f'<div class="mv {c}">{h.escape(mv)}</div>' + (f'<div class="when">{when}</div>' if when else '') + '</div>')
+    page_html = (THUMB_HTML.replace('__BG__', 'data:image/png;base64,' + base64.b64encode(bg.read_bytes()).decode())
+                 .replace('__TAG__', tag).replace('__DATE__', h.escape(f'{date} 미국장 체크'.strip()))
+                 .replace('__L1__', h.escape(l1)).replace('__L2__', h.escape(l2)))
+    page = browser.new_page(device_scale_factor=2)
+    page.set_content(page_html)
+    page.wait_for_function('document.body.dataset.ready', timeout=30000)
+    page.wait_for_timeout(300)
+    (out / 'article_images').mkdir(exist_ok=True)
+    page.locator('#t').screenshot(path=str(out / 'article_images' / '1_thumb.png'))
+    page.close()
+    print('대표 이미지: 사진 배경 + 제목')
+
+
 def save_article(base, out):
     with urllib.request.urlopen(f'{base}briefing.json?t={time.time():.0f}', timeout=30) as r:
         art = json.load(r).get('easy', {}).get('article')
@@ -351,6 +422,7 @@ def main():
         browser = pw.chromium.launch(channel='chrome')
         make_post(browser, base, out)
         make_figs(browser, base, out)
+        make_thumb(browser, base, out)
         if not a.no_video:
             tmp = out / '.work'
             shutil.rmtree(tmp, ignore_errors=True)
