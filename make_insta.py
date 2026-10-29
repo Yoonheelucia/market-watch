@@ -292,6 +292,8 @@ def publish_images(out):
 
 # 글 소제목에 맞춰 넣을 이미지 (글에 [[이미지 이름]] 줄이 없을 때)
 ARTICLE_IMAGES = [('', '1_thumb'), ('왜 이렇게', '2_movers'), ('실적 발표', '3_earn'), ('체크 포인트', '4_check')]
+# 소제목 바로 아래가 아니라 첫 문단(지수 숫자) 다음에 넣는 이미지
+AFTER_FIRST = [('어젯밤 미국 증시', '2_movers')]
 UP, DOWN = '#e0314b', '#2463eb'
 # 글쓰기 창이 CSS 를 버려도 문단 모양이 남도록 모든 문단에 직접 스타일을 단다 (+ 소제목 앞 빈 줄)
 PS = 'margin:0 0 16px;line-height:1.8'
@@ -320,10 +322,13 @@ def article_html(out):
         out_, para = [], []
         def img(name):
             return f'<p style="{PS}"><img src="{img_src(name)}" alt="" style="max-width:100%;height:auto"></p>' if name in have else ''
+        later = []
         def flush():
             if para:
                 out_.append(f'<p style="{PS}">' + '<br>'.join(color(html.escape(x, quote=False)) for x in para) + '</p>')
                 para.clear()
+                out_.extend(img(n) for n in later)
+                later.clear()
         marked = '[[' in body  # 대표 이미지(1_thumb)는 발행할 때 본문 위에 자동으로 붙으므로 본문에는 넣지 않는다
         for ln in body.strip().splitlines():
             t = ln.strip()
@@ -335,6 +340,7 @@ def article_html(out):
                 flush(); out_.append(('<p><br></p>' if out_ else '') + f'<h3 style="{HS}">{html.escape(t, quote=False)}</h3>')
                 if not marked:
                     out_ += [img(n) for k, n in ARTICLE_IMAGES[1:] if k in t]
+                    later.extend(n for k, n in AFTER_FIRST if k in t)
             else:
                 para.append(t)
         flush()
