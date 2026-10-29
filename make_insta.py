@@ -294,14 +294,14 @@ def publish_images(out):
 ARTICLE_IMAGES = [('', '1_thumb'), ('왜 이렇게', '2_movers'), ('실적 발표', '3_earn'), ('체크 포인트', '4_check')]
 # 소제목 바로 아래가 아니라 첫 문단(지수 숫자) 다음에 넣는 이미지
 AFTER_FIRST = [('어젯밤 미국 증시', '2_movers')]
-UP, DOWN = '#e0314b', '#2463eb'
+UP, DOWN = '#ef4160', '#3d7cf2'  # 어두운 바탕·밝은 바탕 둘 다에서 보이는 빨강·파랑
 # 글쓰기 창이 CSS 를 버려도 문단 모양이 남도록 모든 문단에 직접 스타일을 단다 (+ 소제목 앞 빈 줄)
-# 휴대폰에서 읽기 좋게: 글자 조금 크게, 줄 간격 넉넉히, 문단은 두 문장씩, 목록은 한 줄씩 띄워서
+# 더퍼스트클래스는 어두운 바탕이라 글자색은 정하지 않고(사이트 글자색을 따름), 바탕은 반투명으로. 휴대폰에서 읽기 좋게: 글자 조금 크게, 줄 간격 넉넉히, 문단은 두 문장씩, 목록은 한 줄씩 띄워서
 PS = 'margin:0 0 18px;font-size:17px;line-height:1.85'
-HS = 'margin:36px 0 14px;padding-left:12px;border-left:4px solid #0f8a7e;font-size:21px;font-weight:700;line-height:1.45'
+HS = 'margin:36px 0 14px;padding-left:12px;border-left:4px solid #17a597;font-size:21px;font-weight:700;line-height:1.45'
 LS = 'margin:0 0 10px;padding-left:16px;text-indent:-14px;font-size:17px;line-height:1.75'
-MS = 'margin:26px 0 10px;font-size:18px;font-weight:700;color:#0f8a7e;line-height:1.5'
-KS = 'margin:0 0 18px;padding:14px 16px;background:#eef7f5;border-radius:10px;font-size:17px;line-height:1.8;font-weight:600'
+MS = 'margin:26px 0 10px;font-size:18px;font-weight:700;color:#17a597;line-height:1.5'
+KS = 'margin:0 0 18px;padding:14px 16px;background:rgba(23,165,151,.15);border-left:4px solid #17a597;border-radius:8px;font-size:17px;line-height:1.8;font-weight:600'
 KEY = ('핵심은', '정리하면', '쉽게 말하면', '한마디로')  # 이 말로 시작하는 문단은 눈에 띄는 상자로
 
 
