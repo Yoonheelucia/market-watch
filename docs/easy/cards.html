@@ -185,6 +185,9 @@ const say = s => String(s)
   .replace(/(\d{1,2})\/(\d{1,2})/g, '$1월 $2일')
   .replace(/S&P\s?500/g, '에스앤피 500').replace(/AI/g, '에이아이').replace(/PER/g, '퍼')
   .replace(/\([^)]*\)/g, '').replace(/\s\+\s/g, ' 그리고 ').replace(/[·→]/g, ', ').replace(/—/g, ', ').replace(/([?!])\s*\./g, '$1').replace(/\s+/g, ' ').trim();
+// 목소리 말을 자막 글자로 (읽는 말만 기호로 되돌린다)
+const toSub = v => v.replace(/에스앤피/g, 'S&P').replace(/에이아이/g, 'AI')
+  .replace(/(\d+(?:\.\d+)?)에서 (\d+(?:\.\d+)?)퍼센트/g, '$1~$2%').replace(/(\d+(?:\.\d+)?)\s?퍼센트/g, '$1%');
 // '10/29 (목) 새벽' → 오늘·내일·모레면 그 말로 (말로 할 때 짧게)
 function relDay(s) {
   const m = String(s).match(/(\d{1,2})\/(\d{1,2})\s*(\(.\))?\s*(.*)/);
@@ -344,7 +347,7 @@ function reelSlides(g) {
       <div class="chg num ${cls(x.ch)}">${pct(x.ch)}</div></div>`).join('')}</div>
     ${g.fx ? `<div class="fx" style="font-size:34px">💵 환율 1달러 = <b class="num">${Math.round(g.fx).toLocaleString()}원</b></div>` : ''}`,
     lines: [line(g.wx.map(x => `${x.name} ${level(x.close)} (${pct(x.ch)})`).join(' · '),
-      `${say(a.name)}은 ${moved(a.ch, '고')}, ${b.name}${jo(b.name, '은', '는')} ${moved(b.ch, '고')}, ${c.name}${jo(c.name, '은', '는')} ${moved(c.ch, '어요')}.`)] });
+      `${say(a.name)}은 ${level(a.close)}로 마감해 ${moved(a.ch, '고')}, ${b.name}${jo(b.name, '은', '는')} ${moved(b.ch, '고')}, ${c.name}${jo(c.name, '은', '는')} ${moved(c.ch, '어요')}.`)] });
 
   // 3. 오늘의 주인공이 있으면 그 이야기, 없으면 왜? (앞의 2개)
   const f = g.focus;
@@ -406,7 +409,8 @@ function reelSlides(g) {
     <div class="note" style="font-size:26px;text-align:center">투자 추천이 아닌 정보 정리예요</div></div>`,
     lines: [line(`자세한 내용은 thefirstclass.kr 에서 '윤슬'`, '자세한 내용은 더퍼스트클래스에서 윤슬을 확인하세요.'),
       line('❤️ 좋아요 · ➕ 팔로우 · 🔔 알림 설정', '도움이 됐다면 좋아요와 팔로우, 알림 설정 부탁드려요. 다음에 또 만나요!')] });
-  return out;
+  // 자막은 목소리 그대로 (소리 끄고 보는 사람용). 문장마다 한 줄씩 끊어 그 문장을 말할 때 보여 준다
+  return out.map(sl => ({ ...sl, lines: sl.lines.flatMap(l => sentences(l.voice).map(v => ({ text: toSub(v), voice: v }))) }));
 }
 
 // 카드뉴스 캡션 (사용자가 직접 고친 모양 그대로: 문장마다 줄 바꿈, 항목 사이 빈 줄, '- ' 목록)
