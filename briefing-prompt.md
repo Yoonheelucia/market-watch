@@ -89,11 +89,12 @@ E
 - 특정 종목을 사라/팔라고 권하는 표현은 쓰지 않는다.
 
 ## 2-2. 미국 주식 위주 easy.us (인스타그램 카드·릴스에 그대로 쓰인다)
-- easy 안에 us 를 만든다: us{why[], news[{sign, title, text, link}], week[{date, title, meaning, link}], weekPast[{date, title, result, link}], check[{time, title, why, watch, link}]}. 말투·규칙은 2-1 과 같다.
+- easy 안에 us 를 만든다: us{focus{name, ticker, move, sign, title, points[], say}, why[], news[{sign, title, text, link}], week[{date, title, meaning, link}], weekPast[{date, title, result, link}], check[{time, title, why, watch, link}]}. 말투·규칙은 2-1 과 같다.
 - 인스타·해설 글은 매일 한국시간 오후 6시에 발행되고, 15:00 실행 결과로 만든다. 발행할 때 지켜야 할 모든 규칙은 루트의 rulebook.md 에 있다 (해설 글·캡션·체크 포인트 부분을 꼭 읽고 따른다). 그래서 '오늘 밤' = 실행한 날 밤의 미국장(개장 한국시간 22:30, 11월 첫 주말 서머타임이 끝나면 23:30, 마감은 그 다음 날 새벽 5시/6시)이다.
 - check: 오늘 밤 미국장 개장 전에 체크할 것 3~4개, 시간 순서로. time 은 미국 장 기준으로 '개장 직후', '장중 (한국 새벽 3시)', '장 마감 뒤' 처럼 쓴다. 전날 장 마감 뒤 실적이면 오늘 밤 '개장 직후'가 첫 반응이다. title 은 짧게, why 는 왜 중요한지 한 문장, watch 는 '무엇을 보면 되는지 + 결과에 따라 시장이 어떻게 볼 수 있는지' 한 문장. 오늘 밤 장중·장 마감 뒤 실적 발표, 금리 결정·경제 발표, 전날 장 마감 뒤 실적의 첫 반응, 유가 같은 큰 변수를 고른다. 한국 소식이면 link 필수 (아래 규칙).
 - 미국 주식을 사는 한국 초보자가 읽는다. 기본은 미국 시장(S&P 500·나스닥·다우, 미국 회사, 연준, 미국 경제 발표) 이야기만 쓴다.
-- why: 어젯밤 미국 시장이 왜 그렇게 움직였는지 정확히 3문장. 위 data.json 의 미국 지수 숫자를 쓴다.
+- why: 어젯밤 미국 시장이 왜 그렇게 움직였는지 정확히 3문장. 위 data.json 의 미국 지수 숫자를 쓴다. 단 첫 문장에 지수 숫자만 늘어놓지 않는다 (지수 숫자는 카드·릴스에 이미 나온다). 첫 문장은 가장 큰 원인으로 시작한다.
+- focus: 오늘의 주인공 하나 {name, ticker, move, sign, title, points[3], say}. 그날 가장 큰 이야기를 고른다. 특히 구글(알파벳)·애플·마이크로소프트·아마존·메타·엔비디아·테슬라 같은 대형 기술주가 전날 장 마감 뒤 실적을 냈다면 거의 항상 그 회사가 주인공이다 (시간외 움직임이 크면 반드시). 예: {"name": "알파벳(구글)", "ticker": "GOOGL", "move": "시간외 ▼8~11%", "sign": "-", "title": "구글 성적표 실망… 시간외 급락", "points": ["주당순이익 2.67달러로 예상 3.02달러에 못 미쳤어요", "내년 AI 투자를 크게 늘린다고 해 비용 걱정이 커졌어요", "오늘 밤 개장 직후 정규장 첫 반응이 중요해요"], "say": "오늘의 주인공은 구글이에요. 성적표가 예상보다 나빠서 장이 끝난 뒤 시간외 거래에서 8에서 11퍼센트 내렸어요. 오늘 밤 정규장에서 하락이 이어지는지가 관건이에요."}. move 는 '시간외 ▼8~11%' · '▲10.73%' 처럼 짧게, sign 은 + - ±. points 는 한 줄씩 짧게(35자 안팎). say 는 릴스 목소리용 2~3문장(15초 안, 기호·괄호 없이 읽기 쉬운 말). 정규장 등락(data.json)과 시간외 움직임이 다르면 둘을 섞지 말고 move 에 '시간외'라고 밝힌다.
 - news 4~5개, week 3~5개, weekPast 2~4개 (최근 것이 위로, 숫자는 위 weekPast 와 같아야 한다).
 - 한국 소식(코스피, 삼성전자·SK하이닉스 실적, 한국 정책 등)은 미국 주식에 실제로 영향을 주는 경우에만 넣고, 그때는 반드시 link 에 '미국 주식과 무슨 관계인지'를 쉬운 한 문장으로 쓴다. 예: 'SK하이닉스는 엔비디아에 AI용 메모리를 팔아요. 여기 실적이 좋으면 AI 칩이 잘 팔린다는 뜻이라 엔비디아 같은 미국 반도체주에도 좋은 신호예요.' 관계를 한 문장으로 설명할 수 없으면 넣지 않는다.
 - 미국 소식에는 link 를 쓰지 않는다 (빈 문자열 또는 키 생략).
@@ -121,7 +122,7 @@ E
 - 회사 이름이 글에 처음 나올 때 괄호를 붙인다. 이미 주가가 움직인 이야기(어젯밤 등락, 실적 발표 뒤 반응)면 최근 종가 (예: '보잉($168.16)', 'SK하이닉스(1,487,000원)', 값은 data.json 의 그 회사 마지막 종가, 없으면 생략), 앞으로 있을 일(오늘 밤 실적, 지켜볼 회사)이면 미국 티커 (예: '마이크로소프트(MSFT)·알파벳(GOOGL)'). 끝의 출처 줄에 '괄호 안 주가는 ○월 ○일 종가' 라고 적는다.
 
 ## 3. 저장과 배포
-- docs/briefing.json 을 덮어쓴다 (UTF-8, 한글 그대로, ensure_ascii=False, indent=2). 쓴 뒤 `python3 -c "import json;b=json.load(open('docs/briefing.json'));assert b['updated'] and b['easy']['why'] and b['easy']['news'] and b['easy']['week'] and 'weekPast' in b and b['easy']['us']['why'] and b['easy']['us']['news'] and b['easy']['us']['check'] and len(b['easy']['article']['body']) > 1500"` 로 JSON 과 필수 키가 제대로 있는지 확인한다.
+- docs/briefing.json 을 덮어쓴다 (UTF-8, 한글 그대로, ensure_ascii=False, indent=2). 쓴 뒤 `python3 -c "import json;b=json.load(open('docs/briefing.json'));assert b['updated'] and b['easy']['why'] and b['easy']['news'] and b['easy']['week'] and 'weekPast' in b and b['easy']['us']['why'] and b['easy']['us']['news'] and b['easy']['us']['check'] and b['easy']['us']['focus']['title'] and len(b['easy']['article']['body']) > 1500"` 로 JSON 과 필수 키가 제대로 있는지 확인한다.
 - `git add docs/briefing.json && git commit -m "시장 브리핑 업데이트 $(TZ=Asia/Seoul date '+%F %H:%M')"` 후 `git pull --rebase && git push` 로 main 에 바로 푸시한다.
 - pull --rebase 중 docs/briefing.json 이 충돌하면, 내 커밋을 버리지 말고 `git rebase --abort` → `git fetch origin main` → 방금 쓴 내 briefing.json 내용을 잠시 저장 → `git reset --hard origin/main` → 저장한 내 내용으로 docs/briefing.json 을 덮어쓴 뒤 다시 커밋·푸시한다 (내 실행이 더 최신이다). 최대 3번 시도한다.
 - 마지막에 바뀐 요인(추가/삭제/부호 변경)과 이번 주 핵심 일정을 3~5줄로 요약해서 보고한다.

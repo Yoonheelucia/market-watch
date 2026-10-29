@@ -135,6 +135,17 @@ ol.why li::before { content: counter(n); width: calc(var(--s) * 64px); height: c
 .acts div { background: var(--card); border: 2px solid var(--line); border-radius: 28px; padding: 26px 0 22px; width: 220px; font-size: calc(var(--s) * 38px); font-weight: 900; }
 .acts span { display: block; font-size: calc(var(--s) * 84px); line-height: 1.2; margin-bottom: 6px; }
 
+/* 오늘의 주인공: 그날 가장 큰 이야기 하나 (예: 빅테크 실적 쇼크) */
+.fc { background: var(--card); border: 2px solid var(--line); border-radius: 32px; padding: calc(var(--s) * 36px) 44px; }
+.fc .nm { font-size: calc(var(--s) * 44px); font-weight: 900; }
+.fc .mv { font-size: calc(var(--s) * 84px); font-weight: 900; line-height: 1.2; margin: 6px 0 18px; }
+.fc ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: calc(var(--s) * 18px); }
+.fc li { font-size: calc(var(--s) * 36px); font-weight: 700; line-height: 1.5; padding-left: 1.1em; text-indent: -1.1em; }
+.fc li::before { content: '✔️ '; }
+html.reel .fc li { font-size: calc(var(--s) * 46px); }
+html.reel .fc .nm { font-size: calc(var(--s) * 52px); }
+.co .af { grid-column: 1 / -1; font-size: calc(var(--s) * 26px); font-weight: 700; }
+
 /* 자막 (릴스만): 아래 캡션 자리 위쪽 */
 .sub { display: none; }
 html.reel .sub { display: flex; position: absolute; left: 80px; right: 130px; bottom: 420px; min-height: 140px; align-items: center; justify-content: center; }
@@ -167,7 +178,7 @@ const pickList = (easy, key) => !US ? easy[key] || [] : easy.us?.[key]?.length ?
 const linkHtml = x => x.link ? `<div class="link">🔗 미국 주식과의 관계: ${esc(x.link)}</div>` : '';
 
 // 받침이 있으면 a, 없으면 b (은/는, 이/가, 이에요/예요)
-const jo = (w, a, b) => { const c = w.charCodeAt(w.length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? a : b; };
+const jo = (w, a, b) => { w = String(w).replace(/\s*\([^)]*\)\s*$/, ''); const c = w.charCodeAt(w.length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? a : b; };
 // 화면 글자를 읽기 좋은 말로 바꾼다 (자막은 화면 글자 그대로, 목소리는 이 말로)
 const say = s => String(s)
   .replace(/(\d{1,2})\/(\d{1,2})\s*\((.)\)/g, (_, m, d, w) => `${m}월 ${d}일 ${w}요일`)
@@ -243,6 +254,7 @@ function gather(data, brief, earnings) {
   const term = TERMS[termOfDay(new Date(kstNow().toISOString().slice(0, 10) + 'T12:00:00')) % TERMS.length];
   return {
     wx, movers, term, fx: data.usdkrw,
+    focus: easy.us?.focus?.title ? { ...easy.us.focus, points: (easy.us.focus.points || []).map(x => withPrice(x)) } : null,
     why: pickList(easy, 'why').map(oil).map(x => withPrice(x)), news: pickList(easy, 'news').map(oilAll).map(priceAll),
     past: pickList(easy, 'weekPast').map(oilAll).map(priceAll), week: pickList(easy, 'week').map(oilAll).map(tickerAll),
     check: (easy.us?.check?.length ? easy.us.check
@@ -255,6 +267,14 @@ const level = v => v.toLocaleString(undefined, { minimumFractionDigits: 2, maxim
 const money = s => s.currency === 'USD' ? '$' + s.last.toLocaleString(undefined, { maximumFractionDigits: 2 }) : Math.round(s.last).toLocaleString() + '원';
 const flag = s => US ? '' : s.currency === 'USD' ? '🇺🇸 ' : '🇰🇷 ';
 
+// 오늘의 주인공 상자, 그리고 정규장 숫자와 시간외 움직임이 다른 회사 표시
+const focusBox = f => `<div class="fc"><div class="nm">${esc(f.name || '')}${f.ticker ? ` · ${esc(f.ticker)}` : ''}</div>
+  <div class="mv ${f.sign === '+' ? 'up' : f.sign === '-' ? 'down' : 'flat'}">${esc(f.move || '')}</div>
+  <ul>${f.points.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+const sameCo = (f, s) => f.ticker?.replace(/^GOOGL$/, 'GOOG') === s.ticker.replace(/^GOOGL$/, 'GOOG') || f.name === s.name;
+const afterNote = (g, s) => g.focus && sameCo(g.focus, s) && g.focus.move
+  ? { t: `장 마감 뒤 ${g.focus.move}`, c: g.focus.sign === '+' ? 'up' : 'down' } : null;
+
 // ── 카드뉴스: 자세히 읽는 용도 ──
 function postSlides(g) {
   const out = [];
@@ -266,6 +286,8 @@ function postSlides(g) {
       <div><div class="chg num ${cls(x.ch)}">${pct(x.ch)}</div><div class="word">${x.w.word}</div></div>
     </div>`).join('')}</div>
     ${g.fx ? `<div class="fx">💵 환율 1달러 = <b class="num">${Math.round(g.fx).toLocaleString()}원</b></div>` : ''}`);
+  const f = g.focus;
+  if (f) out.push(`<div class="kicker">🔥 오늘의 주인공</div><h1>${esc(f.title).replace('… ', '…<br>')}</h1>${focusBox(f)}`);
   if (g.why.length) out.push(`<div class="kicker">🤔 왜 그랬을까</div><h1>요즘 시장,<br>왜 이럴까?</h1>
     <ol class="why">${g.why.map(s => `<li>${esc(s)}</li>`).join('')}</ol>`);
   const news = g.news.slice(0, 3);
@@ -279,6 +301,7 @@ function postSlides(g) {
       <div class="chg num ${cls(s.ch)}">${pct(s.ch)}</div>
       <div class="px num">${money(s)}</div>
       <div class="lv">${s.lv.dot} ${s.lv.text}</div>
+      ${afterNote(g, s) ? `<div class="af ${afterNote(g, s).c}">⏰ ${esc(afterNote(g, s).t)}</div>` : ''}
     </div>`).join('')}</div>
     <div class="note">신호등은 지금 주가가 지난 5년 보통 수준보다 비싼지 싼지만 비교한 거예요. 사고팔라는 뜻이 아니에요.</div>`);
   const past = g.past.slice(0, 4);
@@ -323,8 +346,11 @@ function reelSlides(g) {
     lines: [line(g.wx.map(x => `${x.name} ${level(x.close)} (${pct(x.ch)})`).join(' · '),
       `${say(a.name)}은 ${moved(a.ch, '고')}, ${b.name}${jo(b.name, '은', '는')} ${moved(b.ch, '고')}, ${c.name}${jo(c.name, '은', '는')} ${moved(c.ch, '어요')}.`)] });
 
-  // 3. 왜? (앞의 2개)
-  const why = g.why.slice(0, 2);
+  // 3. 오늘의 주인공이 있으면 그 이야기, 없으면 왜? (앞의 2개)
+  const f = g.focus;
+  if (f) out.push({ html: `<div class="r-kicker">🔥 오늘의 주인공</div><div class="r-title">${esc(f.title).replace('… ', '…<br>')}</div>${focusBox(f)}`,
+    lines: [line(f.title, f.say || say(f.title)), ...(f.say2 ? [line(f.points[0] || f.title, f.say2)] : [])] });
+  const why = f ? [] : g.why.slice(0, 2);
   if (why.length) out.push({ html: `<div class="r-kicker">🤔 왜 그랬을까</div><div class="r-title">왜 이렇게<br>움직였을까?</div>
     ${why.map((s, i) => `<div class="r-text"><span class="n">${i + 1}</span>${esc(s)}</div>`).join('')}`,
     lines: [line(why[0], '왜 그랬을까요? ' + say(why[0]))] });  // 60초에 맞추려고 목소리는 첫 이유만
@@ -341,12 +367,15 @@ function reelSlides(g) {
   const m = g.movers.slice(0, 3);
   if (m.length) out.push({ html: `<div class="r-kicker">🏢 아는 회사</div><div class="r-title">어제 가장 크게<br>움직인 곳</div>
     <div class="stack">${m.map(s => `<div class="r-row"><div><div class="nm">${flag(s)}${esc(s.name)}</div><div class="lvl num">${money(s)}</div></div>
-      <div class="chg num ${cls(s.ch)}">${pct(s.ch)}</div></div>`).join('')}</div>`,
+      <div class="chg num ${cls(s.ch)}">${pct(s.ch)}${afterNote(g, s) ? `<div class="sub2 ${afterNote(g, s).c}" style="font-size:30px;text-align:right">시간외 ${esc(g.focus.move.replace(/^시간외\s*/, ''))}</div>` : ''}</div></div>`).join('')}</div>`,
     lines: [line(m.map(s => `${s.name} ${money(s)} (${pct(s.ch)})`).join(' · '),
-      '익숙한 회사 중에선 ' + m.slice(0, 2).map((s, i) => `${s.name}${jo(s.name, '이', '가')} ${moved(s.ch, i ? '어요' : '고')}`).join(', ') + '.')] });
+      (() => { const h = m.find(s => afterNote(g, s)), o = m.find(s => s !== h);
+        return h  // 정규장 숫자와 시간외 움직임이 다르면 헷갈리지 않게 짚어 준다
+          ? `익숙한 회사 중에선 ${say(h.name)}${jo(h.name, '이', '가')} 정규장에선 ${moved(h.ch, '지만')}, 장이 끝난 뒤 시간외에선 크게 ${g.focus.sign === '+' ? '올랐어요' : '내렸어요'}.`
+          : '익숙한 회사 중에선 ' + m.slice(0, 2).map((s, i) => `${s.name}${jo(s.name, '이', '가')} ${moved(s.ch, i ? '어요' : '고')}`).join(', ') + '.'; })())] });
 
   // 6. 지난 일정 1개
-  const p = g.past[0];
+  const p = f ? null : g.past[0];  // 주인공이 있으면 60초에 맞추려고 뺀다 (카드뉴스에는 그대로)
   if (p) out.push({ html: `<div class="r-kicker">⏪ 지난 일정</div><div class="r-title">주요 이벤트 이후<br>주가는?</div>
     <div class="r-big"><div class="dt">${esc(p.date)}</div><div class="t">${esc(p.title)}</div><div class="m">↳ ${esc(p.result || '반응 확인 중')}</div>${linkHtml(p)}</div>`,
     lines: [line(`${p.title} → ${p.result || '반응 확인 중'}`, `${say(p.title)}. ${say(p.result || '반응은 아직 확인 중이에요.')}`)] });
@@ -388,8 +417,11 @@ const TAGS = '#미국주식 #미장 #주식공부 #주린이 #윤슬주식';
 function caption(g) {
   const out = [`📅 ${today()} | 어젯밤 미국 증시 + 오늘 밤 체크 포인트 | ${BRAND}`, '',
     '🌤 시장 날씨', ...g.wx.map(x => `${x.w.ico} ${x.name} ${level(x.close)} (${pct(x.ch)}, ${x.w.word})${x.live ? ' · 장중' : ''}`), ''];
+  const f = g.focus;
+  if (f) out.push(`🔥 오늘의 주인공: ${f.title}`, `${f.name || ''}${f.ticker ? `(${f.ticker})` : ''} ${f.move || ''}`.trim(), ...f.points.map(x => `- ${x}`), '');
   if (g.why.length) out.push('🤔 왜 그랬을까?', ...g.why.map(s => `✔️ ${s}`), '');
-  if (g.movers.length) out.push('🏢 많이 들어 본 회사 중 가장 크게 움직인 곳:', g.movers.slice(0, 3).map(s => `${s.name} ${pct(s.ch)}`).join(', '), '');
+  if (g.movers.length) out.push('🏢 많이 들어 본 회사 중 가장 크게 움직인 곳:',
+    g.movers.slice(0, 3).map(s => `${s.name} ${pct(s.ch)}${afterNote(g, s) ? ` (${afterNote(g, s).t})` : ''}`).join(', '), '');
   if (g.check.length) {
     out.push('🌙 오늘 밤 개장 전 체크 포인트');
     g.check.forEach(c => {
@@ -415,7 +447,8 @@ function reelCaption(g) {
   return [
     `🎬 [${md}] 어젯밤 미국 증시, 1분 정리`, '',
     g.wx.map(x => `${x.name} ${level(x.close)} (${pct(x.ch)})`).join(' · '),
-    ...(g.why.length ? ['', `🤔 ${g.why[0]}`] : []),
+    ...(g.focus ? ['', `🔥 오늘의 주인공: ${g.focus.title}`, ...g.focus.points.slice(0, 2).map(x => `- ${x}`)]
+      : g.why.length ? ['', `🤔 ${g.why[0]}`] : []),
     ...(g.check.length ? ['', '🌙 오늘 밤 체크', ...g.check.slice(0, 2).map(c => `- ${c.time ? `[${c.time}] ` : ''}${c.title}`)] : []),
     '', ...MORE_LINES, '',
     '❤️ 도움이 됐다면 좋아요 · 팔로우 · 🔔 알림 설정', '',
