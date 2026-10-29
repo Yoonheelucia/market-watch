@@ -92,6 +92,18 @@ h2 { font-size: 40px; font-weight: 900; margin: 6px 0 6px; line-height: 1.3; }
 #cover .foot2 { margin-top: 36px; display: flex; align-items: center; justify-content: space-between; }
 #cover .tag { background: var(--accent); color: #fff; border-radius: 999px; padding: 18px 40px; font-size: 42px; font-weight: 900; }
 #cover .b { font-size: 40px; font-weight: 900; color: var(--accent); }
+/* 휴대폰에서 글 안의 그림을 읽을 수 있게: 대표 이미지·릴스 썸네일 말고는 폭을 줄이고 글자를 키운다 */
+.fig:not(#thumb) { width: 860px; padding: 48px 40px 84px; }
+.fig:not(#thumb) .kicker { font-size: 26px; } .fig:not(#thumb) h2 { font-size: 46px; } .fig:not(#thumb) .lead { font-size: 24px; }
+.fig:not(#thumb) .src { font-size: 19px; } .fig:not(#thumb) .brand { top: auto; bottom: 34px; right: 40px; font-size: 24px; }
+.bars { grid-template-columns: 230px 1fr; } .bars .nm { font-size: 27px; } .bars .nm small { font-size: 20px; }
+.track { height: 46px; } .track .bar { height: 34px; } .track .lab { font-size: 26px; }
+.axis { font-size: 18px; height: 26px; }
+.er .row { grid-template-columns: 1fr 1fr; grid-template-areas: 'co eps' 'tr tr'; row-gap: 10px; }
+.er .row .co { grid-area: co; font-size: 30px; } .er .row .eps { grid-area: eps; font-size: 22px; } .er .row .track { grid-area: tr; }
+.er .co small { font-size: 20px; } .badge { font-size: 20px; } .er .co .ah { font-size: 19px; }
+.callout { font-size: 25px; }
+.tl .ev { grid-template-columns: 190px 28px 1fr; } .tl .dt { font-size: 24px; } .tl .t { font-size: 29px; } .tl .m { font-size: 23px; }
 </style>
 </head>
 <body>
@@ -152,7 +164,7 @@ const range = vals => { const m = Math.ceil(Math.max(2, ...vals.map(Math.abs)) *
   if (ups.length + downs.length >= 3) {
     const [lo, hi] = range([...ups, ...downs].map(s => s.ch));
     const row = s => `<div class="nm">${esc(s.name)}<small>${s.ticker} · ${px(s.close)}</small></div>${track(s.ch, lo, hi)}`;
-    const ticks = []; for (let t = Math.ceil(lo / 2) * 2; t <= hi; t += 2) ticks.push(t);
+    const st = hi - lo > 16 ? 4 : 2, ticks = []; for (let t = Math.ceil(lo / st) * st; t <= hi; t += st) ticks.push(t);  // 눈금 글씨가 겹치지 않게
     add('movers', `<div class="kicker">${md(day)} 미국장 · 하루 등락률</div>
       <h2>어젯밤 크게 오른 회사 · 크게 내린 회사</h2>
       <p class="lead">S&amp;P 500 · 나스닥 · 다우 주요 종목 · 티커 · ${md(day)} 종가</p>

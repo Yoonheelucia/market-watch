@@ -296,9 +296,13 @@ ARTICLE_IMAGES = [('', '1_thumb'), ('왜 이렇게', '2_movers'), ('실적 발�
 AFTER_FIRST = [('어젯밤 미국 증시', '2_movers')]
 UP, DOWN = '#e0314b', '#2463eb'
 # 글쓰기 창이 CSS 를 버려도 문단 모양이 남도록 모든 문단에 직접 스타일을 단다 (+ 소제목 앞 빈 줄)
-PS = 'margin:0 0 16px;line-height:1.8'
-HS = 'margin:28px 0 12px;font-size:20px;font-weight:700;line-height:1.5'
-US = 'margin:0 0 16px;padding-left:22px;line-height:1.8'
+# 휴대폰에서 읽기 좋게: 글자 조금 크게, 줄 간격 넉넉히, 문단은 두 문장씩, 목록은 한 줄씩 띄워서
+PS = 'margin:0 0 18px;font-size:17px;line-height:1.85'
+HS = 'margin:36px 0 14px;padding-left:12px;border-left:4px solid #0f8a7e;font-size:21px;font-weight:700;line-height:1.45'
+LS = 'margin:0 0 10px;padding-left:16px;text-indent:-14px;font-size:17px;line-height:1.75'
+MS = 'margin:26px 0 10px;font-size:18px;font-weight:700;color:#0f8a7e;line-height:1.5'
+KS = 'margin:0 0 18px;padding:14px 16px;background:#eef7f5;border-radius:10px;font-size:17px;line-height:1.8;font-weight:600'
+KEY = ('핵심은', '정리하면', '쉽게 말하면', '한마디로')  # 이 말로 시작하는 문단은 눈에 띄는 상자로
 
 
 def article_html(out):
@@ -325,7 +329,26 @@ def article_html(out):
         later = []
         def flush():
             if para:
-                out_.append(f'<p style="{PS}">' + '<br>'.join(color(html.escape(x, quote=False)) for x in para) + '</p>')
+                text = []  # 이어지는 보통 줄을 모았다가 두 문장씩 문단으로
+                def emit_text():
+                    if not text:
+                        return
+                    sents = re.split(r'(?<=[.!?])\s+', ' '.join(text))
+                    if text[0].startswith(KEY):  # 요점 문단은 나누지 않고 한 상자에
+                        out_.append(f'<p style="{KS}">' + color(html.escape(' '.join(text), quote=False)) + '</p>')
+                    else:
+                        for k in range(0, len(sents), 2):
+                            out_.append(f'<p style="{PS}">' + color(html.escape(' '.join(sents[k:k + 2]), quote=False)) + '</p>')
+                    text.clear()
+                for x in para:
+                    e = color(html.escape(x, quote=False))
+                    if x.startswith(('- ', '· ', '  · ')):
+                        emit_text(); out_.append(f'<p style="{LS}">• ' + e.lstrip('-· ').strip() + '</p>')
+                    elif x.startswith('【') or (len(x) <= 30 and not x.endswith(('.', '요', '다', '?', ')'))):
+                        emit_text(); out_.append(f'<p style="{MS}">{e}</p>')
+                    else:
+                        text.append(x)
+                emit_text()
                 para.clear()
                 out_.extend(img(n) for n in later)
                 later.clear()
