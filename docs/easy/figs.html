@@ -61,6 +61,7 @@ h2 { font-size: 40px; font-weight: 900; margin: 6px 0 6px; line-height: 1.3; }
 .er .eps { font-size: 18px; color: var(--ink2); line-height: 1.5; }
 .badge { display: inline-block; border-radius: 999px; padding: 3px 14px; font-size: 17px; font-weight: 700; margin-bottom: 4px; }
 .badge.g { background: var(--good-soft); color: var(--good); } .badge.b { background: var(--bad-soft); color: var(--bad); }
+.er .co .ah { display: inline-block; margin-top: 4px; font-size: 15px; font-weight: 700; color: var(--accent); }
 .er .row.hl { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .callout { margin-top: 20px; background: var(--accent-soft); border-radius: 18px; padding: 18px 24px; font-size: 21px; line-height: 1.55; }
 
@@ -110,11 +111,11 @@ const add = (id, html) => document.getElementById(id).insertAdjacentHTML('before
 const skip = id => document.getElementById(id).dataset.skip = '1';
 
 // 0 을 기준으로 좌우로 뻗는 막대 (눈금 하나)
-function track(v, lo, hi) {
+function track(v, lo, hi, label) {
   const x = p => (p - lo) / (hi - lo) * 100, z = x(0), e = x(v);
   const bar = v >= 0 ? `left:${z}%;width:${e - z}%` : `left:${e}%;width:${z - e}%`;
   const lab = v >= 0 ? `left:calc(${e}% + 10px)` : `right:calc(${100 - e}% + 10px)`;
-  return `<div class="track"><div class="zero" style="left:${z}%"></div><div class="bar ${v >= 0 ? 'up' : 'down'}" style="${bar}"></div><div class="lab num" style="${lab}">${sp(v)}</div></div>`;
+  return `<div class="track"><div class="zero" style="left:${z}%"></div><div class="bar ${v >= 0 ? 'up' : 'down'}" style="${bar}"></div><div class="lab num" style="${lab}">${label || sp(v)}</div></div>`;
 }
 // 숫자 글씨가 막대 끝 밖에 들어갈 자리까지 남긴다
 const range = vals => { const m = Math.ceil(Math.max(2, ...vals.map(Math.abs)) * 1.45 / 2) * 2; return [-m, m]; };
@@ -169,18 +170,35 @@ const range = vals => { const m = Math.ceil(Math.max(2, ...vals.map(Math.abs)) *
       ((q.date === day && q.when !== '장후') || (q.date === prevDay && q.when === '장후')));
     if (q) er.push({ ...s, act: q.act, est: q.est, odd: (q.act > q.est) !== (s.ch > 0) });
   }
-  er.sort((a, b) => b.odd - a.odd || Math.abs(b.ch) - Math.abs(a.ch));
+  // 어젯밤 장 마감 뒤 발표한 회사(예: 구글·마이크로소프트)는 시간외 반응으로 (브리핑 easy.us.after 의 숫자)
+  const after = brief?.easy?.us?.after || [];
+  const same = (a, b) => a.replace(/^GOOGL$/, 'GOOG') === b.replace(/^GOOGL$/, 'GOOG');
+  for (const [t, e] of Object.entries(earn?.stocks || {})) {
+    const s = us.get(t), a = after.find(x => same(x.ticker || '', t));
+    const q = (e.quarters || []).find(q => q.date === day && q.when === '장후' && q.act != null && q.est != null);
+    if (s && a && q && typeof a.ch === 'number')
+      er.push({ ...s, ch: a.ch, label: a.label, ah: true, act: q.act, est: q.est, odd: (q.act > q.est) !== (a.ch > 0) });
+  }
+  er.sort((a, b) => !!b.ah - !!a.ah || b.odd - a.odd || Math.abs(b.ch) - Math.abs(a.ch));  // 시간외 반응(어젯밤 큰 실적)을 먼저
   const ers = er.slice(0, 5);
   if (ers.length) {
     const [lo, hi] = range(ers.map(s => s.ch));
-    const odd = ers.find(s => s.odd);
+    const odd = ers.find(s => s.odd && !s.ah);
+    // 제목은 그날 내용으로 (브리핑 easy.us.earnTitle 이 있으면 그것). 매일 같은 제목이 되지 않게
+    const short = n => n.replace(/\(.*\)/, '').trim(), j = (w, a, b) => { const c = short(w).charCodeAt(short(w).length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? a : b; };
+    const nm = s => s.name.includes('(') ? s.name.match(/\((.*)\)/)[1] : s.name;
+    const top = ers.filter(s => s.ah).length ? ers.filter(s => s.ah) : ers;
+    const upS = top.filter(s => s.ch > 0).sort((a, b) => b.ch - a.ch)[0], dnS = top.filter(s => s.ch < 0).sort((a, b) => a.ch - b.ch)[0];
+    const auto = upS && dnS ? `${nm(dnS)}${j(nm(dnS), '은', '는')} 내리고, ${nm(upS)}${j(nm(upS), '은', '는')} 올랐어요`
+      : dnS ? `${nm(dnS)}${j(nm(dnS), '이', '가')} 실적 뒤 가장 크게 내렸어요` : upS ? `${nm(upS)}${j(nm(upS), '이', '가')} 실적 뒤 가장 크게 올랐어요` : '실적 발표 뒤 주가는 이렇게 움직였어요';
+    const h2 = brief?.easy?.us?.earnTitle || auto;
     add('earn', `<div class="kicker">${md(day)} 실적 발표 · 발표 뒤 첫 거래일 주가</div>
-      <h2>${odd ? (odd.act > odd.est ? '예상보다 잘했는데 주가가 내린 회사도 있어요' : '예상보다 못했는데 주가가 오른 회사도 있어요') : '실적 발표 뒤 주가는 이렇게 움직였어요'}</h2>
-      <p class="lead">주당순이익(EPS): 실제 vs 전문가 예상 · 티커 · ${md(day)} 종가</p>
+      <h2>${esc(h2)}</h2>
+      <p class="lead">주당순이익(EPS): 실제 vs 전문가 예상 · 티커 · ${md(day)} 종가${ers.some(s => s.ah) ? ' · 장 마감 뒤 발표는 시간외 반응' : ''}</p>
       <div class="er">${ers.map(s => { const g = s.act > s.est;
-        return `<div class="row${s === odd ? ' hl' : ''}"><div class="co">${esc(s.name)}<small>${s.ticker} · ${px(s.close)}</small></div>
+        return `<div class="row${s === (ers[0].ah ? ers[0] : odd) ? ' hl' : ''}"><div class="co">${esc(s.name)}<small>${s.ticker} · ${px(s.close)}</small>${s.ah ? '<span class="ah">🌙 장 마감 뒤 발표 · 시간외</span>' : ''}</div>
           <div class="eps"><span class="badge ${g ? 'g' : 'b'}">${g ? '✓ 예상보다 좋음' : '✕ 예상보다 나쁨'}</span><br>실제 <b class="num">${usd(s.act)}</b> · 예상 <span class="num">${usd(s.est)}</span></div>
-          ${track(s.ch, lo, hi)}</div>`; }).join('')}</div>
+          ${track(s.ch, lo, hi, s.label)}</div>`; }).join('')}</div>
       ${odd ? `<div class="callout">💡 주가는 '숫자'보다 '기대'에 반응해요. 결과가 예상보다 좋아도 기대한 수준이나 앞으로의 전망이 아쉬우면 내릴 수 있어요.</div>` : ''}
       <div class="src">자료: 각 회사 발표·야후 파이낸스 (실적 예상치·종가)</div>`);
   } else skip('earn');
