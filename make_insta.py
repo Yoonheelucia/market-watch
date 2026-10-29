@@ -361,7 +361,7 @@ def article_html(out):
             elif t.startswith('[[') and t.endswith(']]'):
                 flush(); out_.append(img(t[2:-2]))
             elif t.startswith('■'):
-                flush(); out_.append(('<p><br></p>' if out_ else '') + f'<h3 style="{HS}">{html.escape(t, quote=False)}</h3>')
+                flush(); out_.append(('<p><br></p>' if out_ else '') + f'<h3 style="{HS}">{html.escape(t.lstrip("■ ").strip(), quote=False)}</h3>'  # 왼쪽 선이 있으니 ■ 는 뺀다)
                 out_ += [img(n) for k, n in ARTICLE_IMAGES[1:] if k in t and n not in marked]
                 later.extend(n for k, n in AFTER_FIRST if k in t and n not in marked)
             else:
