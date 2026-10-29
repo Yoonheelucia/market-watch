@@ -255,9 +255,10 @@ function gather(data, brief, earnings) {
     .map(s => { const { ch, i } = dayChange(s.c); return { ...s, ch, last: s.c[i], lv: priceLevel(earnings?.[s.ticker]) }; })
     .sort((a, b) => Math.abs(b.ch) - Math.abs(a.ch));
   const term = TERMS[termOfDay(new Date(kstNow().toISOString().slice(0, 10) + 'T12:00:00')) % TERMS.length];
+  const F = easy.us?.focus?.title ? { ...easy.us.focus, points: (easy.us.focus.points || []).map(x => withPrice(x)) } : null;
   return {
-    wx, movers, term, fx: data.usdkrw,
-    focus: easy.us?.focus?.title ? { ...easy.us.focus, points: (easy.us.focus.points || []).map(x => withPrice(x)) } : null,
+    wx, movers: F ? movers.filter(s => !sameCo(F, s)) : movers, term, fx: data.usdkrw,
+    focus: F,
     why: pickList(easy, 'why').map(oil).map(x => withPrice(x)), news: pickList(easy, 'news').map(oilAll).map(priceAll),
     past: pickList(easy, 'weekPast').map(oilAll).map(priceAll), week: pickList(easy, 'week').map(oilAll).map(tickerAll),
     check: (easy.us?.check?.length ? easy.us.check
@@ -298,7 +299,7 @@ function postSlides(g) {
     <div class="stack">${news.map(n => { const [k, tag] = SIGN[n.sign] || SIGN['±'];
       return `<div class="news ${k}"><div class="tag">${tag}</div><div class="t">${esc(n.title)}</div><div class="d">${esc(n.text)}</div>${linkHtml(n)}</div>`; }).join('')}</div>`);
   const movers = g.movers.slice(0, 4);
-  if (movers.length) out.push(`<div class="kicker">🏢 아는 회사</div><h1>많이 들어 본 회사,<br>어제 가장 크게 움직인 곳</h1>
+  if (movers.length) out.push(`<div class="kicker">🏢 아는 회사</div><h1>많이 들어 본 회사,<br>어제 가장 크게 움직인 종목</h1>
     <div class="stack">${movers.map(s => `<div class="card co">
       <div class="nm">${flag(s)}${esc(s.name)}</div>
       <div class="chg num ${cls(s.ch)}">${pct(s.ch)}</div>
@@ -368,7 +369,7 @@ function reelSlides(g) {
 
   // 5. 아는 회사 3곳
   const m = g.movers.slice(0, 3);
-  if (m.length) out.push({ html: `<div class="r-kicker">🏢 아는 회사</div><div class="r-title">어제 가장 크게<br>움직인 곳</div>
+  if (m.length) out.push({ html: `<div class="r-kicker">🏢 아는 회사</div><div class="r-title">어제 가장 크게<br>움직인 종목</div>
     <div class="stack">${m.map(s => `<div class="r-row"><div><div class="nm">${flag(s)}${esc(s.name)}</div><div class="lvl num">${money(s)}</div></div>
       <div class="chg num ${cls(s.ch)}">${pct(s.ch)}${afterNote(g, s) ? `<div class="sub2 ${afterNote(g, s).c}" style="font-size:30px;text-align:right">시간외 ${esc(g.focus.move.replace(/^시간외\s*/, ''))}</div>` : ''}</div></div>`).join('')}</div>`,
     lines: [line(m.map(s => `${s.name} ${money(s)} (${pct(s.ch)})`).join(' · '),
@@ -424,7 +425,7 @@ function caption(g) {
   const f = g.focus;
   if (f) out.push(`🔥 오늘의 주인공: ${f.title}`, `${f.name || ''}${f.ticker ? `(${f.ticker})` : ''} ${f.move || ''}`.trim(), ...f.points.map(x => `- ${x}`), '');
   if (g.why.length) out.push('🤔 왜 그랬을까?', ...g.why.map(s => `✔️ ${s}`), '');
-  if (g.movers.length) out.push('🏢 많이 들어 본 회사 중 가장 크게 움직인 곳:',
+  if (g.movers.length) out.push('🏢 많이 들어 본 회사 중 가장 크게 움직인 종목:',
     g.movers.slice(0, 3).map(s => `${s.name} ${pct(s.ch)}${afterNote(g, s) ? ` (${afterNote(g, s).t})` : ''}`).join(', '), '');
   if (g.check.length) {
     out.push('🌙 오늘 밤 개장 전 체크 포인트');
