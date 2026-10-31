@@ -62,6 +62,9 @@ a.tk { color: var(--accent); font-size: 12px; margin-left: 6px; text-decoration:
 a.tk:hover { text-decoration: underline; }
 a.tk::after { content: ' ↗'; font-size: 10px; }
 h2 { font-size: 16px; margin: 32px 0 12px; }
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 32px 0 12px; }
+.list-head h2 { margin: 0; }
+.list-head .seg button { padding: 6px 14px; }
 .stock h3 { font-size: 15px; margin: 0 0 4px; }
 .stock h3 .tk { font-weight: 400; }
 .stock .meta { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
@@ -409,8 +412,15 @@ function render(m) {
       </table></div>
       <div class="note">'기간'은 차트 시작일(${DATA.start}) 이후 수익률이고, '지수 대비'는 그 수익률에서 ${m.index.name} 수익률을 뺀 값이고, '순위'는 이 목록 안에서의 시총 순위입니다. 표의 제목을 누르면 정렬되고, 행을 누르면 해당 종목 차트로 이동합니다.${m.missing.length ? ` 데이터 없음: ${m.missing.join(', ')}` : ''}</div>
     </section>
-    <h2>종목별 차트</h2>
+    <div class="list-head"><h2>종목별 차트</h2>
+      <div class="seg" id="period">${PERIODS.map(p => `<button type="button" data-p="${p.k}" aria-pressed="${p.k === period}">${p.t}</button>`).join('')}</div></div>
     <div id="list"></div>`;
+  main.querySelectorAll('#period button').forEach(b => b.onclick = () => {
+    period = b.dataset.p;
+    try { localStorage.setItem('period', period); } catch (e) {}
+    main.querySelectorAll('#period button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    renderList(m);
+  });
 
   main.querySelectorAll('th').forEach(th => th.onclick = () => {
     const k = th.dataset.k;
@@ -419,21 +429,36 @@ function render(m) {
     sortKey = k; renderTable(m);
   });
   renderTable(m);
+  renderList(m);
+}
 
+// 종목별 차트 기간: 3개월(데이터 전체) · 1개월(21거래일) · 5일
+const PERIODS = [{ k: '3m', t: '3개월', n: null }, { k: '1m', t: '1개월', n: 21 }, { k: '5d', t: '5일', n: 5 }];
+let period = (() => { try { return localStorage.getItem('period') || '3m'; } catch (e) { return '3m'; } })();
+if (!PERIODS.some(p => p.k === period)) period = '3m';
+const periodStart = m => { const n = PERIODS.find(p => p.k === period).n; return n ? Math.max(0, m.dates.length - 1 - n) : 0; };
+
+function renderList(m) {
+  charts.forEach(c => c.remove()); charts = [];
+  if (observer) observer.disconnect();
+  const st = periodStart(m), label = PERIODS.find(p => p.k === period).t;
+  const ret = c => pct(lastValid(c), firstValid(c.slice(st)));
+  const iRet = ret(m.index.c);
+  m.rows.forEach(r => { r.pAll = ret(r.s.c); r.pEx = r.pAll != null && iRet != null ? r.pAll - iRet : null; });
   const list = document.getElementById('list');
-  // 차트는 지수 대비(초과 수익률)가 큰 순서대로. 시장보다 못하면(지수 대비 −) 종목 선을 파란색으로
-  const byExcess = [...m.rows].sort((a, b) => (b.excess ?? -Infinity) - (a.excess ?? -Infinity));
+  // 차트는 고른 기간의 지수 대비(초과 수익률)가 큰 순서대로. 시장보다 못하면(지수 대비 −) 종목 선을 파란색으로
+  const byExcess = [...m.rows].sort((a, b) => (b.pEx ?? -Infinity) - (a.pEx ?? -Infinity));
   list.innerHTML = byExcess.map(r => `
     <article class="card stock" id="s-${r.i}" data-i="${r.i}">
       <h3>${r.s.name}${tickerLink(r.s.ticker)}</h3>
-      <div class="meta">${fmtPrice(r.last, m.currency)} · 시총 ${fmtCap(r.cap, m.currency)}${r.rank ? ` (${r.rank}위)` : ''} · 1일 ${fmtPct(r.d1)} · 기간 ${fmtPct(r.all)} · 지수 대비 ${fmtPp(r.excess)}</div>
+      <div class="meta">${fmtPrice(r.last, m.currency)} · 시총 ${fmtCap(r.cap, m.currency)}${r.rank ? ` (${r.rank}위)` : ''} · 1일 ${fmtPct(r.d1)} · ${label} ${fmtPct(r.pAll)} · 지수 대비 ${fmtPp(r.pEx)}</div>
       <div class="charts">
         <div class="chart-box">
           <div class="legend"><span>캔들 (오른쪽 축)</span><span><i style="background:var(--index)"></i>${m.index.name} (왼쪽 축)</span></div>
           <div class="chart c1"></div>
         </div>
         <div class="chart-box">
-          <div class="legend"><span><i style="background:${r.excess < 0 ? 'var(--down)' : 'var(--stock)'}"></i>${r.s.name}</span><span><i style="background:var(--index)"></i>${m.index.name}</span><span>차트 시작일 대비 %</span></div>
+          <div class="legend"><span><i style="background:${r.pEx < 0 ? 'var(--down)' : 'var(--stock)'}"></i>${r.s.name}</span><span><i style="background:var(--index)"></i>${m.index.name}</span><span>${label} 전 대비 %</span></div>
           <div class="chart c2"></div>
         </div>
       </div>
@@ -442,7 +467,7 @@ function render(m) {
   observer = new IntersectionObserver(entries => entries.forEach(e => {
     if (!e.isIntersecting) return;
     observer.unobserve(e.target);
-    drawStock(m, m.stocks[+e.target.dataset.i], e.target, m.rows[+e.target.dataset.i].excess);
+    drawStock(m, m.stocks[+e.target.dataset.i], e.target, m.rows[+e.target.dataset.i].pEx, st);
   }), { rootMargin: '400px' });
   list.querySelectorAll('.stock').forEach(el => observer.observe(el));
 }
@@ -480,23 +505,24 @@ function baseOptions(leftVisible) {
   };
 }
 
-function drawStock(m, s, el, excess) {
+function drawStock(m, s, el, excess, st = 0) {
+  const D = m.dates.slice(st), cut = a => a.slice(st);
   const up = css('--up'), down = css('--down'), idxColor = css('--index'), stockColor = excess < 0 ? down : css('--stock');
 
   const c1 = LWC.createChart(el.querySelector('.c1'), baseOptions(true));
   const candles = c1.addCandlestickSeries({ upColor: up, downColor: down, wickUpColor: up, wickDownColor: down, borderVisible: false });
-  candles.setData(m.dates.map((t, i) => s.c[i] == null ? { time: t } : { time: t, open: s.o[i], high: s.h[i], low: s.l[i], close: s.c[i] }));
+  candles.setData(D.map((t, j) => { const i = j + st; return s.c[i] == null ? { time: t } : { time: t, open: s.o[i], high: s.h[i], low: s.l[i], close: s.c[i] }; }));
   const idxLine = c1.addLineSeries({ priceScaleId: 'left', color: idxColor, lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
-  idxLine.setData(line(m.dates, m.index.c));
+  idxLine.setData(line(D, cut(m.index.c)));
   c1.timeScale().fitContent();
 
   const pctFmt = { type: 'custom', formatter: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%', minMove: 0.01 };
   const c2 = LWC.createChart(el.querySelector('.c2'), baseOptions(false));
-  const iBase = firstValid(m.index.c), sBase = firstValid(s.c);
+  const iBase = firstValid(cut(m.index.c)), sBase = firstValid(cut(s.c));
   const pIdx = c2.addLineSeries({ color: idxColor, lineWidth: 2, priceFormat: pctFmt, priceLineVisible: false });
-  pIdx.setData(line(m.dates, m.index.c.map(v => pct(v, iBase))));
+  pIdx.setData(line(D, cut(m.index.c).map(v => pct(v, iBase))));
   const pStock = c2.addLineSeries({ color: stockColor, lineWidth: 2, priceFormat: pctFmt, priceLineVisible: false });
-  pStock.setData(line(m.dates, s.c.map(v => pct(v, sBase))));
+  pStock.setData(line(D, cut(s.c).map(v => pct(v, sBase))));
   pStock.createPriceLine({ price: 0, color: css('--muted'), lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
   c2.timeScale().fitContent();
 
