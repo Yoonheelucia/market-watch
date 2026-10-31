@@ -421,7 +421,9 @@ function render(m) {
   renderTable(m);
 
   const list = document.getElementById('list');
-  list.innerHTML = m.rows.map(r => `
+  // 차트는 지수 대비(초과 수익률)가 큰 순서대로. 시장보다 못하면(지수 대비 −) 종목 선을 파란색으로
+  const byExcess = [...m.rows].sort((a, b) => (b.excess ?? -Infinity) - (a.excess ?? -Infinity));
+  list.innerHTML = byExcess.map(r => `
     <article class="card stock" id="s-${r.i}" data-i="${r.i}">
       <h3>${r.s.name}${tickerLink(r.s.ticker)}</h3>
       <div class="meta">${fmtPrice(r.last, m.currency)} · 시총 ${fmtCap(r.cap, m.currency)}${r.rank ? ` (${r.rank}위)` : ''} · 1일 ${fmtPct(r.d1)} · 기간 ${fmtPct(r.all)} · 지수 대비 ${fmtPp(r.excess)}</div>
@@ -431,7 +433,7 @@ function render(m) {
           <div class="chart c1"></div>
         </div>
         <div class="chart-box">
-          <div class="legend"><span><i style="background:var(--stock)"></i>${r.s.name}</span><span><i style="background:var(--index)"></i>${m.index.name}</span><span>차트 시작일 대비 %</span></div>
+          <div class="legend"><span><i style="background:${r.excess < 0 ? 'var(--down)' : 'var(--stock)'}"></i>${r.s.name}</span><span><i style="background:var(--index)"></i>${m.index.name}</span><span>차트 시작일 대비 %</span></div>
           <div class="chart c2"></div>
         </div>
       </div>
@@ -440,7 +442,7 @@ function render(m) {
   observer = new IntersectionObserver(entries => entries.forEach(e => {
     if (!e.isIntersecting) return;
     observer.unobserve(e.target);
-    drawStock(m, m.stocks[+e.target.dataset.i], e.target);
+    drawStock(m, m.stocks[+e.target.dataset.i], e.target, m.rows[+e.target.dataset.i].excess);
   }), { rootMargin: '400px' });
   list.querySelectorAll('.stock').forEach(el => observer.observe(el));
 }
@@ -478,8 +480,8 @@ function baseOptions(leftVisible) {
   };
 }
 
-function drawStock(m, s, el) {
-  const up = css('--up'), down = css('--down'), idxColor = css('--index'), stockColor = css('--stock');
+function drawStock(m, s, el, excess) {
+  const up = css('--up'), down = css('--down'), idxColor = css('--index'), stockColor = excess < 0 ? down : css('--stock');
 
   const c1 = LWC.createChart(el.querySelector('.c1'), baseOptions(true));
   const candles = c1.addCandlestickSeries({ upColor: up, downColor: down, wickUpColor: up, wickDownColor: down, borderVisible: false });
