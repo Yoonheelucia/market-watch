@@ -158,7 +158,7 @@ def ready(base):
             and kst(brief['updated']) >= now.replace(hour=15, minute=0, second=0, microsecond=0))
 
 
-FIGS = [('thumb', '1_thumb'), ('movers', '2_movers'), ('earn', '3_earn'), ('check', '4_check')]
+FIGS = [('thumb', '1_thumb'), ('movers', '2_movers'), ('earn', '3_earn'), ('check', '4_check'), ('take', '5_takeaways')]
 
 
 def make_figs(browser, base, out):
@@ -306,7 +306,7 @@ def publish_images(out):
 
 
 # 글 소제목에 맞춰 넣을 이미지 (글에 [[이미지 이름]] 줄이 없을 때)
-ARTICLE_IMAGES = [('', '1_thumb'), ('왜 이렇게', '2_movers'), ('실적 발표', '3_earn'), ('체크 포인트', '4_check')]
+ARTICLE_IMAGES = [('', '1_thumb'), ('왜 이렇게', '2_movers'), ('실적 발표', '3_earn'), ('체크 포인트', '4_check'), ('기억할', '5_takeaways')]
 # 소제목 바로 아래가 아니라 첫 문단(지수 숫자) 다음에 넣는 이미지
 AFTER_FIRST = [('어젯밤 미국 증시', '2_movers')]
 UP, DOWN = '#ef4160', '#3d7cf2'  # 어두운 바탕·밝은 바탕 둘 다에서 보이는 빨강·파랑

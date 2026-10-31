@@ -104,6 +104,14 @@ h2 { font-size: 40px; font-weight: 900; margin: 6px 0 6px; line-height: 1.3; }
 .er .co small { font-size: 20px; } .badge { font-size: 20px; } .er .co .ah { font-size: 19px; }
 .callout { font-size: 25px; }
 .tl .ev { grid-template-columns: 190px 28px 1fr; } .tl .dt { font-size: 24px; } .tl .t { font-size: 29px; } .tl .m { font-size: 23px; }
+/* 오늘 기억할 3가지 */
+.tk { display: flex; flex-direction: column; gap: 18px; }
+.tk .c { display: grid; grid-template-columns: 74px 1fr; gap: 20px; align-items: start; background: var(--card); border: 2px solid var(--line); border-radius: 24px; padding: 26px 28px; }
+.tk .n { width: 64px; height: 64px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 34px; font-weight: 900; display: grid; place-items: center; }
+.tk .i { font-size: 30px; margin-right: 6px; }
+.tk .h { font-size: 33px; font-weight: 900; line-height: 1.35; }
+.tk .h em { font-style: normal; color: var(--accent); }
+.tk .d { font-size: 24px; color: var(--ink2); line-height: 1.6; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -111,6 +119,7 @@ h2 { font-size: 40px; font-weight: 900; margin: 6px 0 6px; line-height: 1.3; }
 <div class="fig" id="movers"><div class="brand">윤슬 주식</div></div>
 <div class="fig" id="earn"><div class="brand">윤슬 주식</div></div>
 <div class="fig" id="check"><div class="brand">윤슬 주식</div></div>
+<div class="fig" id="take"><div class="brand">윤슬 주식</div></div>
 <div id="cover"></div>
 
 <script src="common.js"></script>
@@ -235,6 +244,12 @@ const range = vals => { const m = Math.ceil(Math.max(2, ...vals.map(Math.abs)) *
     <div class="tl">${ck.map(c => `<div class="ev"><div class="dt">${esc(c.time || '')}</div><div class="rail"></div>
       <div class="box"><div class="t">${esc(c.title)}</div><div class="m">${esc(c.watch || c.why || '')}</div></div></div>`).join('')}</div>`);
   else skip('check');
+
+  // 4-2. 오늘 기억할 3가지 (브리핑 easy.article.takeaways [{icon, head, text}], head 안 *강조* 는 청록)
+  const tks = brief?.easy?.article?.takeaways || [];
+  if (tks.length) add('take', `<div class="kicker">${md(day)} 미국장 · 한 장 정리</div><h2>오늘 기억할 3가지</h2><p class="lead">이것만 기억해도 오늘 시장을 이해할 수 있어요</p>
+    <div class="tk">${tks.map((t, i) => `<div class="c"><div class="n">${i + 1}</div><div><div class="h"><span class="i">${esc(t.icon || '')}</span>${esc(t.head).replace(/\*(.+?)\*/g, '<em>$1</em>')}</div><div class="d">${esc(t.text || '')}</div></div></div>`).join('')}</div>`);
+  else skip('take');
 
   // 5. 릴스 썸네일
   add('cover', `<div class="hd"><span class="d">${esc(head ? head[1] : md(day))}</span><span class="t">어젯밤 미국 증시</span><span class="one">▶ 1분 정리</span></div>

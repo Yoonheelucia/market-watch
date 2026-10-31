@@ -102,6 +102,7 @@ E
 - 미국 소식에는 link 를 쓰지 않는다 (빈 문자열 또는 키 생략).
 
 ## 2-3. 윤슬의 해설 글 easy.article (thefirstclass.kr 에 '윤슬' 이름으로 올리는 글의 초안)
+- article.takeaways: '■ 오늘 기억할 3가지' 그림용 [{icon, head, text}] 3개. icon 은 이모지 하나, head 는 20자 안팎 한 줄(강조할 말은 *별표*로 감싸면 청록색), text 는 쉬운 설명 1~2문장. 본문의 '오늘 기억할 3가지' 세 줄과 같은 내용.
 - article.thumb: 대표 이미지용 {scene, line1, line2}. scene 은 영어로 쓴 사진 장면 설명 한두 문장 (그날 주인공 회사의 본사 건물·로고, 관련 제품이나 데이터센터, 오른 날은 초록·위로 가는 차트, 내린 날은 빨간 아래로 가는 차트처럼 그날 이야기가 한눈에 보이게. 예: 'Left: modern Google headquarters glass building at dusk with the colorful Google logo sign glowing. Right: a glowing trading monitor with a sharply falling red candlestick chart and a big red downward arrow, blue data-center server racks behind.'). line1·line2 는 사진 위에 얹을 한글 제목 두 줄, 각 14자 안팎 (예: '구글 실적 쇼크…' / '오늘 밤 정규장이 고비'). 글 제목보다 짧고 세게.
 - easy 안에 article{title, tags, summary, body} 를 만든다. 매일 한국시간 오후 6시에 발행되는 글이다 (15:00 실행 결과를 쓴다).
 - tags: 3개 안팎을 ' / ' 로 이어서 (예: '미국 증시 / 실적 분석 / 오늘 밤 체크 포인트'). summary: 목록·알림에 보이는 2문장 요약, 어젯밤 핵심 숫자 1개와 오늘 밤 가장 큰 일정 1개를 넣는다. 같은 게시판의 다른 필자는 '무슨 일이 있었나'를 짧게 정리한다. 윤슬 글은 같은 소식이라도 **왜 그런지, 그래서 미국 주식을 가진 사람에게 무슨 의미인지**를 풀어 주는 해설이 핵심이다. 다른 사람의 글을 베끼거나 문장을 가져오지 않는다.
