@@ -319,7 +319,7 @@ MS = 'margin:26px 0 10px;font-size:18px;font-weight:700;color:#17a597;line-heigh
 KS = 'margin:0 0 18px;padding:14px 16px;background:rgba(23,165,151,.15);border-left:4px solid #17a597;border-radius:8px;font-size:17px;line-height:1.8;font-weight:600'
 KEY = ('핵심은', '정리하면', '쉽게 말하면', '한마디로')
 LINK = '#17a597'
-SS = 'margin:0 0 6px;padding-left:16px;text-indent:-14px;font-size:14px;line-height:1.6;opacity:.85'  # 출처 목록은 작게  # 이 말로 시작하는 문단은 눈에 띄는 상자로
+SS = 'margin:0 0 6px;padding-left:16px;text-indent:-14px;font-size:13px;line-height:1.6;color:#8a8f98'  # 출처: 회색 작은 글씨 (본문과 구분)  # 출처 목록은 작게  # 이 말로 시작하는 문단은 눈에 띄는 상자로
 
 
 def article_html(out):
@@ -334,12 +334,14 @@ def article_html(out):
     meta = json.loads(meta_f.read_text(encoding='utf-8')) if meta_f.exists() else {}
     have = {f.stem for f in (out / 'article_images').glob('*.png')} if (out / 'article_images').exists() else set()
 
+    src_mode = [False]
+
     def color(s):  # 오른 건 빨강, 내린 건 파랑. 긴 주소는 '사이트 이름' 링크로 짧게 (휴대폰에서 주소가 화면을 덮지 않게)
         s = re.sub(r'(▲[\d.,]+%)', rf'<span style="color:{UP};font-weight:700">\1</span>', s)
         s = re.sub(r'(▼[\d.,]+%)', rf'<span style="color:{DOWN};font-weight:700">\1</span>', s)
         s = re.sub(r'\s*,\s*(?=https?://)', ' · ', s)
         return re.sub(r'https?://(?:www\.)?([^/\s]+)[^\s<]*',
-                      lambda m: f'<a href="{m.group(0)}" target="_blank" rel="noopener" style="color:{LINK}">{m.group(1)}</a>', s)
+                      lambda m: f'<a href="{m.group(0)}" target="_blank" rel="noopener" style="color:{LINK if not src_mode[0] else "#8a8f98"};text-decoration:underline">{m.group(1)}</a>', s)
 
     def blocks(img_src):
         """글을 HTML 조각으로 (article.txt 모양 그대로: 빈 줄로 나뉜 문단, ■ 소제목, '- ' 줄도 글자 그대로). img_src(이름) → 이미지 주소"""
@@ -365,7 +367,7 @@ def article_html(out):
                     if x.startswith(('- ', '· ', '  · ')):
                         emit_text(); out_.append(f'<p style="{SS if src_mode[0] else LS}">• ' + e.lstrip('-· ').strip() + '</p>')
                     elif x.startswith('출처'):
-                        emit_text(); src_mode[0] = True; out_.append(f'<p style="margin:28px 0 8px;font-size:14px;font-weight:700;opacity:.85">{e}</p>')
+                        emit_text(); src_mode[0] = True; out_.append(f'<p style="margin:32px 0 8px;padding-top:14px;border-top:1px solid #8a8f9866;font-size:13px;font-weight:700;color:#8a8f98">{e}</p>')
                     elif x.startswith('【') or (len(x) <= 30 and not x.endswith(('.', '요', '다', '?', ')'))):
                         emit_text(); out_.append(f'<p style="{MS}">{e}</p>')
                     else:
@@ -375,7 +377,7 @@ def article_html(out):
                 out_.extend(img(n) for n in later)
                 later.clear()
         # [[이름]] 줄로 자리를 정한 이미지는 그 자리에, 나머지는 소제목 기준 자동 자리에. 대표 이미지(1_thumb)는 발행할 때 본문 위에 자동으로 붙으므로 본문에는 넣지 않는다
-        src_mode = [False]  # '출처' 줄 다음부터는 작은 글씨
+        src_mode[0] = False  # '출처' 줄 다음부터는 작은 회색 글씨
         marked = set(re.findall(r'^\s*\[\[(.+?)\]\]\s*$', body, re.M))
         for ln in body.strip().splitlines():
             t = ln.strip()
