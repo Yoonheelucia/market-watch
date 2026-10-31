@@ -219,8 +219,16 @@ const range = vals => { const m = Math.ceil(Math.max(2, ...vals.map(Math.abs)) *
 
   // 4. 오늘 밤 체크 포인트
   const ck = brief?.easy?.us?.check || [];
-  if (ck.length) add('check', `<div class="kicker">미국 오늘 밤 장 · 개장 한국시간 밤 10시 30분 (서머타임이 끝나면 11시 30분)</div>
-    <h2>오늘 밤 체크 포인트</h2><p class="lead" style="margin-bottom:14px">&nbsp;</p>
+  // 토·일요일(한국시간)에는 '다음 주', 개장 시각은 미국 서머타임(3월 둘째 일요일~11월 첫 일요일)에 맞춰
+  const qd = new URLSearchParams(location.search).get('d');
+  const kd = qd ? new Date(qd + 'T12:00:00Z') : new Date(Date.now() + 9 * 3600e3);
+  const wkend = [0, 6].includes(kd.getUTCDay());
+  const next = new Date(kd); if (wkend) next.setUTCDate(kd.getUTCDate() + (kd.getUTCDay() === 6 ? 2 : 1));
+  const nthSun = (y, m, n) => { const d = new Date(Date.UTC(y, m, 1)); d.setUTCDate(1 + (7 - d.getUTCDay()) % 7 + 7 * (n - 1)); return d; };
+  const y = next.getUTCFullYear(), dst = next >= nthSun(y, 2, 2) && next < nthSun(y, 10, 1);
+  const openKST = dst ? '밤 10시 30분' : '밤 11시 30분';
+  if (ck.length) add('check', `<div class="kicker">${wkend ? `다음 주 미국장 · 월요일 개장 한국시간 ${openKST}` : `미국 오늘 밤 장 · 개장 한국시간 ${openKST}`}</div>
+    <h2>${wkend ? '다음 주' : '오늘 밤'} 체크 포인트</h2><p class="lead" style="margin-bottom:14px">&nbsp;</p>
     <div class="tl">${ck.map(c => `<div class="ev"><div class="dt">${esc(c.time || '')}</div><div class="rail"></div>
       <div class="box"><div class="t">${esc(c.title)}</div><div class="m">${esc(c.watch || c.why || '')}</div></div></div>`).join('')}</div>`);
   else skip('check');
