@@ -126,7 +126,9 @@ const skip = id => document.getElementById(id).dataset.skip = '1';
 function track(v, lo, hi, label) {
   const x = p => (p - lo) / (hi - lo) * 100, z = x(0), e = x(v);
   const bar = v >= 0 ? `left:${z}%;width:${e - z}%` : `left:${e}%;width:${z - e}%`;
-  const lab = v >= 0 ? `left:calc(${e}% + 10px)` : `right:calc(${100 - e}% + 10px)`;
+  const inside = Math.abs(e - z) > 30;  // 막대가 길면 숫자를 막대 안쪽에 (이름 칸과 겹치지 않게)
+  const lab = inside ? (v >= 0 ? `right:calc(${100 - e}% + 12px);color:#fff` : `left:calc(${e}% + 12px);color:#fff`)
+    : v >= 0 ? `left:calc(${e}% + 10px)` : `right:calc(${100 - e}% + 10px)`;
   return `<div class="track"><div class="zero" style="left:${z}%"></div><div class="bar ${v >= 0 ? 'up' : 'down'}" style="${bar}"></div><div class="lab num" style="${lab}">${label || sp(v)}</div></div>`;
 }
 // 숫자 글씨가 막대 끝 밖에 들어갈 자리까지 남긴다
@@ -164,7 +166,7 @@ const range = vals => { const m = Math.ceil(Math.max(2, ...vals.map(Math.abs)) *
   if (ups.length + downs.length >= 3) {
     const [lo, hi] = range([...ups, ...downs].map(s => s.ch));
     const row = s => `<div class="nm">${esc(s.name)}<small>${s.ticker} · ${px(s.close)}</small></div>${track(s.ch, lo, hi)}`;
-    const st = hi - lo > 16 ? 4 : 2, ticks = []; for (let t = Math.ceil(lo / st) * st; t <= hi; t += st) ticks.push(t);  // 눈금 글씨가 겹치지 않게
+    const st = [2, 4, 5, 10, 20, 25, 50].find(x => (hi - lo) / x <= 8), ticks = []; for (let t = Math.ceil(lo / st) * st; t <= hi; t += st) ticks.push(t);  // 눈금은 8개 안쪽으로 (글씨가 겹치지 않게)
     add('movers', `<div class="kicker">${md(day)} 미국장 · 하루 등락률</div>
       <h2>어젯밤 크게 오른 회사 · 크게 내린 회사</h2>
       <p class="lead">S&amp;P 500 · 나스닥 · 다우 주요 종목 · 티커 · ${md(day)} 종가</p>
