@@ -268,6 +268,11 @@ def save_article(base, out):
         meta = {'tags': art.get('tags', ''), 'summary': art.get('summary', '')}
         (out / 'article_meta.json').write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding='utf-8')
         print(f"해설 글 초안 저장 ({len(art['body'])}자)")
+        # 작성 규칙이 본문에 새어 나온 문장 찾기 (예: '이유는 지어내지 않을게요')
+        leak = [w for w in ('지어내', '지어 내', '규칙에 따라', '확인되지 않은 회사', '아래 차트로 확인할 수 있') if w in art['body']]
+        if leak:
+            print('⚠️ 글에 작성 규칙 같은 문장이 있어요. 발행 전에 지워 주세요:', ', '.join(leak))
+            notify('해설 글에 고칠 문장이 있어요: ' + ', '.join(leak))
     else:
         print('해설 글 초안이 아직 브리핑에 없어요')
 
