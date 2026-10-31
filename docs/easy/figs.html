@@ -193,8 +193,11 @@ const range = vals => { const m = Math.ceil(Math.max(2, ...vals.map(Math.abs)) *
     if (s && a && q && typeof a.ch === 'number')
       er.push({ ...s, ch: a.ch, label: a.label, ah: true, act: q.act, est: q.est, odd: (q.act > q.est) !== (a.ch > 0) });
   }
-  er.sort((a, b) => !!b.ah - !!a.ah || b.odd - a.odd || Math.abs(b.ch) - Math.abs(a.ch));  // 시간외 반응(어젯밤 큰 실적)을 먼저
-  const ers = er.slice(0, 5);
+  // 글에서 다루는 회사는 꼭 차트에 넣는다 (글에는 있는데 차트에 없으면 어색하다)
+  const body = brief?.easy?.article?.body || '';
+  for (const s of er) s.said = body.includes(s.name.replace(/\(.*\)/, '').trim()) || body.includes(`(${s.ticker}`);
+  er.sort((a, b) => !!b.ah - !!a.ah || b.said - a.said || b.odd - a.odd || Math.abs(b.ch) - Math.abs(a.ch));  // 시간외 반응 → 글에 나온 회사 → 예상과 반대로 움직인 회사
+  const ers = er.slice(0, Math.max(5, Math.min(7, er.filter(s => s.ah || s.said).length)));
   if (ers.length) {
     const [lo, hi] = range(ers.map(s => s.ch));
     const odd = ers.find(s => s.odd && !s.ah);
