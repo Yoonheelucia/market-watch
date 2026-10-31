@@ -184,7 +184,7 @@ const say = s => String(s)
   .replace(/(\d{1,2})\/(\d{1,2})\s*\((.)\)/g, (_, m, d, w) => `${m}월 ${d}일 ${w}요일`)
   .replace(/(\d{1,2})\/(\d{1,2})/g, '$1월 $2일')
   .replace(/S&P\s?500/g, '에스앤피 500').replace(/AI/g, '에이아이').replace(/PER/g, '퍼')
-  .replace(/\([^)]*\)/g, '').replace(/\s\+\s/g, ' 그리고 ').replace(/[·→]/g, ', ').replace(/—/g, ', ').replace(/([?!])\s*\./g, '$1').replace(/\s+/g, ' ').trim();
+  .replace(/\([^)]*\)/g, '').replace(/\s\+\s/g, ' 그리고 ').replace(/\s\/\s/g, ', ').replace(/[·→]/g, ', ').replace(/—/g, ', ').replace(/([?!])\s*\./g, '$1').replace(/\s+/g, ' ').trim();
 // 목소리 말을 자막 글자로 (읽는 말만 기호로 되돌린다)
 const toSub = v => v.replace(/에스앤피/g, 'S&P').replace(/에이아이/g, 'AI')
   .replace(/(\d+(?:\.\d+)?)에서 (\d+(?:\.\d+)?)퍼센트/g, '$1~$2%').replace(/(\d+(?:\.\d+)?)\s?퍼센트/g, '$1%');
@@ -203,6 +203,8 @@ const firstSentence = s => String(s).split(/(?<=[.!?])\s/)[0];
 const moved = (v, end) => v > 0.05 ? `${Math.abs(v).toFixed(1)}% 올랐${end}` : v < -0.05 ? `${Math.abs(v).toFixed(1)}% 내렸${end}` : `거의 그대로${end === '고' ? '였고' : '였어요'}`;
 // ?d=2026-10-28 이면 그 날짜 저녁 기준으로 만든다 (자정을 넘겨 만들 때)
 const kstNow = () => Q.get('d') ? new Date(Q.get('d') + 'T20:00:00Z') : new Date(Date.now() + 9 * 3600e3);
+// 토·일요일(한국시간)에는 '오늘 밤' 미국장이 없으니 '다음 주'로 쓴다
+const NIGHT = () => [0, 6].includes(kstNow().getUTCDay()) ? '다음 주' : '오늘 밤';
 const today = () => { const d = kstNow(); return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 ${DAYS[d.getUTCDay()]}요일`; };
 function dayChange(c) { const [a, b] = lastTwo(c); return { ch: (c[b] / c[a] - 1) * 100, i: b }; }
 
@@ -312,7 +314,7 @@ function postSlides(g) {
   if (past.length) out.push(`<div class="kicker">⏪ 지난 일정</div><h1>주요 이벤트 이후<br>주가는?</h1>
     <div class="stack">${past.map(r => `<div class="card cal done"><div class="dt">${esc(r.date)}</div>
       <div><div class="t">${esc(r.title)}</div><div class="m">↳ ${esc(r.result || '반응 확인 중')}</div>${linkHtml(r)}</div></div>`).join('')}</div>`);
-  if (g.check.length) out.push(`<div class="kicker">🌙 오늘 밤 개장 전</div><h1>오늘 밤<br>체크 포인트</h1>
+  if (g.check.length) out.push(`<div class="kicker">🌙 ${NIGHT()} 개장 전</div><h1>${NIGHT()}<br>체크 포인트</h1>
     <div class="stack">${g.check.map(c => `<div class="card cal"><div class="dt">${esc(c.time || '')}</div>
       <div><div class="t">${esc(c.title)}</div>${c.why ? `<div class="m">${esc(c.why)}</div>` : ''}${c.watch ? `<div class="m">👀 ${esc(c.watch)}</div>` : ''}${linkHtml(c)}</div></div>`).join('')}</div>`);
   const week = g.week.slice(0, 4);
@@ -386,19 +388,19 @@ function reelSlides(g) {
 
   // 7. 오늘 밤 개장 전 체크 포인트 3개 (자료가 없으면 앞으로 일정 2개)
   const ck = g.check.slice(0, 3);
-  if (ck.length) out.push({ html: `<div class="r-kicker">🌙 오늘 밤 개장 전</div><div class="r-title">오늘 밤<br>체크 포인트</div>
+  if (ck.length) out.push({ html: `<div class="r-kicker">🌙 ${NIGHT()} 개장 전</div><div class="r-title">${NIGHT()}<br>체크 포인트</div>
     <div class="stack">${ck.map(c => `<div class="r-big"><div class="dt">${esc(c.time || '')}</div><div class="t">${esc(c.title)}</div></div>`).join('')}</div>`,
     lines: ck.map((c, i) => line(`${c.time ? c.time + ' · ' : ''}${c.title}`,
-      `${i ? '' : '오늘 밤 체크 포인트예요. '}${c.time ? say(c.time) + ', ' : ''}${say(c.title)}.`)) });
+      `${i ? '' : NIGHT() + ' 체크 포인트예요. '}${c.time ? say(c.time) + ', ' : ''}${say(c.title)}.`)) });
   const wk = ck.length ? [] : g.week.slice(0, 2);
   if (wk.length) out.push({ html: `<div class="r-kicker">📅 앞으로 볼 일정</div><div class="r-title">주요 이벤트</div>
     <div class="stack">${wk.map(r => `<div class="r-big"><div class="dt">${esc(r.date)}</div><div class="t">${esc(r.title)}</div>${linkHtml(r)}</div>`).join('')}</div>`,
     lines: wk.map((r, i) => line(`${r.date} ${r.title}`,
       `${i ? '' : '앞으로 볼 일정이에요. '}${relDay(r.date)}, ${say(r.title)}.${r.link ? ' ' + say(firstSentence(r.link)) : ''}`)) });
 
-  // 8. 오늘의 용어
+  // 8. 오늘의 용어 (오늘의 주인공이 있으면 60초에 맞추려고 뺀다. 카드뉴스에는 그대로)
   const t = g.term, tw = t.w.replace(/\s*\(.*\)/, '');
-  out.push({ html: `<div class="r-kicker">📖 오늘의 용어</div>
+  if (!g.focus) out.push({ html: `<div class="r-kicker">📖 오늘의 용어</div>
     <div class="r-term"><div class="w">${esc(t.w)}</div><div class="d">${esc(t.d)}</div></div>`,
     lines: [line(`오늘의 용어: ${t.w}`, `오늘의 용어, ${say(tw)}. ${say(firstSentence(t.d))}`)] });
 
@@ -420,7 +422,7 @@ const MORE_LINES = ['자세한 내용을 보고 싶다면?', '', `${MORE_URL} �
 const TAGS = '#미국주식 #미장 #주식공부 #주린이 #윤슬주식';
 
 function caption(g) {
-  const out = [`📅 ${today()} | 어젯밤 미국 증시 + 오늘 밤 체크 포인트 | ${BRAND}`, '',
+  const out = [`📅 ${today()} | 어젯밤 미국 증시 + ${NIGHT()} 체크 포인트 | ${BRAND}`, '',
     '🌤 시장 날씨', ...g.wx.map(x => `${x.w.ico} ${x.name} ${level(x.close)} (${pct(x.ch)}, ${x.w.word})${x.live ? ' · 장중' : ''}`), ''];
   const f = g.focus;
   if (f) out.push(`🔥 오늘의 주인공: ${f.title}`, `${f.name || ''}${f.ticker ? `(${f.ticker})` : ''} ${f.move || ''}`.trim(), ...f.points.map(x => `- ${x}`), '');
@@ -428,7 +430,7 @@ function caption(g) {
   if (g.movers.length) out.push('🏢 많이 들어 본 회사 중 가장 크게 움직인 종목:',
     g.movers.slice(0, 3).map(s => `${s.name} ${pct(s.ch)}${afterNote(g, s) ? ` (${afterNote(g, s).t})` : ''}`).join(', '), '');
   if (g.check.length) {
-    out.push('🌙 오늘 밤 개장 전 체크 포인트');
+    out.push(`🌙 ${NIGHT()} 개장 전 체크 포인트`);
     g.check.forEach(c => {
       out.push(`- ${c.time ? `[${c.time}] ` : ''}${c.title}${c.why ? ` — ${c.why}` : ''}`);
       if (c.watch) out.push(` 👀 ${c.watch}`);
@@ -454,7 +456,7 @@ function reelCaption(g) {
     g.wx.map(x => `${x.name} ${level(x.close)} (${pct(x.ch)})`).join(' · '),
     ...(g.focus ? ['', `🔥 오늘의 주인공: ${g.focus.title}`, ...g.focus.points.slice(0, 2).map(x => `- ${x}`)]
       : g.why.length ? ['', `🤔 ${g.why[0]}`] : []),
-    ...(g.check.length ? ['', '🌙 오늘 밤 체크', ...g.check.slice(0, 2).map(c => `- ${c.time ? `[${c.time}] ` : ''}${c.title}`)] : []),
+    ...(g.check.length ? ['', `🌙 ${NIGHT()} 체크`, ...g.check.slice(0, 2).map(c => `- ${c.time ? `[${c.time}] ` : ''}${c.title}`)] : []),
     '', ...MORE_LINES, '',
     '❤️ 도움이 됐다면 좋아요 · 팔로우 · 🔔 알림 설정', '',
     '※ 투자 추천이 아닌 정보 정리예요.', '',

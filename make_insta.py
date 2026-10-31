@@ -227,8 +227,15 @@ def make_thumb(browser, base, out):
                                 'a glowing trading monitor with stock charts in the foreground.')
     bg = out / 'thumb_bg.png'
     if not bg.exists():
-        r = subprocess.run(['python3', str(GMEDIA), 'image', THUMB_SCENE.format(scene=scene), '-o', str(bg), '--aspect', '16:9'],
-                           capture_output=True, text=True)
+        import os, sys
+        env = dict(os.environ)
+        try:  # 자동 실행(launchd)에서는 인증서 위치를 못 찾아 SSL 오류가 나서, certifi 인증서를 알려 준다
+            import certifi
+            env.setdefault('SSL_CERT_FILE', certifi.where())
+        except ImportError:
+            pass
+        r = subprocess.run([sys.executable, str(GMEDIA), 'image', THUMB_SCENE.format(scene=scene), '-o', str(bg), '--aspect', '16:9'],
+                           capture_output=True, text=True, env=env)
         if not bg.exists():
             print('대표 이미지 배경을 못 만들어서 기본 이미지를 써요:', (r.stderr or r.stdout).strip()[-200:])
             return
