@@ -23,7 +23,7 @@
   --w: 1080px; --h: 1350px; --pad-top: 150px; --pad-bottom: 96px; --pad-x: 84px;
 }
 /* 릴스: 위쪽 계정 이름·아래쪽 캡션·오른쪽 아이콘 자리를 피한다 */
-html.reel { --h: 1920px; --pad-top: 370px; --pad-bottom: 680px; --pad-x: 110px; }
+html.reel { --h: 1920px; --pad-top: 658px; --pad-bottom: 392px; --pad-x: 110px; }  /* 2026-10-31: 화면 전체를 15%(288px) 아래로 */
 * { box-sizing: border-box; }
 body { margin: 0; background: #ccc; font-family: 'Noto Sans KR', system-ui, -apple-system, sans-serif; color: var(--text); word-break: keep-all; }
 .slide { --s: 1; position: relative; width: var(--w); height: var(--h); overflow: hidden; background: var(--bg); margin: 0 auto 40px;
@@ -44,7 +44,7 @@ h1 { font-size: calc(var(--s) * 70px); line-height: 1.25; margin: 10px 0 36px; f
 .foot b { font-weight: 900; color: var(--accent); }
 .foot { align-items: center; }
 .more-pill { background: var(--accent); color: #fff; border-radius: 999px; padding: 8px 22px; font-size: 22px; font-weight: 700; }
-.bar { position: absolute; left: var(--pad-x); right: 130px; top: 312px; height: 8px; display: flex; gap: 8px; }
+.bar { position: absolute; left: var(--pad-x); right: 130px; top: 600px; height: 8px; display: flex; gap: 8px; }
 .bar i { flex: 1; border-radius: 4px; background: var(--line); }
 .bar i.on { background: var(--accent); }
 /* 릴스: 위쪽에 항상 보이는 안내 띠 (인스타 위쪽 계정 이름 자리 아래) */
@@ -54,7 +54,7 @@ h1 { font-size: calc(var(--s) * 70px); line-height: 1.25; margin: 10px 0 36px; f
 .topline b { font-weight: 900; }
 html:not(.reel) .brand { display: none; }
 html.reel .brand { display: none; }
-html.reel .topline { left: 80px; right: 100px; top: 160px; border-radius: 20px;
+html.reel .topline { left: 80px; right: 100px; top: 448px; border-radius: 20px;
   padding: 16px 22px; font-size: 31px; font-weight: 700; line-height: 1.35; text-align: center; }
 html.reel .topline b { font-weight: 900; }
 html.reel .foot, html:not(.reel) .bar { display: none; }
@@ -148,7 +148,7 @@ html.reel .fc .nm { font-size: calc(var(--s) * 52px); }
 
 /* 자막 (릴스만): 아래 캡션 자리 위쪽 */
 .sub { display: none; }
-html.reel .sub { display: flex; position: absolute; left: 80px; right: 130px; bottom: 420px; min-height: 140px; align-items: center; justify-content: center; }
+html.reel .sub { display: flex; position: absolute; left: 80px; right: 130px; bottom: 132px; min-height: 140px; align-items: center; justify-content: center; }
 html.reel .sub span { background: rgba(29, 31, 36, .92); color: #fff; border-radius: 22px; padding: 16px 30px; font-size: 42px; font-weight: 700; line-height: 1.45; text-align: center; }
 html.reel .sub span:empty { display: none; }
 </style>
