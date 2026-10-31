@@ -263,6 +263,9 @@ def make_thumb(browser, base, out):
 def save_article(base, out):
     with urllib.request.urlopen(f'{base}briefing.json?t={time.time():.0f}', timeout=30) as r:
         art = json.load(r).get('easy', {}).get('article')
+    if (out / 'article.txt').exists():  # 이미 있으면 (손으로 고친 글일 수 있으니) 덮어쓰지 않는다. 새로 받으려면 지우고 다시 실행
+        print('해설 글: 이미 있는 article.txt 를 그대로 써요')
+        return
     if art and art.get('body'):
         (out / 'article.txt').write_text(f"{art['title']}\n\n{art['body'].strip()}\n", encoding='utf-8')
         meta = {'tags': art.get('tags', ''), 'summary': art.get('summary', '')}
