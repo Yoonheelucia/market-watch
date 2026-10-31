@@ -43,7 +43,7 @@ FF = imageio_ffmpeg.get_ffmpeg_exe()
 GMEDIA = Path.home() / '.claude/skills/gcloud-media/scripts/gmedia.py'
 STYLE = '다정하고 자연스러운 30대 한국 여성. 친구에게 설명하듯 편안하게, 과장 없이'
 GAP, SLIDE_GAP, LEAD = 0.2, 0.4, 0.3  # 문장 사이·장면 사이·처음 쉬는 시간(초)
-TARGET, MAX_SPEED = 60, 1.15  # 릴스 목표 길이(초). 넘으면 목소리를 최대 1.15배까지 빠르게 한다
+TARGET, BASE_SPEED, MAX_SPEED = 60, 1.3, 1.45  # 릴스 목소리는 기본 1.3배 (2026-10-31 요청). 60초가 넘으면 최대 1.45배까지
 
 
 def open_cards(browser, base, fmt):
@@ -121,7 +121,7 @@ def make_reel(shots, audio, out, tmp):
     """문장 하나 = 화면 한 장 + 목소리. 조각을 만든 뒤 이어 붙인다. 돌려주는 값: (길이, 목소리 속도)"""
     gaps = [SLIDE_GAP if k == len(shots) - 1 or shots[k + 1][0] != s else GAP for k, (s, _, _) in enumerate(shots)]
     speech = sum(seconds(w) for w in audio)
-    speed = min(MAX_SPEED, max(1.0, speech / (TARGET - LEAD - sum(gaps))))
+    speed = min(MAX_SPEED, max(BASE_SPEED, speech / (TARGET - LEAD - sum(gaps))))
     parts, total = [], 0
     for k, ((slide, img, text), wav) in enumerate(zip(shots, audio)):
         pre = LEAD if k == 0 else 0
