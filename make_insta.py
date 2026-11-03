@@ -40,7 +40,7 @@ ROOT = Path(__file__).parent
 DAY = None  # --date 로 정한 날짜 (없으면 오늘)
 KST = timezone(timedelta(hours=9))
 FF = imageio_ffmpeg.get_ffmpeg_exe()
-GMEDIA = Path.home() / '.claude/skills/gcloud-media/scripts/gmedia.py'
+GMEDIA = ROOT / 'tools' / 'gmedia.py'  # 목소리·이미지 생성 (Claude 설정 폴더가 바뀌어도 안 깨지게 저장소 안에 둔다, 2026-11-04)
 STYLE = '다정하고 자연스러운 30대 한국 여성. 친구에게 설명하듯 편안하게, 과장 없이'
 GAP, SLIDE_GAP, LEAD = 0.2, 0.4, 0.3  # 문장 사이·장면 사이·처음 쉬는 시간(초)
 TARGET, BASE_SPEED, MAX_SPEED = 60, 1.3, 1.45  # 릴스 목소리는 기본 1.3배 (2026-10-31 요청). 60초가 넘으면 최대 1.45배까지
@@ -158,7 +158,9 @@ def ready(base):
         print(datetime.now(KST).strftime('%H:%M'), '자료를 못 받아서 3분 뒤 다시 확인해요:', e, flush=True)
         return False
     sp = next(m for m in data['markets'] if m['id'] == 'sp500')
-    return (kst(sp.get('updated', data['updated'])) >= now.replace(hour=6, minute=15, second=0, microsecond=0)
+    # 월요일(한국시간)에는 주말 사이 미국장이 없어서 주가가 토요일 아침 뒤로 새로 안 올라온다 → 토요일 06:15 이후면 된다
+    due = now.replace(hour=6, minute=15, second=0, microsecond=0) - timedelta(days=2 if now.weekday() == 0 else 0)
+    return (kst(sp.get('updated', data['updated'])) >= due
             and kst(brief['updated']) >= now.replace(hour=15, minute=0, second=0, microsecond=0))
 
 
