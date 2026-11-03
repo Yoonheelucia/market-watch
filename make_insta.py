@@ -152,7 +152,11 @@ def ready(base):
         with urllib.request.urlopen(f'{base}{name}?t={time.time():.0f}', timeout=30) as r:
             return json.load(r)
     now = datetime.now(KST)
-    data, brief = get('data.json'), get('briefing.json')
+    try:  # 잠깐 인터넷이 끊겨도 (2026-11-03 'Bad file descriptor') 그날 작업이 통째로 멈추지 않게, 다음 확인 때 다시 본다
+        data, brief = get('data.json'), get('briefing.json')
+    except Exception as e:
+        print(datetime.now(KST).strftime('%H:%M'), '자료를 못 받아서 3분 뒤 다시 확인해요:', e, flush=True)
+        return False
     sp = next(m for m in data['markets'] if m['id'] == 'sp500')
     return (kst(sp.get('updated', data['updated'])) >= now.replace(hour=6, minute=15, second=0, microsecond=0)
             and kst(brief['updated']) >= now.replace(hour=15, minute=0, second=0, microsecond=0))
