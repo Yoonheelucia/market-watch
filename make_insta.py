@@ -312,7 +312,7 @@ def publish_images(out):
 
 
 # 글 소제목에 맞춰 넣을 이미지 (글에 [[이미지 이름]] 줄이 없을 때)
-ARTICLE_IMAGES = [('', '1_thumb'), ('왜 이렇게 움직였을까', '2_movers'), ('실적 발표', '3_earn'), ('체크 포인트', '4_check'), ('기억할', '5_takeaways')]
+ARTICLE_IMAGES = [('', '1_thumb'), ('왜 이렇게 움직였을까', '2_movers'), ('실적', '3_earn'), ('체크 포인트', '4_check'), ('기억할', '5_takeaways')]
 # 소제목 바로 아래가 아니라 첫 문단(지수 숫자) 다음에 넣는 이미지
 AFTER_FIRST = [('어젯밤 미국 증시', '2_movers')]
 UP, DOWN = '#ef4160', '#3d7cf2'  # 어두운 바탕·밝은 바탕 둘 다에서 보이는 빨강·파랑
@@ -370,6 +370,8 @@ def article_html(out):
                     text.clear()
                 for x in para:
                     e = color(html.escape(x, quote=False))
+                    if x.startswith('- ') and in_take[0] and '5_takeaways' in have:
+                        continue  # '오늘 기억할 3가지'는 그림이 있으면 그림만 (같은 내용 두 번 안 나오게)
                     if x.startswith(('- ', '· ', '  · ')):
                         emit_text(); out_.append(f'<p style="{SS if src_mode[0] else LS}">• ' + e.lstrip('-· ').strip() + '</p>')
                     elif x.startswith('출처'):
@@ -384,6 +386,7 @@ def article_html(out):
                 later.clear()
         # [[이름]] 줄로 자리를 정한 이미지는 그 자리에, 나머지는 소제목 기준 자동 자리에. 대표 이미지(1_thumb)는 발행할 때 본문 위에 자동으로 붙으므로 본문에는 넣지 않는다
         src_mode[0] = False  # '출처' 줄 다음부터는 작은 회색 글씨
+        in_take = [False]
         marked = set(re.findall(r'^\s*\[\[(.+?)\]\]\s*$', body, re.M))
         for ln in body.strip().splitlines():
             t = ln.strip()
@@ -392,6 +395,7 @@ def article_html(out):
             elif t.startswith('[[') and t.endswith(']]'):
                 flush(); out_.append(img(t[2:-2]))
             elif t.startswith('■'):
+                in_take[0] = '기억할' in t
                 flush(); out_.append(('<p><br></p>' if out_ else '') + f'<h3 style="{HS}">{html.escape(t.lstrip("■ ").strip(), quote=False)}</h3>')  # 왼쪽 선이 있으니 ■ 는 뺀다
                 out_ += [img(n) for k, n in ARTICLE_IMAGES[1:] if k in t and n not in marked]
                 later.extend(n for k, n in AFTER_FIRST if k in t and n not in marked)
