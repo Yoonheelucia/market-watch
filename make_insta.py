@@ -454,6 +454,28 @@ document.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => {{
     return dst
 
 
+CODEX_TASK = """너는 독립적인 사실 검증자야. 이 폴더의 article.txt (한국어 미국 주식 해설 글, 파일 첫 줄 대괄호의 날짜에 발행, 그 전날 미국장 마감 기준)와 article_meta.json(태그·요약)을 검토해.
+1. 글의 모든 숫자와 사실(지수·종목 종가와 등락률, 실적 수치와 기준(조정/GAAP), 시장 예상치, 시간외 등락, 유가, 금리 확률, 한국 코스피·종목 수치, 일정 날짜·시각(미 동부/한국시간), 회사 설명)을 웹 검색으로 1차 출처(회사 IR·SEC 공시·stockanalysis.com 일별 시세·주요 언론)와 대조해.
+2. 단정적이거나 근거 없는 표현, 인과를 과하게 단정한 문장, 앞뒤가 안 맞는 문장도 찾아.
+3. 결과를 이 폴더의 codex_check.md 에 한국어로: 맨 위 총평 3줄, 표 | # | 글의 문장(짧게) | 판정(틀림/확인 불가/표현 문제) | 올바른 값·제안 | 출처 링크 |, 맨 아래 '확인된 항목' 짧은 목록.
+article.txt 와 다른 파일은 고치지 말고 codex_check.md 하나만 만들어."""
+
+
+def codex_check(out):
+    """코덱스(다른 회사 AI)로 해설 글 사실 교차 점검 → codex_check.md (2026-11-04 사용자 요청: 매일)"""
+    codex = shutil.which('codex') or '/opt/homebrew/bin/codex'
+    if not (out / 'article.txt').exists() or not Path(codex).exists():
+        print('코덱스 점검: 건너뜀 (글 또는 codex 없음)')
+        return
+    print('코덱스로 글 교차 점검 중… (몇 분 걸려요)', flush=True)
+    try:
+        subprocess.run([codex, 'exec', '--skip-git-repo-check', '-s', 'workspace-write', '-c', 'tools.web_search=true', CODEX_TASK],
+                       cwd=out, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=1800)
+    except Exception as e:
+        print('코덱스 점검 실패:', e)
+    print('코덱스 점검: ' + ('codex_check.md 저장' if (out / 'codex_check.md').exists() else '결과 파일이 없어요 (로그인 확인: codex login)'))
+
+
 def notify(text):
     subprocess.run(['osascript', '-e', f'display notification "{text}" with title "윤슬 주식 인스타"'], check=False)
 
@@ -516,6 +538,7 @@ def main():
     if page:
         print(f'글 페이지: {page}')
     print(f'\n완성: {out}')
+    codex_check(out)
     if a.wait:
         notify('오늘 18시에 올릴 글·카드뉴스·릴스가 준비됐어요')
         subprocess.run(['open', str(out)], check=False)
