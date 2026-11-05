@@ -194,6 +194,7 @@ h4 { font-size: 14px; margin: 20px 0 8px; }
 .dj-ch b { font-size: 15px; }
 .dj-time { font-size: 12px; font-weight: 700; color: var(--accent); text-decoration: none; font-variant-numeric: tabular-nums; }
 .dj-one { font-weight: 500; margin: 4px 0 0; }
+.dj-body { margin: 6px 0 0; line-height: 1.7; }
 .dj-topic ul { margin: 6px 0 0; padding-left: 18px; } .dj-topic p { margin: 4px 0 0; }
 #dj h4 { margin: 0 0 8px; } #dj li { line-height: 1.6; margin: 2px 0; }
 .tabs { overflow-x: auto; scrollbar-width: none; }
@@ -650,6 +651,7 @@ async function renderDJ(day) {
       ${d.corners.map((c, i) => `<div class="dj-topic dj-corner" id="djc-${i}">
         <div class="dj-ch"><a class="dj-time" href="${esc(d.url)}&t=${c.start}s" target="_blank" rel="noopener">▶ ${tm(c.start)}</a><b>${esc(c.title)}</b>${c.end ? `<span class="note">${Math.max(1, Math.round((c.end - c.start) / 60))}분</span>` : ''}</div>
         <p class="dj-one">${esc(c.one || '')}</p>
+        ${c.body ? `<p class="dj-body">${esc(c.body)}</p>` : ''}
         ${c.points?.length ? `<ul>${c.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}</div>`).join('')}</section>`
     : `<section class="card"><h4>주요 이야기</h4>${(d.topics || []).map(t => `<div class="dj-topic"><b>${esc(t.title)}</b><ul>${t.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>`).join('')}</section>`}
     ${d.stocks?.length ? `<section class="card"><h4>방송에 나온 종목</h4>${valTable(d.stocks, '종목')}
