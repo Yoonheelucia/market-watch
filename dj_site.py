@@ -35,13 +35,16 @@ JSON 한 덩어리만 출력하세요(코드블록·설명 없이). 형식:
   "headline": "오늘 방송 핵심을 한 문장(40자 안팎)",
   "summary": "3~4문장 요약",
   "market": [{{"key": "아래 목록 중 하나", "name": "S&P500·나스닥·다우·유가·금리·달러 등", "move": "+1.2% 같은 수치 또는 짧은 설명", "why": "왜 그렇게 움직였는지 한 문장"}}],
-  "topics": [{{"title": "주제 제목", "points": ["쉬운 설명 문장", "..."]}}],
+  "corners": [{{"title": "자막에 [코너: …]로 표시된 코너 이름 그대로", "start": 코너 시작 초(숫자, 표시된 값 그대로), "one": "이 코너 한 줄 요약", "points": ["쉬운 설명 문장", "..."]}}],
   "stocks": [{{"name": "종목 이름(한글)", "ticker": "야후 파이낸스 티커(예: AAPL, 005930.KS, 모르면 빈칸)", "move": "등락(나왔으면)", "why": "이유 한두 문장"}}],
   "experts": [{{"who": "출연자 이름·소속(자막에 나온 대로, 오타는 고쳐서)", "view": "핵심 의견 2~3문장"}}],
   "watch": ["오늘·이번 주 지켜볼 일정이나 포인트"]
 }}
 market 의 key: sp500, nasdaq, dow, sox(필라델피아 반도체지수·반도체 지수), wti, brent, us10y, us2y, us30y, dxy, usdkrw, gold, silver, btc, eth, vix 중 맞는 것. 해당 없으면 "other".
-topics 는 4~7개, 각 points 2~4개. 방송에 없는 칸은 빈 배열로.
+corners 는 자막에 [코너: …] 표시가 있는 코너를 순서대로 모두(광고·제목 없는 코너만 빼고), 각 points 2~5개.
+[코너: …] 표시가 하나도 없으면, 진행자가 코너를 넘기는 말("마켓무버입니다", "글로벌 IB 리포트 보시죠" 등)과 [N초] 시각 표시를 보고
+코너를 직접 나눠 corners 를 만드세요(이 방송의 코너 예: 글로벌 헤드라인, 앵커 오프닝, 메가캡 특징주, 마켓무버, 이슈인사이드,
+글로벌 IB 리포트, 머니플로우, 글로벌 빅샷, 마감시황, 긴급진단). start 는 가장 가까운 [N초] 값. 방송에 없는 칸은 빈 배열로.
 
 [자막]
 {text}
@@ -87,8 +90,17 @@ def fetch(vid, tmp):
         log('자막 아직 없음')
         return None
     d = json.load(open(files[0]))
-    text = ''.join(s.get('utf8', '') for e in d.get('events', []) for s in e.get('segs') or [])
-    text = re.sub(r'\n+', ' ', text)
+    chs = [c for c in (info.get('chapters') or []) if not (c.get('title') or '').startswith('<')]
+    parts, ci, mark = [], 0, 0
+    for e in d.get('events', []):
+        t = (e.get('tStartMs') or 0) / 1000
+        if not chs and t >= mark:  # 타임라인이 없으면 1분마다 시각 표시 → 코너를 자막에서 직접 나눈다
+            parts.append(f' [{int(t)}초] '); mark += 60
+        while ci < len(chs) and t >= chs[ci]['start_time']:
+            c = chs[ci]; ci += 1
+            parts.append(f"\n\n[코너: {c['title']} · 시작 {int(c['start_time'])}초]\n")
+        parts.append(''.join(x.get('utf8', '') for x in e.get('segs') or []).replace('\n', ' '))
+    text = re.sub(r' +', ' ', ''.join(parts))
     if len(text) < 3000:
         log('자막이 너무 짧음', len(text))
         return None
@@ -108,7 +120,7 @@ def summarize(day, text):
     if r.returncode or not m:
         raise RuntimeError('요약 실패: ' + (r.stderr or out)[-400:])
     s = json.loads(m.group(0))
-    assert s.get('headline') and s.get('topics'), '요약 형식 이상'
+    assert s.get('headline') and (s.get('corners') or s.get('topics')), '요약 형식 이상'
     return s
 
 
@@ -232,8 +244,16 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, f'{day}.json')
     if not a.force:
-        if day.weekday() >= 5 or os.path.exists(path):
+        if day.weekday() >= 5:
             return
+        if os.path.exists(path):
+            old = json.load(open(path))
+            if old.get('chapters') != 'auto' or a.date or not (6 <= now().hour < 14):
+                return
+            r = subprocess.run(YTDLP + ['-J', '--skip-download', old['url']], capture_output=True, text=True, timeout=180)
+            if r.returncode or not json.loads(r.stdout).get('chapters'):
+                return
+            log('타임라인이 생겨서 코너별로 다시 요약')
         if not a.date and not (6 <= now().hour < 14):
             return
     vid = find_video(day)
@@ -247,6 +267,18 @@ def main():
     info, text = got
     s = summarize(day, text)
     enrich(s, day)
+    chs = [c for c in (info.get('chapters') or []) if not (c.get('title') or '').startswith('<')]
+    s['chapters'] = 'youtube' if chs else 'auto'
+    if chs and s.get('corners'):
+        have = {c['title'] for c in s['corners']}
+        for c in chs:  # 요약이 빠진 짧은 코너도 이름은 남긴다
+            if c['title'] not in have:
+                s['corners'].append({'title': c['title'], 'start': int(c['start_time']), 'one': '짧은 코너라 따로 요약할 내용이 적어요.', 'points': []})
+        st = {c['title']: int(c['start_time']) for c in chs}
+        for c in s['corners']:
+            c['start'] = st.get(c['title'], c.get('start') or 0)
+            c['end'] = next((int(x['end_time']) for x in chs if x['title'] == c['title']), None)
+        s['corners'].sort(key=lambda c: c['start'])
     s.update(date=str(day), title=info.get('title', ''), video=vid,
              url=f'https://www.youtube.com/watch?v={vid}', duration=info.get('duration'),
              made=now().strftime('%Y-%m-%d %H:%M KST'))

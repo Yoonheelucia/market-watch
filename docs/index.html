@@ -187,6 +187,13 @@ h4 { font-size: 14px; margin: 20px 0 8px; }
 .dj-t td.mv { width: 1%; font-weight: 500; }
 .dj-topic { padding: 10px 0; border-top: 1px solid var(--line); line-height: 1.6; }
 .dj-topic:first-of-type { border-top: 0; }
+.dj-toc { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.dj-toc a { font-size: 12px; padding: 3px 9px; border-radius: 6px; background: var(--row-hover); color: var(--text); text-decoration: none; }
+.dj-corner { scroll-margin-top: 12px; }
+.dj-ch { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.dj-ch b { font-size: 15px; }
+.dj-time { font-size: 12px; font-weight: 700; color: var(--accent); text-decoration: none; font-variant-numeric: tabular-nums; }
+.dj-one { font-weight: 500; margin: 4px 0 0; }
 .dj-topic ul { margin: 6px 0 0; padding-left: 18px; } .dj-topic p { margin: 4px 0 0; }
 #dj h4 { margin: 0 0 8px; } #dj li { line-height: 1.6; margin: 2px 0; }
 .tabs { overflow-x: auto; scrollbar-width: none; }
@@ -622,9 +629,10 @@ async function renderDJ(day) {
   if (!location.hash.startsWith('#dangjamsa')) return;
   const d = DJ[day], wk = '일월화수목금토'[new Date(day + 'T00:00:00').getDay()];
   const mv = t => { const m = /^[+−-]/.exec(t || ''); return m ? (m[0] === '+' ? 'var(--up)' : 'var(--down)') : 'var(--muted)'; };
+  const tm = t => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
   const said = x => x.move && !/언급 없/.test(x.move) ? x.move : '';
   const valTable = (list, h = '항목') => `<div class="table-wrap"><table class="dj-t"><thead><tr><th>${h}</th><th>마감 값</th><th>방송 내용</th></tr></thead><tbody>${list.map(x => `<tr><td><b>${esc(x.name)}</b></td>
-        <td class="mv">${x.level ? `<b>${esc(x.level)}</b><br><span style="color:${mv(x.chg)}">${esc(x.chg)}</span>` : `<span style="color:${mv(said(x))}">${esc(said(x))}</span>`}</td>
+        <td class="mv"${x.level ? '' : ' style="white-space:normal;width:26%"'}>${x.level ? `<b>${esc(x.level)}</b><br><span style="color:${mv(x.chg)}">${esc(x.chg)}</span>` : `<span style="color:${mv(said(x))}">${esc(said(x))}</span>`}</td>
         <td>${x.level && said(x) ? `<span class="note">방송: ${esc(said(x))}</span><br>` : ''}${esc(x.why)}</td></tr>`).join('')}</tbody></table></div>`;
   const rows = (list, a, b) => list.map(x => `<tr><td><b>${esc(x[a])}</b></td><td class="mv" style="color:${mv(x.move)}">${esc(x.move || '')}</td><td>${esc(x[b])}</td></tr>`).join('');
   main.innerHTML = `<div id="dj">
@@ -637,13 +645,20 @@ async function renderDJ(day) {
     </section>
     ${d.market?.length ? `<section class="card"><h4>간밤 시장</h4>${valTable(d.market)}
       <div class="note" style="margin-top:6px">마감 값은 방송 전날 미국 시장 마감 기준이에요(지수는 사이트 데이터, 유가·금리·환율·금·코인은 야후 파이낸스). 방송은 장이 끝나기 전에 시작해서 방송 숫자와 조금 다를 수 있어요.</div></section>` : ''}
-    <section class="card"><h4>주요 이야기</h4>${d.topics.map(t => `<div class="dj-topic"><b>${esc(t.title)}</b><ul>${t.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>`).join('')}</section>
+    ${d.corners?.length ? `<section class="card"><h4>코너별 요약</h4>
+      <div class="dj-toc">${d.corners.map((c, i) => `<a href="#" data-c="${i}">${esc(c.title.split(' - ')[0])}</a>`).join('')}</div>
+      ${d.corners.map((c, i) => `<div class="dj-topic dj-corner" id="djc-${i}">
+        <div class="dj-ch"><a class="dj-time" href="${esc(d.url)}&t=${c.start}s" target="_blank" rel="noopener">▶ ${tm(c.start)}</a><b>${esc(c.title)}</b>${c.end ? `<span class="note">${Math.max(1, Math.round((c.end - c.start) / 60))}분</span>` : ''}</div>
+        <p class="dj-one">${esc(c.one || '')}</p>
+        ${c.points?.length ? `<ul>${c.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}</div>`).join('')}</section>`
+    : `<section class="card"><h4>주요 이야기</h4>${(d.topics || []).map(t => `<div class="dj-topic"><b>${esc(t.title)}</b><ul>${t.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>`).join('')}</section>`}
     ${d.stocks?.length ? `<section class="card"><h4>방송에 나온 종목</h4>${valTable(d.stocks, '종목')}
       <div class="note" style="margin-top:6px">마감 값은 방송 전날 정규장 종가와 하루 등락률이에요. 방송에서 '시간외'라고 한 숫자는 장 마감 뒤 움직임이라 다를 수 있어요.</div></section>` : ''}
     ${d.experts?.length ? `<section class="card"><h4>출연자 의견</h4>${d.experts.map(x => `<div class="dj-topic"><b>${esc(x.who)}</b><p>${esc(x.view)}</p></div>`).join('')}</section>` : ''}
     ${d.watch?.length ? `<section class="card"><h4>지켜볼 것</h4><ul>${d.watch.map(w => `<li>${esc(w)}</li>`).join('')}</ul></section>` : ''}
     <div class="note">출처: 한국경제TV 「당신이 잠든 사이에」 방송(${esc(d.title)}). 자동 자막을 AI로 요약해서 틀린 부분이 있을 수 있어요. 투자 판단은 원본 영상과 함께 확인하세요.</div>
   </div>`;
+  main.querySelectorAll('.dj-toc a').forEach(a => a.onclick = e => { e.preventDefault(); document.getElementById('djc-' + a.dataset.c).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 }
 
 // ───── 용어 설명 탭 ─────
