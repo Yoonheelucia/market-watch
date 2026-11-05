@@ -145,12 +145,30 @@ def enrich(s, day):
             if len(ix) >= 2:
                 c = m['index']['c']; closes[m['id']] = (c[ix[-1]], c[ix[-2]], '', 2, m['dates'][ix[-1]])
     stk = {x['ticker'].strip().upper() for x in s.get('stocks', []) if (x.get('ticker') or '').strip()}
+    alias = {'GOOG': 'GOOGL', 'GOOGL': 'GOOG', 'BRK-B': 'BRK.B'}
+    for m in data['markets']:  # 사이트 데이터에 있는 종목은 그 종가를 먼저 쓴다
+        ix = [i for i, d in enumerate(m['dates']) if d <= last]
+        if len(ix) < 2:
+            continue
+        for st in m.get('stocks', []):
+            for t in [st['ticker']] + ([alias[st['ticker']]] if st['ticker'] in alias else []):
+                if t in stk and '@' + t not in closes:
+                    c = st['c']
+                    if c[ix[-1]] and c[ix[-2]]:
+                        kr = t.endswith(('.KS', '.KQ'))
+                        closes['@' + t] = (c[ix[-1]], c[ix[-2]], '원' if kr else '$', 0 if kr else 2, m['dates'][ix[-1]])
+    stk = {t for t in stk if '@' + t not in closes}
     tick = [YF[k][0] for k in want if k in YF] + sorted(stk)
     if tick:
         try:
             import yfinance as yf
-            df = yf.download(tick, start=str(day - dt.timedelta(days=12)), end=str(day), progress=False,
-                             auto_adjust=False)['Close']
+            import time
+            for n in range(4):  # 가끔 받기 실패 → 잠깐 쉬고 다시
+                df = yf.download(tick, start=str(day - dt.timedelta(days=12)), end=str(day + dt.timedelta(days=1)), progress=False,
+                                 auto_adjust=False)['Close']
+                if len(df.columns) and df.notna().any().mean() > 0.7:
+                    break
+                time.sleep(20)
             for k in want:
                 if k not in YF or YF[k][0] not in df:
                     continue
@@ -168,6 +186,29 @@ def enrich(s, day):
                                        0 if t.endswith(('.KS', '.KQ')) else 2, col.index[-1].strftime('%Y-%m-%d'))
         except Exception as e:
             log('시세 붙이기 실패:', e)
+    # 일봉 칸이 비어 있으면 야후 '최근 체결가'로 채운다 (장 마감 직후 흔함)
+    ref0 = closes['sp500'][4] if 'sp500' in closes else last
+    for k in [k for k, v in closes.items() if k.startswith('@') and v[4] != ref0]:
+        del closes[k]  # 하루 묵은 값은 버리고 최근 체결가로 다시 시도
+    for t in stk:
+        if '@' + t in closes:
+            continue
+        try:
+            import requests
+            from zoneinfo import ZoneInfo
+            r = requests.get(f'https://query1.finance.yahoo.com/v8/finance/chart/{t}?range=10d&interval=1d',
+                             headers={'User-Agent': 'Mozilla/5.0'}, timeout=20).json()['chart']['result'][0]
+            meta, ts = r['meta'], r.get('timestamp') or []
+            cl = r['indicators']['quote'][0]['close']
+            on = dt.datetime.fromtimestamp(meta['regularMarketTime'], ZoneInfo('America/New_York')).date().isoformat()
+            if on != ref0:
+                continue
+            prev = [c for x, c in zip(ts, cl) if c and dt.datetime.fromtimestamp(x, ZoneInfo('America/New_York')).date().isoformat() < on]
+            if prev:
+                kr = t.endswith(('.KS', '.KQ'))
+                closes['@' + t] = (float(meta['regularMarketPrice']), float(prev[-1]), '원' if kr else '$', 0 if kr else 2, on)
+        except Exception as e:
+            log('최근 체결가 실패', t, e)
     ref = closes['sp500'][4] if 'sp500' in closes else None  # 날짜가 다른(하루 묵은) 값은 안 붙인다
     for x in s.get('stocks', []):
         x['key'] = '@' + (x.get('ticker') or '').strip().upper()
