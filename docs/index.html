@@ -174,6 +174,18 @@ h4 { font-size: 14px; margin: 20px 0 8px; }
 .guide div { background: var(--bg); border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.6; }
 .guide b { display: block; margin-bottom: 2px; }
 .adv-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 8px 0 6px; }
+.dj-days { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.dj-days a { padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 12px; }
+.dj-days a[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.dj-h { font-size: 19px; margin: 6px 0 8px; line-height: 1.4; }
+.dj-yt { display: inline-block; margin-top: 4px; color: var(--accent); font-weight: 500; text-decoration: none; }
+.dj-t td { padding: 8px 10px; vertical-align: top; text-align: left; line-height: 1.5; }
+.dj-t td:first-child { white-space: nowrap; width: 1%; }
+.dj-t td.mv { min-width: 72px; max-width: 38vw; font-weight: 500; }
+.dj-topic { padding: 10px 0; border-top: 1px solid var(--line); line-height: 1.6; }
+.dj-topic:first-of-type { border-top: 0; }
+.dj-topic ul { margin: 6px 0 0; padding-left: 18px; } .dj-topic p { margin: 4px 0 0; }
+#dj h4 { margin: 0 0 8px; } #dj li { line-height: 1.6; margin: 2px 0; }
 .tabs { overflow-x: auto; scrollbar-width: none; }
 .tab { white-space: nowrap; }
 .toc { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -291,6 +303,10 @@ async function init() {
   bf.className = 'tab'; bf.textContent = '브리핑·일정'; bf.role = 'tab'; bf.dataset.id = 'brief';
   bf.onclick = () => { location.hash = 'brief'; };
   tabs.appendChild(bf);
+  const dj = document.createElement('button');
+  dj.className = 'tab'; dj.textContent = '당잠사 요약'; dj.role = 'tab'; dj.dataset.id = 'dangjamsa';
+  dj.onclick = () => { location.hash = 'dangjamsa'; };
+  tabs.appendChild(dj);
   const bt = document.createElement('button');
   bt.className = 'tab'; bt.textContent = '시장 흐름'; bt.role = 'tab'; bt.dataset.id = 'breadth';
   bt.onclick = () => { location.hash = 'breadth'; };
@@ -317,6 +333,7 @@ function setStamp() {
   const id = location.hash.slice(1);
   let text;
   if (id.startsWith('glossary')) text = stampText(null);
+  else if (id.startsWith('dangjamsa')) text = '한국경제TV 「당신이 잠든 사이에」 방송 자막을 평일 아침 자동으로 요약해요 (방송이 끝나고 자막이 생기면 올라와요)';
   else if (id === 'brief') text = stampText('brief', BRIEF?.updated);
   else if (id.startsWith('earnings')) {
     const t = decodeURIComponent(id.split('/')[1] || ''), kr = /\.K[SQ]$/.test(t);
@@ -355,6 +372,12 @@ function route() {
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.id === 'glossary'));
     current = null;
     renderGlossary(id.split('/')[1]);
+    return;
+  }
+  if (id.startsWith('dangjamsa')) {
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.id === 'dangjamsa'));
+    current = null;
+    renderDJ(id.split('/')[1]);
     return;
   }
   if (id === 'brief') {
@@ -579,6 +602,39 @@ async function renderBrief() {
       <div class="note" style="margin-top:12px">한국시간 02:00 · 06:30 · 11:00 · 15:00 · 19:00 · 22:00 · 23:30에 뉴스를 모아 새로 정리해요. 실적 발표 시간은 회사 사정으로 바뀔 수 있어요.
         출처: ${b.sources.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>`).join(' · ')}</div>
     </section></div>`;
+}
+
+// ───── 당잠사 요약 (한국경제TV 아침 라이브) ─────
+let DJ_INDEX; const DJ = {};
+async function renderDJ(day) {
+  charts.forEach(c => c.remove()); charts = [];
+  if (observer) observer.disconnect();
+  const main = document.getElementById('main');
+  try {
+    if (!DJ_INDEX) { main.innerHTML = '<section class="card">불러오는 중…</section>'; DJ_INDEX = await (await fetch('dangjamsa/index.json', { cache: 'no-cache' })).json(); }
+    day = day || DJ_INDEX.items[0]?.date;
+    if (!day) { main.innerHTML = '<section class="card">아직 요약이 없어요.</section>'; return; }
+    if (!DJ[day]) DJ[day] = await (await fetch(`dangjamsa/${day}.json`, { cache: 'no-cache' })).json();
+  } catch (e) { main.innerHTML = '<section class="card">당잠사 요약을 불러오지 못했어요.</section>'; return; }
+  if (!location.hash.startsWith('#dangjamsa')) return;
+  const d = DJ[day], wk = '일월화수목금토'[new Date(day + 'T00:00:00').getDay()];
+  const mv = t => { const m = /^[+−-]/.exec(t || ''); return m ? (m[0] === '+' ? 'var(--up)' : 'var(--down)') : 'var(--muted)'; };
+  const rows = (list, a, b) => list.map(x => `<tr><td><b>${esc(x[a])}</b></td><td class="mv" style="color:${mv(x.move)}">${esc(x.move || '')}</td><td>${esc(x[b])}</td></tr>`).join('');
+  main.innerHTML = `<div id="dj">
+    <section class="card">
+      <div class="dj-days">${DJ_INDEX.items.slice(0, 15).map(x => `<a href="#dangjamsa/${x.date}" aria-current="${x.date === day}">${+x.date.slice(5, 7)}/${+x.date.slice(8)}</a>`).join('')}</div>
+      <div class="t">${+day.slice(5, 7)}월 ${+day.slice(8)}일(${wk}) 당신이 잠든 사이에</div>
+      <h2 class="dj-h">${esc(d.headline)}</h2>
+      <p class="sm">${esc(d.summary)}</p>
+      <a class="dj-yt" href="${esc(d.url)}" target="_blank" rel="noopener">▶ 원본 영상 보기${d.duration ? ` · ${Math.round(d.duration / 60)}분` : ''}</a>
+    </section>
+    ${d.market?.length ? `<section class="card"><h4>간밤 시장</h4><div class="table-wrap"><table class="dj-t"><tbody>${rows(d.market, 'name', 'why')}</tbody></table></div></section>` : ''}
+    <section class="card"><h4>주요 이야기</h4>${d.topics.map(t => `<div class="dj-topic"><b>${esc(t.title)}</b><ul>${t.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>`).join('')}</section>
+    ${d.stocks?.length ? `<section class="card"><h4>방송에 나온 종목</h4><div class="table-wrap"><table class="dj-t"><tbody>${rows(d.stocks, 'name', 'why')}</tbody></table></div></section>` : ''}
+    ${d.experts?.length ? `<section class="card"><h4>출연자 의견</h4>${d.experts.map(x => `<div class="dj-topic"><b>${esc(x.who)}</b><p>${esc(x.view)}</p></div>`).join('')}</section>` : ''}
+    ${d.watch?.length ? `<section class="card"><h4>지켜볼 것</h4><ul>${d.watch.map(w => `<li>${esc(w)}</li>`).join('')}</ul></section>` : ''}
+    <div class="note">출처: 한국경제TV 「당신이 잠든 사이에」 방송(${esc(d.title)}). 자동 자막을 AI로 요약해서 틀린 부분이 있을 수 있어요. 투자 판단은 원본 영상과 함께 확인하세요.</div>
+  </div>`;
 }
 
 // ───── 용어 설명 탭 ─────
