@@ -21,6 +21,11 @@ LIST_URL = 'https://raw.githubusercontent.com/datasets/s-and-p-500-companies/mai
 MAS = [5, 20, 50, 100, 150, 200]
 WINDOWS = [('5일', 5), ('1달', 21), ('3달', 63), ('6달', 126), ('52주', 252)]
 HISTORY = 252  # 추이 그래프 기간 (거래일)
+SECTOR_KO = {
+    'Information Technology': '정보기술', 'Financials': '금융', 'Health Care': '헬스케어', 'Industrials': '산업재',
+    'Consumer Discretionary': '경기소비재', 'Consumer Staples': '필수소비재', 'Communication Services': '커뮤니케이션',
+    'Energy': '에너지', 'Utilities': '유틸리티', 'Real Estate': '부동산', 'Materials': '소재',
+}
 
 
 def constituents():
@@ -34,6 +39,12 @@ def constituents():
     except Exception:
         df = pd.read_csv(LIST_CACHE)
     return {row['Symbol'].replace('.', '-'): row['Security'] for _, row in df.iterrows()}
+
+
+def sector_map():
+    """종목 → GICS 업종 (constituents() 가 저장한 목록 사용)"""
+    df = pd.read_csv(LIST_CACHE)
+    return {row['Symbol'].replace('.', '-'): row['GICS Sector'] for _, row in df.iterrows()}
 
 
 def market_leaders(korean_names, count=15):
@@ -77,6 +88,28 @@ def build_breadth(download, korean_names):
         valid = ma.notna() & close.notna()
         above[n] = ((close > ma) & valid).sum(axis=1) / valid.sum(axis=1).replace(0, pd.NA) * 100
 
+    # 업종별(Barchart Large Cap 표의 S&P 500 업종 줄과 같은 기준): 오늘·어제·1주 전·1달 전 + 1년 추이
+    try:
+        smap = sector_map()
+    except Exception:
+        smap = {}
+    sectors = []
+    for en, ko in SECTOR_KO.items():
+        cols = [t for t in tickers if smap.get(t) == en and t in close]
+        if not cols:
+            continue
+        c = close[cols]
+        ab = {}
+        for n in MAS:
+            ma = c.rolling(n, min_periods=n).mean()
+            valid = ma.notna() & c.notna()
+            ab[n] = ((c > ma) & valid).sum(axis=1) / valid.sum(axis=1).replace(0, pd.NA) * 100
+        pk = lambda back: {str(n): round(float(ab[n].iloc[len(dates) - 1 - back]), 1) for n in MAS}
+        sectors.append({'en': en, 'ko': ko, 'count': int(c.iloc[-1].notna().sum()),
+                        'table': {'오늘': pk(0), '어제': pk(1), '1주 전': pk(5), '1달 전': pk(20)},
+                        'history': {str(n): [None if pd.isna(v) else round(float(v), 1) for v in ab[n].iloc[-HISTORY:]] for n in MAS}})
+    sectors.sort(key=lambda x: -x['table']['오늘']['50'])
+
     def pick(back):
         i = len(dates) - 1 - back
         return {str(n): round(float(above[n].iloc[i]), 1) for n in MAS}
@@ -114,7 +147,7 @@ def build_breadth(download, korean_names):
     hist = dates[-HISTORY:]
     data = {
         'date': dates[-1].strftime('%Y-%m-%d'), 'count': int(close.iloc[-1].notna().sum()),
-        'table': table, 'highsLows': hl, 'advance': adv, 'leaders': leaders, 'leadersScope': leaders_scope,
+        'table': table, 'sectors': sectors, 'highsLows': hl, 'advance': adv, 'leaders': leaders, 'leadersScope': leaders_scope,
         'history': {
             'dates': [d.strftime('%Y-%m-%d') for d in hist],
             **{str(n): [None if pd.isna(v) else round(float(v), 1) for v in above[n].loc[hist]] for n in MAS},

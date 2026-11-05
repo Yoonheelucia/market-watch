@@ -74,6 +74,11 @@ h2 { font-size: 16px; margin: 32px 0 12px; }
 .ma-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px 18px; margin-bottom: 8px; }
 .ma-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
 .ma-head .note { margin: 0; font-size: 11px; }
+.sec-table tbody tr[data-g] { cursor: pointer !important; }
+.sec-table tbody tr[data-g]:hover td { background: var(--hover, rgba(127,127,127,.08)); }
+.sec-table tbody tr.on td { background: rgba(80,130,255,.12); }
+.sec-table tbody tr.idx td { border-bottom: 2px solid var(--line, rgba(127,127,127,.3)); }
+.sec-table td .note { font-size: 11px; margin: 0; }
 @media (max-width: 400px) { .ma-grid { grid-template-columns: 1fr; } }
 .chart-box .legend { font-size: 12px; color: var(--muted); margin-bottom: 4px; display: flex; gap: 12px; }
 .chart-box .legend i { display: inline-block; width: 10px; height: 2px; vertical-align: middle; margin-right: 4px; }
@@ -780,6 +785,7 @@ async function renderBreadth() {
         <tbody>${Object.entries(tb).map(([k, row]) => `<tr><td>${k}</td>${['5', '20', '50', '100', '150', '200'].map(n => `<td><span class="br-cell" style="${brColor(row[n])};padding:2px 8px">${row[n].toFixed(1)}%</span></td>`).join('')}</tr>`).join('')}</tbody>
       </table></div>`;
   const b = BR, t0 = b.table['오늘'], a = b.advance, tot = a.up + a.flat + a.down;
+  const groups = [{ ko: 'S&P 500 Index', en: 'S&P 500', count: b.count, table: b.table, history: b.history }, ...(b.sectors || [])];
   const lead = b.leaders.map((l, i) => `<tr data-t="${esc(l.ticker)}">
       <td>${i + 1}</td><td>${esc(l.name)}${tickerLink(l.ticker)}</td><td>$${l.price.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
       <td>${fmtPct(l.chg)}</td><td>${(l.volume / 1e6).toFixed(1)}M주</td><td><b>${fmtM(l.pv)}</b></td></tr>`).join('');
@@ -821,15 +827,17 @@ async function renderBreadth() {
     </section>
 
     <section class="card">
-      <div class="formula">대형주 이동평균선 위 종목 비율 · 선별 1년 추이</div>
-      <div class="note" style="margin:0 0 10px">Barchart 'Percentage of Large Cap Stocks Above Their Moving Averages'의
-        <a href="https://www.barchart.com/stocks/quotes/%24SPX/overview" target="_blank" rel="noopener">S&P 500 Index ↗</a> 와 같은 기준(S&P 500 종목)이에요.
-        Barchart 맨 위 'Market Average'는 미국 주식 약 4,800개(중소형주 포함) 기준이라 숫자가 달라요.
+      <div class="formula">Percentage of Large Cap Stocks Above Their Moving Averages</div>
+      <div class="note" style="margin:0 0 10px">Barchart 시장 성과 페이지의 '대형주 이동평균선 위 종목 비율' 표예요. 맨 위 줄은 S&P 500 전체, 아래는 S&P 500 업종 11개예요(오늘 기준).
+        <b>줄을 누르면</b> 아래 차트 6개가 그 업종의 1년 추이로 바뀌어요.
+        · <a href="https://www.barchart.com/stocks/quotes/%24SPX/overview" target="_blank" rel="noopener">Barchart S&P 500 Index ↗</a>
         · 사이트 <a href="#sp500">S&P 500 탭 →</a></div>
-      <div class="ma-grid">${MA_LIST.map(n => `<div class="chart-box ma-box">
-        <div class="ma-head"><b>${n}일선 위</b><span class="br-cell" style="${brColor(t0[n])};padding:1px 7px">${t0[n].toFixed(1)}%</span>
-          <span class="note">어제 ${b.table['어제'][n].toFixed(1)}% · 1주 전 ${b.table['1주 전'][n].toFixed(1)}% · 1달 전 ${b.table['1달 전'][n].toFixed(1)}%</span></div>
-        <div class="chart" id="ma-${n}" style="height:170px">${b.history[n] ? '' : '<div class="note" style="padding:60px 0;text-align:center">추이 데이터는 다음 업데이트부터 보여요</div>'}</div></div>`).join('')}</div>
+      <div class="table-wrap"><table class="br-table sec-table">
+        <thead><tr><th>이름</th><th>종목 수</th>${['5일선', '20일선', '50일선', '100일선', '150일선', '200일선'].map(x => `<th>${x}</th>`).join('')}</tr></thead>
+        <tbody>${groups.map((g, i) => `<tr data-g="${i}" class="${i === 0 ? 'on idx' : ''}"><td>${i === 0 ? `<b>${esc(g.ko)}</b>` : `${esc(g.ko)} <span class="note">${esc(g.en)}</span>`}</td><td>${g.count}</td>${MA_LIST.map(n => `<td><span class="br-cell" style="${brColor(g.table['오늘'][n])};padding:2px 8px">${g.table['오늘'][n].toFixed(1)}%</span></td>`).join('')}</tr>`).join('')}</tbody>
+      </table></div>
+      <h4 class="ma-t" id="maTitle"></h4>
+      <div class="ma-grid" id="maGrid"></div>
       <div class="note"><span style="color:var(--c1)">━</span> 비율(왼쪽 축) · <span style="color:var(--muted)">━</span> S&P 500 지수(오른쪽 축) · 점선은 80%(과열)·20%(과매도)</div>
     </section>
 
@@ -868,18 +876,31 @@ async function renderBreadth() {
   si.setData(line(h.dates, h.index));
   c.timeScale().fitContent();
   charts.push(c);
-  MA_LIST.filter(n => h[n]).forEach(n => {
-    const mc = LWC.createChart(document.getElementById('ma-' + n), { ...baseOptions(true), handleScroll: false, handleScale: false });
-    const sp = mc.addLineSeries({ priceScaleId: 'left', color: css('--c1'), lineWidth: 2, priceFormat: pctFmt, priceLineVisible: false });
-    sp.setData(line(h.dates, h[n]));
-    [80, 20].forEach(v => sp.createPriceLine({ price: v, color: css('--muted'), lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
-    mc.priceScale('left').applyOptions({ autoScale: false, scaleMargins: { top: 0.05, bottom: 0.05 } });
-    sp.applyOptions({ autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }) });
-    const ix = mc.addLineSeries({ color: css('--muted'), lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
-    ix.setData(line(h.dates, h.index));
-    mc.timeScale().fitContent();
-    charts.push(mc);
-  });
+  let maCharts = [];
+  const drawMA = gi => {
+    const g = groups[gi], gt = g.table;
+    maCharts.forEach(x => { x.remove(); charts = charts.filter(y => y !== x); }); maCharts = [];
+    document.querySelectorAll('.sec-table tr[data-g]').forEach(tr => tr.classList.toggle('on', +tr.dataset.g === gi));
+    document.getElementById('maTitle').innerHTML = `${esc(g.ko)}${gi ? ` <span class="note">${esc(g.en)}</span>` : ''} · 이동평균선별 1년 추이 <span class="note">${g.count}개 종목</span>`;
+    document.getElementById('maGrid').innerHTML = MA_LIST.map(n => `<div class="chart-box ma-box">
+        <div class="ma-head"><b>${n}일선 위</b><span class="br-cell" style="${brColor(gt['오늘'][n])};padding:1px 7px">${gt['오늘'][n].toFixed(1)}%</span>
+          <span class="note">어제 ${gt['어제'][n].toFixed(1)}% · 1주 전 ${gt['1주 전'][n].toFixed(1)}% · 1달 전 ${gt['1달 전'][n].toFixed(1)}%</span></div>
+        <div class="chart" id="ma-${n}" style="height:170px">${g.history[n] ? '' : '<div class="note" style="padding:60px 0;text-align:center">추이 데이터는 다음 업데이트부터 보여요</div>'}</div></div>`).join('');
+    MA_LIST.filter(n => g.history[n]).forEach(n => {
+      const mc = LWC.createChart(document.getElementById('ma-' + n), { ...baseOptions(true), handleScroll: false, handleScale: false });
+      const sp = mc.addLineSeries({ priceScaleId: 'left', color: css('--c1'), lineWidth: 2, priceFormat: pctFmt, priceLineVisible: false });
+      sp.setData(line(h.dates, g.history[n]));
+      [80, 20].forEach(v => sp.createPriceLine({ price: v, color: css('--muted'), lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
+      mc.priceScale('left').applyOptions({ autoScale: false, scaleMargins: { top: 0.05, bottom: 0.05 } });
+      sp.applyOptions({ autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }) });
+      const ix = mc.addLineSeries({ color: css('--muted'), lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+      ix.setData(line(h.dates, h.index));
+      mc.timeScale().fitContent();
+      charts.push(mc); maCharts.push(mc);
+    });
+  };
+  document.querySelectorAll('.sec-table tr[data-g]').forEach(tr => tr.addEventListener('click', () => drawMA(+tr.dataset.g)));
+  drawMA(0);
 }
 const MA_LIST = ['5', '20', '50', '100', '150', '200'];
 
