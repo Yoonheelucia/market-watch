@@ -36,11 +36,11 @@ JSON 한 덩어리만 출력하세요(코드블록·설명 없이). 형식:
   "summary": "3~4문장 요약",
   "market": [{{"key": "아래 목록 중 하나", "name": "S&P500·나스닥·다우·유가·금리·달러 등", "move": "+1.2% 같은 수치 또는 짧은 설명", "why": "왜 그렇게 움직였는지 한 문장"}}],
   "topics": [{{"title": "주제 제목", "points": ["쉬운 설명 문장", "..."]}}],
-  "stocks": [{{"name": "종목 이름", "move": "등락(나왔으면)", "why": "이유 한두 문장"}}],
+  "stocks": [{{"name": "종목 이름(한글)", "ticker": "야후 파이낸스 티커(예: AAPL, 005930.KS, 모르면 빈칸)", "move": "등락(나왔으면)", "why": "이유 한두 문장"}}],
   "experts": [{{"who": "출연자 이름·소속(자막에 나온 대로, 오타는 고쳐서)", "view": "핵심 의견 2~3문장"}}],
   "watch": ["오늘·이번 주 지켜볼 일정이나 포인트"]
 }}
-market 의 key: sp500, nasdaq, dow, wti, brent, us10y, us2y, dxy, usdkrw, gold, silver, btc, eth, vix 중 맞는 것. 해당 없으면 "other".
+market 의 key: sp500, nasdaq, dow, sox(필라델피아 반도체지수·반도체 지수), wti, brent, us10y, us2y, us30y, dxy, usdkrw, gold, silver, btc, eth, vix 중 맞는 것. 해당 없으면 "other".
 topics 는 4~7개, 각 points 2~4개. 방송에 없는 칸은 빈 배열로.
 
 [자막]
@@ -113,9 +113,9 @@ def summarize(day, text):
 
 
 # 간밤 시장 항목에 실제 마감 값 붙이기 (방송 전날 미국 날짜 기준)
-YF = {'wti': ('CL=F', '$', 2), 'brent': ('BZ=F', '$', 2), 'us10y': ('^TNX', '%', 3), 'us2y': ('2YY=F', '%', 3),
+YF = {'wti': ('CL=F', '$', 2), 'brent': ('BZ=F', '$', 2), 'us10y': ('^TNX', '%', 3),
       'dxy': ('DX-Y.NYB', '', 2), 'usdkrw': ('KRW=X', '원', 1), 'gold': ('GC=F', '$', 1), 'silver': ('SI=F', '$', 2),
-      'btc': ('BTC-USD', '$', 0), 'eth': ('ETH-USD', '$', 0), 'vix': ('^VIX', '', 2)}
+      'btc': ('BTC-USD', '$', 0), 'sox': ('^SOX', '', 2), 'us30y': ('^TYX', '%', 3), 'eth': ('ETH-USD', '$', 0), 'vix': ('^VIX', '', 2)}
 
 
 def enrich(s, day):
@@ -128,7 +128,8 @@ def enrich(s, day):
             ix = [i for i, d in enumerate(m['dates']) if d <= last]
             if len(ix) >= 2:
                 c = m['index']['c']; closes[m['id']] = (c[ix[-1]], c[ix[-2]], '', 2, m['dates'][ix[-1]])
-    tick = [YF[k][0] for k in want if k in YF]
+    stk = {x['ticker'].strip().upper() for x in s.get('stocks', []) if (x.get('ticker') or '').strip()}
+    tick = [YF[k][0] for k in want if k in YF] + sorted(stk)
     if tick:
         try:
             import yfinance as yf
@@ -141,10 +142,20 @@ def enrich(s, day):
                 col = col[col.index.strftime('%Y-%m-%d') <= last]
                 if len(col) >= 2:
                     closes[k] = (float(col.iloc[-1]), float(col.iloc[-2]), YF[k][1], YF[k][2], col.index[-1].strftime('%Y-%m-%d'))
+            for t in stk:
+                if t not in df:
+                    continue
+                col = df[t].dropna()
+                col = col[col.index.strftime('%Y-%m-%d') <= last]
+                if len(col) >= 2:
+                    closes['@' + t] = (float(col.iloc[-1]), float(col.iloc[-2]), '원' if t.endswith(('.KS', '.KQ')) else '$',
+                                       0 if t.endswith(('.KS', '.KQ')) else 2, col.index[-1].strftime('%Y-%m-%d'))
         except Exception as e:
             log('시세 붙이기 실패:', e)
     ref = closes['sp500'][4] if 'sp500' in closes else None  # 날짜가 다른(하루 묵은) 값은 안 붙인다
-    for m in s.get('market', []):
+    for x in s.get('stocks', []):
+        x['key'] = '@' + (x.get('ticker') or '').strip().upper()
+    for m in s.get('market', []) + s.get('stocks', []):
         k = m.get('key')
         if k not in closes or (ref and closes[k][4] != ref):
             continue
@@ -180,13 +191,44 @@ def publish(day):
     raise RuntimeError('푸시 실패')
 
 
+def refill(day):
+    """이미 만든 요약에 종목 티커·실제 값만 다시 붙인다."""
+    path = os.path.join(OUT, f'{day}.json')
+    s = json.load(open(path))
+    need = [x['name'] for x in s.get('stocks', []) if not x.get('ticker')]
+    if need:
+        env = dict(os.environ, USER=os.environ.get('USER') or 'lucialee')
+        for k in ('CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_CODE_CHILD_SESSION'):
+            env.pop(k, None)
+        q = ('다음 종목들의 야후 파이낸스 티커를 JSON 객체 {"이름": "티커"} 하나로만 답해. 상장 안 됐거나 모르면 "". '
+             '한국 종목은 005930.KS 형식, 여러 종목이 묶인 이름은 첫 종목.\n' + json.dumps(need, ensure_ascii=False))
+        r = subprocess.run([CLAUDE, '-p', '--model', 'sonnet'], input=q, capture_output=True, text=True,
+                           timeout=300, env=env, cwd=tempfile.gettempdir())
+        mp = json.loads(re.search(r'\{.*\}', r.stdout, re.S).group(0))
+        for x in s['stocks']:
+            x.setdefault('ticker', mp.get(x['name'], ''))
+    for m in s.get('market', []) + s.get('stocks', []):
+        for k in ('level', 'chg', 'on'):
+            m.pop(k, None)
+    for m in s.get('market', []):
+        n = m['name']
+        if m.get('key') in (None, 'other'):
+            m['key'] = 'sox' if '반도체' in n else 'us30y' if '30년' in n else m.get('key', 'other')
+    enrich(s, day)
+    json.dump(s, open(path, 'w'), ensure_ascii=False, indent=1)
+    log('값 다시 붙임', day, sum(1 for x in s.get('stocks', []) if x.get('level')), '/', len(s.get('stocks', [])))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--date')
     ap.add_argument('--force', action='store_true')
     ap.add_argument('--no-push', action='store_true')
+    ap.add_argument('--refill', action='store_true')
     a = ap.parse_args()
     day = dt.date.fromisoformat(a.date) if a.date else now().date()
+    if a.refill:
+        return refill(day)
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, f'{day}.json')
     if not a.force:
