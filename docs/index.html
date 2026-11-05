@@ -79,6 +79,12 @@ h2 { font-size: 16px; margin: 32px 0 12px; }
 .sec-table tbody tr.on td { background: rgba(80,130,255,.12); }
 .sec-table tbody tr.idx td { border-bottom: 2px solid var(--line, rgba(127,127,127,.3)); }
 .sec-table td .note { font-size: 11px; margin: 0; }
+.br-table td .note { font-size: 11px; margin: 0; }
+a.ix { color: var(--c1); text-decoration: none; } a.ix:hover { text-decoration: underline; }
+.mb-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.mb-bar input { flex: 1 1 200px; max-width: 320px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line, #8884); background: transparent; color: inherit; }
+.mb-table th { cursor: pointer; white-space: nowrap; } .mb-table th.sorted { text-decoration: underline; }
+.mb-table td { text-align: right; } .mb-table td:nth-child(2) { text-align: left; }
 @media (max-width: 400px) { .ma-grid { grid-template-columns: 1fr; } }
 .chart-box .legend { font-size: 12px; color: var(--muted); margin-bottom: 4px; display: flex; gap: 12px; }
 .chart-box .legend i { display: inline-block; width: 10px; height: 2px; vertical-align: middle; margin-right: 4px; }
@@ -363,7 +369,7 @@ function setStamp() {
       + ' · 회사 사업 설명 글은 직접 정리해서 날짜가 따로 적혀 있어요';
   } else {
     const m = DATA.markets.find(x => x.id === id) || DATA.markets[0];
-    text = id === 'breadth' ? stampText('us', marketUpdated('sp500')) : stampText(['kospi', 'kosdaq'].includes(m.id) ? 'kr' : 'us', marketUpdated(m.id));
+    text = id.startsWith('breadth') ? stampText('us', marketUpdated('sp500')) : stampText(['kospi', 'kosdaq'].includes(m.id) ? 'kr' : 'us', marketUpdated(m.id));
   }
   document.getElementById('stamp').textContent = text;
 }
@@ -407,10 +413,10 @@ function route() {
     renderBrief();
     return;
   }
-  if (id === 'breadth') {
+  if (id === 'breadth' || id.startsWith('breadth/')) {
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.id === 'breadth'));
     current = null;
-    renderBreadth();
+    renderBreadth(decodeURIComponent(id.split('/')[1] || ''));
     return;
   }
   if (id.startsWith('earnings')) {
@@ -771,7 +777,7 @@ const brColor = v => {
 };
 const brMood = v => v >= 80 ? '과열권' : v >= 60 ? '강한 편' : v > 40 ? '중립' : v > 20 ? '약한 편' : '과매도권';
 
-async function renderBreadth() {
+async function renderBreadth(sub) {
   charts.forEach(c => c.remove()); charts = [];
   if (observer) observer.disconnect();
   const main = document.getElementById('main');
@@ -780,12 +786,13 @@ async function renderBreadth() {
     try { BR = await (await fetch('breadth.json', { cache: 'no-cache' })).json(); }
     catch (e) { main.innerHTML = `<section class="card">시장 흐름 데이터를 불러오지 못했습니다: ${esc(e.message)}</section>`; return; }
   }
+  if (sub) return renderIndexMembers(sub);
   const maTable = tb => `<div class="table-wrap"><table class="br-table">
         <thead><tr><th></th>${['5일선', '20일선', '50일선', '100일선', '150일선', '200일선'].map(x => `<th>${x}</th>`).join('')}</tr></thead>
         <tbody>${Object.entries(tb).map(([k, row]) => `<tr><td>${k}</td>${['5', '20', '50', '100', '150', '200'].map(n => `<td><span class="br-cell" style="${brColor(row[n])};padding:2px 8px">${row[n].toFixed(1)}%</span></td>`).join('')}</tr>`).join('')}</tbody>
       </table></div>`;
   const b = BR, t0 = b.table['오늘'], a = b.advance, tot = a.up + a.flat + a.down;
-  const groups = [{ ko: 'S&P 500 Index', en: 'S&P 500', count: b.count, table: b.table, history: b.history }, ...(b.sectors || [])];
+  const groups = [{ key: 'sp500', ko: 'S&P 500 Index', en: 'S&P 500', count: b.count, table: b.table, history: b.history }, ...(b.sectors || []).map(x => ({ ...x, key: 'sp500:' + x.en }))];
   const lead = b.leaders.map((l, i) => `<tr data-t="${esc(l.ticker)}">
       <td>${i + 1}</td><td>${esc(l.name)}${tickerLink(l.ticker)}</td><td>$${l.price.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
       <td>${fmtPct(l.chg)}</td><td>${(l.volume / 1e6).toFixed(1)}M주</td><td><b>${fmtM(l.pv)}</b></td></tr>`).join('');
@@ -827,15 +834,16 @@ async function renderBreadth() {
     </section>
 
     <section class="card">
-      <div class="formula">Percentage of Large Cap Stocks Above Their Moving Averages</div>
-      <div class="note" style="margin:0 0 10px">Barchart 시장 성과 페이지의 '대형주 이동평균선 위 종목 비율' 표예요. 맨 위 줄은 S&P 500 전체, 아래는 S&P 500 업종 11개예요(오늘 기준).
-        <b>줄을 누르면</b> 아래 차트 6개가 그 업종의 1년 추이로 바뀌어요.
-        · <a href="https://www.barchart.com/stocks/quotes/%24SPX/overview" target="_blank" rel="noopener">Barchart S&P 500 Index ↗</a>
-        · 사이트 <a href="#sp500">S&P 500 탭 →</a></div>
-      <div class="table-wrap"><table class="br-table sec-table">
-        <thead><tr><th>이름</th><th>종목 수</th>${['5일선', '20일선', '50일선', '100일선', '150일선', '200일선'].map(x => `<th>${x}</th>`).join('')}</tr></thead>
-        <tbody>${groups.map((g, i) => `<tr data-g="${i}" class="${i === 0 ? 'on idx' : ''}"><td>${i === 0 ? `<b>${esc(g.ko)}</b>` : `${esc(g.ko)} <span class="note">${esc(g.en)}</span>`}</td><td>${g.count}</td>${MA_LIST.map(n => `<td><span class="br-cell" style="${brColor(g.table['오늘'][n])};padding:2px 8px">${g.table['오늘'][n].toFixed(1)}%</span></td>`).join('')}</tr>`).join('')}</tbody>
-      </table></div>
+      <div class="formula">지수별 이동평균선 위 종목 비율 (Barchart Market Performance)</div>
+      <div class="note" style="margin:0 0 10px">Barchart 시장 성과 페이지 아래쪽 표 5개를 같은 기준으로 계산했어요.
+        <b>지수 이름을 누르면</b> 그 지수의 구성 종목 페이지로 가요. 대형주 표에서 숫자 쪽을 누르면 아래 차트 6개가 그 업종으로 바뀌어요.</div>
+      ${(b.indexes || []).map((tb, ti) => `<h4 class="ma-t">${esc(tb.title)} <span class="note">${esc(tb.ko)}</span></h4>
+      <div class="table-wrap"><table class="br-table ${ti === 0 ? 'sec-table' : ''}">
+        <thead><tr><th>Name</th>${MA_LIST.map(n => `<th>${n}일선</th>`).join('')}</tr></thead>
+        <tbody>${tb.rows.map(r => `<tr ${ti === 0 ? `data-g="${groups.findIndex(g => g.key === r.key)}"` : ''}><td><a class="ix" href="#breadth/${encodeURIComponent(r.key)}">${esc(r.name)}</a> <span class="note">${r.count.toLocaleString()}개</span></td>${MA_LIST.map(n => `<td><span class="br-cell" style="${brColor(r.table['오늘'][n])};padding:2px 8px">${Math.round(r.table['오늘'][n])}%</span></td>`).join('')}</tr>`).join('')}</tbody>
+      </table></div>`).join('')}
+      <div class="note">주가는 Barchart처럼 배당을 반영하지 않은 값으로 계산해요. 러셀 지수는 공식 구성 목록을 받을 수 없어 미국 주식 시가총액 1~1,000위(1000)·1,001~3,000위(2000)·1~3,000위(3000)로 근사했고,
+        나스닥 종합은 주가 $5 넘고 6개월 이상 거래된 종목만 세요. 그래서 이 줄들은 Barchart와 몇 %p 다를 수 있어요.</div>
       <h4 class="ma-t" id="maTitle"></h4>
       <div class="ma-grid" id="maGrid"></div>
       <div class="note"><span style="color:var(--c1)">━</span> 비율(왼쪽 축) · <span style="color:var(--muted)">━</span> S&P 500 지수(오른쪽 축) · 점선은 80%(과열)·20%(과매도)</div>
@@ -899,10 +907,61 @@ async function renderBreadth() {
       charts.push(mc); maCharts.push(mc);
     });
   };
-  document.querySelectorAll('.sec-table tr[data-g]').forEach(tr => tr.addEventListener('click', () => drawMA(+tr.dataset.g)));
+  document.querySelectorAll('.sec-table tr[data-g]').forEach(tr => tr.addEventListener('click', ev => { if (!ev.target.closest('a') && +tr.dataset.g >= 0) drawMA(+tr.dataset.g); }));
   drawMA(0);
 }
 const MA_LIST = ['5', '20', '50', '100', '150', '200'];
+let MB, mbSort = { k: 'cap', d: 1 }, mbQuery = '';
+// 지수 이름을 누르면 나오는 구성 종목 페이지 (Barchart stocks/indices/sp/sp500 같은 페이지)
+async function renderIndexMembers(key) {
+  const main = document.getElementById('main');
+  const row = (BR.indexes || []).flatMap(t => t.rows).find(r => r.key === key);
+  if (!MB) {
+    main.innerHTML = '<section class="card">구성 종목 불러오는 중…</section>';
+    try { MB = await (await fetch('members.json', { cache: 'no-cache' })).json(); }
+    catch (e) { main.innerHTML = `<section class="card">구성 종목을 불러오지 못했습니다: ${esc(e.message)}</section>`; return; }
+  }
+  const list = (MB.groups[key] || []).filter(t => MB.stocks[t]);
+  if (!row || !list.length) { main.innerHTML = '<section class="card">이 지수 정보가 없어요. <a href="#breadth">← 시장 흐름</a></section>'; return; }
+  const BC = { sp500: 'sp/sp500', sp100: 'sp/sp100', sp400: 'sp/sp400', sp600: 'sp/sp600', ndx: 'nasdaq/nasdaq100' };
+  const upCnt = list.filter(t => (MB.stocks[t][2] ?? 0) > 0).length, dnCnt = list.filter(t => (MB.stocks[t][2] ?? 0) < 0).length;
+  main.innerHTML = `
+    <section class="card">
+      <div class="note" style="margin:0 0 6px"><a href="#breadth">← 시장 흐름</a></div>
+      <div class="formula">${esc(row.name)} 구성 종목 ${list.length.toLocaleString()}개</div>
+      <div class="note" style="margin:2px 0 10px">${esc(MB.date)} 종가 기준 · 오른 종목 ${upCnt}개 · 내린 종목 ${dnCnt}개
+        ${BC[key] ? ` · <a href="https://www.barchart.com/stocks/indices/${BC[key]}" target="_blank" rel="noopener">Barchart에서 보기 ↗</a>` : ''}
+        ${key.startsWith('r') ? ' · 러셀 지수는 시가총액 순위로 근사한 목록이에요' : ''}</div>
+      <div class="table-wrap"><table class="br-table">
+        <thead><tr><th></th>${MA_LIST.map(n => `<th>${n}일선</th>`).join('')}</tr></thead>
+        <tbody>${Object.entries(row.table).map(([k, r]) => `<tr><td>${k}</td>${MA_LIST.map(n => `<td><span class="br-cell" style="${brColor(r[n])};padding:2px 8px">${r[n].toFixed(1)}%</span></td>`).join('')}</tr>`).join('')}</tbody>
+      </table></div>
+    </section>
+    <section class="card">
+      <div class="mb-bar"><input id="mbq" type="search" placeholder="종목 이름·티커 찾기" value="${esc(mbQuery)}"><span class="note">제목을 누르면 정렬돼요 · ● 이동평균선 위 · ○ 아래</span></div>
+      <div class="table-wrap"><table class="er-table mb-table"><thead><tr>
+        <th data-k="cap">#</th><th data-k="name">종목</th><th data-k="last">종가</th><th data-k="chg">등락률</th><th data-k="vol">거래량</th>
+        ${MA_LIST.map((n, j) => `<th data-k="m${j}">${n}일</th>`).join('')}</tr></thead><tbody id="mbBody"></tbody></table></div>
+    </section>`;
+  const order = new Map(list.map((t, i) => [t, i]));
+  const val = (t, k) => { const s = MB.stocks[t]; return k === 'cap' ? order.get(t) : k === 'name' ? s[0] : k === 'last' ? s[1] : k === 'chg' ? s[2] : k === 'vol' ? s[3] : (s[4] >> +k.slice(1)) & 1; };
+  const draw = () => {
+    const q = mbQuery.trim().toUpperCase();
+    const rows = list.filter(t => !q || t.includes(q) || MB.stocks[t][0].toUpperCase().includes(q))
+      .sort((x, y) => { const a = val(x, mbSort.k), c = val(y, mbSort.k); return a == null ? 1 : c == null ? -1 : (a > c ? 1 : a < c ? -1 : 0) * mbSort.d; });
+    document.getElementById('mbBody').innerHTML = rows.map((t, i) => { const s = MB.stocks[t]; return `<tr>
+      <td>${i + 1}</td><td>${esc(s[0])}${tickerLink(t)}</td><td>$${s[1].toLocaleString('en-US', { minimumFractionDigits: 2 })}</td><td>${fmtPct(s[2])}</td>
+      <td>${s[3] == null ? '–' : s[3] >= 1e6 ? (s[3] / 1e6).toFixed(1) + 'M' : (s[3] / 1e3).toFixed(0) + 'K'}</td>
+      ${MA_LIST.map((n, j) => (s[4] >> j) & 1 ? '<td class="up">●</td>' : '<td class="down">○</td>').join('')}</tr>`; }).join('');
+    document.querySelectorAll('.mb-table th').forEach(th => th.classList.toggle('sorted', th.dataset.k === mbSort.k));
+  };
+  document.querySelectorAll('.mb-table th').forEach(th => th.onclick = () => {
+    mbSort = { k: th.dataset.k, d: mbSort.k === th.dataset.k ? -mbSort.d : (['name', 'cap'].includes(th.dataset.k) ? 1 : -1) }; draw();
+  });
+  document.getElementById('mbq').oninput = e => { mbQuery = e.target.value; draw(); };
+  window.scrollTo(0, 0);
+  draw();
+}
 
 // ───── 실적 조회 탭 ─────
 let ER, BIZ = {}, SEG = {}, erTicker = '', erMode = 'q';

@@ -72,7 +72,7 @@ def build_breadth(download, korean_names):
     names = constituents()
     tickers = sorted(names)
     start = (pd.Timestamp.today() - pd.DateOffset(days=760)).strftime('%Y-%m-%d')
-    raw = download(tickers + ['^GSPC'], start, auto_adjust=True)
+    raw = download(tickers + ['^GSPC'], start, auto_adjust=False)
 
     close = pd.DataFrame({t: raw[t]['Close'] for t in tickers}).dropna(how='all')
     high = pd.DataFrame({t: raw[t]['High'] for t in tickers}).reindex(close.index)
