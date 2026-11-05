@@ -15,6 +15,7 @@ import pandas as pd
 import yfinance as yf
 
 from breadth import build_breadth
+from market_breadth import build_market_average
 from earnings import build_earnings
 from segments import build_segments
 
@@ -308,6 +309,10 @@ def main(region='all'):
         return
     # 시장 흐름 (S&P 500 전체 종목)
     build_breadth(download, US_NAMES)
+    try:  # 미국 주식 전체 (Barchart Market Average 와 같은 기준) — 실패해도 나머지는 계속
+        build_market_average()
+    except Exception as e:
+        print('미국 전체 이동평균선 비율 실패:', e)
 
     # 미국 종목 사업부별 분기 매출 (SEC 공시)
     build_segments(sorted(t for t in names if not t.endswith(('.KS', '.KQ'))))

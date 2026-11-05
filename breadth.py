@@ -81,7 +81,7 @@ def build_breadth(download, korean_names):
         i = len(dates) - 1 - back
         return {str(n): round(float(above[n].iloc[i]), 1) for n in MAS}
 
-    table = {'오늘': pick(0), '어제': pick(1), '1주 전': pick(5), '1달 전': pick(21)}
+    table = {'오늘': pick(0), '어제': pick(1), '1주 전': pick(5), '1달 전': pick(20)}
 
     # 신고가·신저가: 오늘 고가(저가)가 직전 N-1 거래일의 최고(최저)보다 높으면(낮으면)
     last = len(dates) - 1
@@ -117,7 +117,7 @@ def build_breadth(download, korean_names):
         'table': table, 'highsLows': hl, 'advance': adv, 'leaders': leaders, 'leadersScope': leaders_scope,
         'history': {
             'dates': [d.strftime('%Y-%m-%d') for d in hist],
-            **{str(n): [None if pd.isna(v) else round(float(v), 1) for v in above[n].loc[hist]] for n in (20, 50, 200)},
+            **{str(n): [None if pd.isna(v) else round(float(v), 1) for v in above[n].loc[hist]] for n in MAS},
             'index': [None if pd.isna(v) else round(float(v), 2) for v in index.loc[hist]],
         },
     }
