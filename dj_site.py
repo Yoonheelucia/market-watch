@@ -34,12 +34,13 @@ JSON 한 덩어리만 출력하세요(코드블록·설명 없이). 형식:
 {{
   "headline": "오늘 방송 핵심을 한 문장(40자 안팎)",
   "summary": "3~4문장 요약",
-  "market": [{{"name": "S&P500·나스닥·다우·유가·금리·달러 등", "move": "+1.2% 같은 수치 또는 짧은 설명", "why": "왜 그렇게 움직였는지 한 문장"}}],
+  "market": [{{"key": "아래 목록 중 하나", "name": "S&P500·나스닥·다우·유가·금리·달러 등", "move": "+1.2% 같은 수치 또는 짧은 설명", "why": "왜 그렇게 움직였는지 한 문장"}}],
   "topics": [{{"title": "주제 제목", "points": ["쉬운 설명 문장", "..."]}}],
   "stocks": [{{"name": "종목 이름", "move": "등락(나왔으면)", "why": "이유 한두 문장"}}],
   "experts": [{{"who": "출연자 이름·소속(자막에 나온 대로, 오타는 고쳐서)", "view": "핵심 의견 2~3문장"}}],
   "watch": ["오늘·이번 주 지켜볼 일정이나 포인트"]
 }}
+market 의 key: sp500, nasdaq, dow, wti, brent, us10y, us2y, dxy, usdkrw, gold, silver, btc, eth, vix 중 맞는 것. 해당 없으면 "other".
 topics 는 4~7개, 각 points 2~4개. 방송에 없는 칸은 빈 배열로.
 
 [자막]
@@ -57,7 +58,7 @@ def log(*a):
 
 def find_video(day):
     """재생목록 최근 영상 중 제목에 [🔴MM/DD 가 있는 것."""
-    r = subprocess.run(YTDLP + ['--flat-playlist', '-J', '--playlist-end', '10', PLAYLIST],
+    r = subprocess.run(YTDLP + ['--flat-playlist', '-J', '--playlist-end', '30', PLAYLIST],
                        capture_output=True, text=True, timeout=180)
     if r.returncode:
         raise RuntimeError('재생목록 읽기 실패: ' + r.stderr[-300:])
@@ -111,6 +112,53 @@ def summarize(day, text):
     return s
 
 
+# 간밤 시장 항목에 실제 마감 값 붙이기 (방송 전날 미국 날짜 기준)
+YF = {'wti': ('CL=F', '$', 2), 'brent': ('BZ=F', '$', 2), 'us10y': ('^TNX', '%', 3), 'us2y': ('2YY=F', '%', 3),
+      'dxy': ('DX-Y.NYB', '', 2), 'usdkrw': ('KRW=X', '원', 1), 'gold': ('GC=F', '$', 1), 'silver': ('SI=F', '$', 2),
+      'btc': ('BTC-USD', '$', 0), 'eth': ('ETH-USD', '$', 0), 'vix': ('^VIX', '', 2)}
+
+
+def enrich(s, day):
+    last = str(day - dt.timedelta(days=1))
+    data = json.load(open(os.path.join(ROOT, 'docs', 'data.json')))
+    want = [m.get('key') for m in s.get('market', [])]
+    closes = {}
+    for m in data['markets']:
+        if m['id'] in ('sp500', 'nasdaq', 'dow'):
+            ix = [i for i, d in enumerate(m['dates']) if d <= last]
+            if len(ix) >= 2:
+                c = m['index']['c']; closes[m['id']] = (c[ix[-1]], c[ix[-2]], '', 2, m['dates'][ix[-1]])
+    tick = [YF[k][0] for k in want if k in YF]
+    if tick:
+        try:
+            import yfinance as yf
+            df = yf.download(tick, start=str(day - dt.timedelta(days=12)), end=str(day), progress=False,
+                             auto_adjust=False)['Close']
+            for k in want:
+                if k not in YF or YF[k][0] not in df:
+                    continue
+                col = df[YF[k][0]].dropna()
+                col = col[col.index.strftime('%Y-%m-%d') <= last]
+                if len(col) >= 2:
+                    closes[k] = (float(col.iloc[-1]), float(col.iloc[-2]), YF[k][1], YF[k][2], col.index[-1].strftime('%Y-%m-%d'))
+        except Exception as e:
+            log('시세 붙이기 실패:', e)
+    ref = closes['sp500'][4] if 'sp500' in closes else None  # 날짜가 다른(하루 묵은) 값은 안 붙인다
+    for m in s.get('market', []):
+        k = m.get('key')
+        if k not in closes or (ref and closes[k][4] != ref):
+            continue
+        v, prev, unit, nd, on = closes[k]
+        num = f'{v:,.{nd}f}'
+        m['level'] = (f'${num}' if unit == '$' else f'{num}{unit}')
+        if unit == '%':
+            m['chg'] = f'{(v - prev) * 100:+.1f}bp'
+        else:
+            m['chg'] = f'{(v / prev - 1) * 100:+.2f}%'
+        m['on'] = on
+    return s
+
+
 def publish(day):
     ds = day.isoformat()
     items = []
@@ -156,6 +204,7 @@ def main():
         return
     info, text = got
     s = summarize(day, text)
+    enrich(s, day)
     s.update(date=str(day), title=info.get('title', ''), video=vid,
              url=f'https://www.youtube.com/watch?v={vid}', duration=info.get('duration'),
              made=now().strftime('%Y-%m-%d %H:%M KST'))

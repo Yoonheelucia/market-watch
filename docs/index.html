@@ -179,9 +179,12 @@ h4 { font-size: 14px; margin: 20px 0 8px; }
 .dj-days a[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 .dj-h { font-size: 19px; margin: 6px 0 8px; line-height: 1.4; }
 .dj-yt { display: inline-block; margin-top: 4px; color: var(--accent); font-weight: 500; text-decoration: none; }
+.dj-t th { text-align: left; font-size: 12px; color: var(--muted); padding: 6px 10px; cursor: default; }
 .dj-t td { padding: 8px 10px; vertical-align: top; text-align: left; line-height: 1.5; }
-.dj-t td:first-child { white-space: nowrap; width: 1%; }
-.dj-t td.mv { min-width: 72px; max-width: 38vw; font-weight: 500; }
+.dj-t td { white-space: normal; word-break: keep-all; overflow-wrap: anywhere; }
+.dj-t td:first-child { width: 24%; }
+.dj-t td.mv { white-space: nowrap; }
+.dj-t td.mv { width: 1%; font-weight: 500; }
 .dj-topic { padding: 10px 0; border-top: 1px solid var(--line); line-height: 1.6; }
 .dj-topic:first-of-type { border-top: 0; }
 .dj-topic ul { margin: 6px 0 0; padding-left: 18px; } .dj-topic p { margin: 4px 0 0; }
@@ -622,13 +625,16 @@ async function renderDJ(day) {
   const rows = (list, a, b) => list.map(x => `<tr><td><b>${esc(x[a])}</b></td><td class="mv" style="color:${mv(x.move)}">${esc(x.move || '')}</td><td>${esc(x[b])}</td></tr>`).join('');
   main.innerHTML = `<div id="dj">
     <section class="card">
-      <div class="dj-days">${DJ_INDEX.items.slice(0, 15).map(x => `<a href="#dangjamsa/${x.date}" aria-current="${x.date === day}">${+x.date.slice(5, 7)}/${+x.date.slice(8)}</a>`).join('')}</div>
+      <div class="dj-days">${DJ_INDEX.items.slice(0, 23).map(x => `<a href="#dangjamsa/${x.date}" aria-current="${x.date === day}">${+x.date.slice(5, 7)}/${+x.date.slice(8)}</a>`).join('')}</div>
       <div class="t">${+day.slice(5, 7)}월 ${+day.slice(8)}일(${wk}) 당신이 잠든 사이에</div>
       <h2 class="dj-h">${esc(d.headline)}</h2>
       <p class="sm">${esc(d.summary)}</p>
       <a class="dj-yt" href="${esc(d.url)}" target="_blank" rel="noopener">▶ 원본 영상 보기${d.duration ? ` · ${Math.round(d.duration / 60)}분` : ''}</a>
     </section>
-    ${d.market?.length ? `<section class="card"><h4>간밤 시장</h4><div class="table-wrap"><table class="dj-t"><tbody>${rows(d.market, 'name', 'why')}</tbody></table></div></section>` : ''}
+    ${d.market?.length ? `<section class="card"><h4>간밤 시장</h4><div class="table-wrap"><table class="dj-t"><thead><tr><th>항목</th><th>마감 값</th><th>방송 내용</th></tr></thead><tbody>${d.market.map(x => `<tr><td><b>${esc(x.name)}</b></td>
+        <td class="mv">${x.level ? `<b>${esc(x.level)}</b><br><span style="color:${mv(x.chg)}">${esc(x.chg)}</span>` : `<span style="color:${mv(x.move)}">${esc(x.move || '')}</span>`}</td>
+        <td>${x.level && x.move ? `<span class="note">방송: ${esc(x.move)}</span><br>` : ''}${esc(x.why)}</td></tr>`).join('')}</tbody></table></div>
+      <div class="note" style="margin-top:6px">마감 값은 방송 전날 미국 시장 마감 기준이에요(지수는 사이트 데이터, 유가·금리·환율·금·코인은 야후 파이낸스). 방송은 장이 끝나기 전에 시작해서 방송 숫자와 조금 다를 수 있어요.</div></section>` : ''}
     <section class="card"><h4>주요 이야기</h4>${d.topics.map(t => `<div class="dj-topic"><b>${esc(t.title)}</b><ul>${t.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>`).join('')}</section>
     ${d.stocks?.length ? `<section class="card"><h4>방송에 나온 종목</h4><div class="table-wrap"><table class="dj-t"><tbody>${rows(d.stocks, 'name', 'why')}</tbody></table></div></section>` : ''}
     ${d.experts?.length ? `<section class="card"><h4>출연자 의견</h4>${d.experts.map(x => `<div class="dj-topic"><b>${esc(x.who)}</b><p>${esc(x.view)}</p></div>`).join('')}</section>` : ''}
