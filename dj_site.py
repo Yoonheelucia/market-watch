@@ -12,7 +12,7 @@
   python3 dj_site.py              # 오늘
   python3 dj_site.py --date 2026-11-05 --force
 """
-import argparse, datetime as dt, glob, json, os, re, subprocess, sys, tempfile
+import argparse, datetime as dt, glob, json, os, re, subprocess, sys, tempfile, time
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(ROOT, 'docs', 'dangjamsa')
@@ -240,12 +240,23 @@ def publish(day):
     c = git('commit', '-m', f'당잠사 요약 {ds}', '--', 'docs/dangjamsa')
     if c.returncode and 'nothing' not in c.stdout:
         raise RuntimeError('커밋 실패: ' + c.stdout + c.stderr)
+    err = ''
     for _ in range(3):
         if git('push').returncode == 0:
             log('올림 완료', ds)
             return
-        git('pull', '--rebase', '--autostash')
-    raise RuntimeError('푸시 실패')
+        r = git('pull', '--rebase', '--autostash')
+        if r.returncode:
+            err = (r.stdout + r.stderr).strip()[-300:]
+            git('rebase', '--abort')
+            # 서버에도 있는 파일이 내 컴퓨터에 추적 안 된 채 남아 있으면 rebase 가 멈춘다 → 그 파일만 치우고 다시
+            for f in re.findall(r'^\s+(\S+)$', r.stderr, re.M):
+                fp = os.path.join(ROOT, f)
+                if os.path.isfile(fp) and git('ls-files', '--error-unmatch', f).returncode:
+                    os.replace(fp, fp + '.local-bak')
+                    log('충돌하는 로컬 파일 옮김:', f)
+        time.sleep(5)
+    raise RuntimeError('푸시 실패: ' + err)
 
 
 def refill(day):
@@ -291,6 +302,16 @@ def main():
     if not a.force:
         if day.weekday() >= 5:
             return
+        if os.path.exists(path) and not a.no_push:
+            # 저장은 됐는데 사이트에 못 올라간 경우(푸시 실패) 다시 올린다
+            g = lambda *x: subprocess.run(['git', '-C', ROOT, *x], capture_output=True, text=True)
+            g('fetch', '-q')
+            if g('cat-file', '-e', f'origin/main:docs/dangjamsa/{day}.json').returncode:
+                log('저장된 요약이 아직 사이트에 없음 → 다시 올림', day)
+                try:
+                    publish(day)
+                except Exception as e:
+                    log('오류:', e)
         if os.path.exists(path):
             old = json.load(open(path))
             if old.get('chapters') != 'auto' or a.date or not (6 <= now().hour < 14):
