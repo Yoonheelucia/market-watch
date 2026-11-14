@@ -299,6 +299,13 @@ def main():
         return refill(day)
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, f'{day}.json')
+    if not a.date and not a.force:
+        # 맥이 꺼져 있어서 놓친 지난 평일(최근 14일)을 채운다. 한 번 실행에 최대 3일
+        missed = [day - dt.timedelta(days=k) for k in range(1, 15)]
+        missed = [d for d in missed if d.weekday() < 5 and not os.path.exists(os.path.join(OUT, f'{d}.json'))][:3]
+        for d in missed:
+            log('놓친 날 채우기', d)
+            subprocess.run([sys.executable, os.path.abspath(__file__), '--date', str(d)], timeout=1800)
     if not a.force:
         if day.weekday() >= 5:
             return
