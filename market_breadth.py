@@ -157,42 +157,66 @@ def build_indexes(data, full, fvol, lists, names):
     MEMBERS.write_text(json.dumps({'date': full.index[L].strftime('%Y-%m-%d'), 'stocks': stocks, 'groups': groups},
                                   ensure_ascii=False, separators=(',', ':')))
     try:
-        build_heatmap(full, names, ko)
+        build_heatmap(full, names, ko, lists)
     except Exception as e:
         print('지도 실패:', e)
     print('지수별 표:', ', '.join(f"{r['name']} {r['count']}" for tb in tables for r in tb['rows'][:3]))
 
 
-def build_heatmap(full, names, ko):
-    """브리핑 탭 'S&P 500 지도'(Finviz 맵처럼): 업종 → 세부 업종 → 종목, 크기=시가총액, 색=등락률"""
+YAHOO_SECTOR = {'Technology': 'Information Technology', 'Consumer Cyclical': 'Consumer Discretionary',
+                'Consumer Defensive': 'Consumer Staples', 'Healthcare': 'Health Care', 'Financial Services': 'Financials',
+                'Basic Materials': 'Materials', 'Communication Services': 'Communication Services', 'Industrials': 'Industrials',
+                'Energy': 'Energy', 'Utilities': 'Utilities', 'Real Estate': 'Real Estate'}
+SECTOR_EXTRA = ROOT / 'sector_extra.json'  # S&P 500 밖 종목(나스닥 100 등)의 업종 (야후에서 한 번 받아 저장)
+
+
+def build_heatmap(full, names, ko, lists=None):
+    """브리핑 탭 지도(Finviz 맵처럼): S&P 500 · 나스닥 100 · 다우. 업종 → 세부 업종 → 종목, 크기=시가총액, 색=등락률"""
     from breadth import SECTOR_KO
     from index_lists import CAPS, CAPS_CACHE, norm
+    import yfinance as yf
     caps = dict(json.loads(CAPS_CACHE.read_text())) if CAPS_CACHE.exists() else {}
     caps.update(CAPS)
     sp = pd.read_csv(ROOT / 'sp500.csv')
+    info = {norm(r['Symbol']): (r['GICS Sector'], r['GICS Sub-Industry'], r['Security']) for _, r in sp.iterrows()}
+    extra = json.loads(SECTOR_EXTRA.read_text()) if SECTOR_EXTRA.exists() else {}
+    lists = lists or {}
+    want = {'sp500': ('S&P 500', sorted(info)), 'ndx': ('나스닥 100', lists.get('ndx', [])), 'dow': ('다우 30', lists.get('dow', []))}
+    for t in sorted({t for _, v in want.values() for t in v} - set(info) - set(extra)):
+        try:
+            i = yf.Ticker(t).info
+            extra[t] = [YAHOO_SECTOR.get(i.get('sector'), i.get('sector') or '기타'), i.get('industry') or '기타', i.get('shortName') or t]
+            if not caps.get(t) and i.get('marketCap'):
+                caps[t] = i['marketCap']
+        except Exception as ex:
+            print('업종 정보 실패', t, ex)
+    SECTOR_EXTRA.write_text(json.dumps(extra, ensure_ascii=False, separators=(',', ':')))
+    info.update({t: tuple(v) for t, v in extra.items() if t not in info})
     L = len(full) - 1
     last = full.iloc[L]
     y0 = full[full.index.year < full.index[L].year]
     base = {'1d': full.iloc[L - 1], '1w': full.iloc[L - 5], '1m': full.iloc[L - 20], 'ytd': y0.iloc[-1] if len(y0) else full.iloc[0]}
-    sectors = {}
-    for _, r in sp.iterrows():
-        t = norm(r['Symbol'])
-        if t not in full or pd.isna(last[t]) or not caps.get(t):
-            continue
-        ch = [None if pd.isna(base[k][t]) or not base[k][t] else round(float(last[t] / base[k][t] * 100 - 100), 2) for k in base]
-        sec = sectors.setdefault(r['GICS Sector'], {})
-        sec.setdefault(r['GICS Sub-Industry'], []).append(
-            [t, ko.get(t) or (names.get(t) or [r['Security']])[0], round(caps[t] / 1e9, 1), *ch])
-    out = []
-    for sname, inds in sectors.items():
-        ind = [{'n': n, 's': sorted(v, key=lambda x: -x[2])} for n, v in inds.items()]
-        ind.sort(key=lambda x: -sum(s[2] for s in x['s']))
-        out.append({'n': sname, 'ko': SECTOR_KO.get(sname, sname), 'ind': ind})
-    out.sort(key=lambda x: -sum(s[2] for i in x['ind'] for s in i['s']))
-    n = sum(len(i['s']) for x in out for i in x['ind'])
+    maps = {}
+    for key, (title, tick) in want.items():
+        sectors = {}
+        for t in tick:
+            if t not in info or t not in full or pd.isna(last[t]) or not caps.get(t):
+                continue
+            sec, sub, en = info[t]
+            ch = [None if pd.isna(base[k][t]) or not base[k][t] else round(float(last[t] / base[k][t] * 100 - 100), 2) for k in base]
+            sectors.setdefault(sec, {}).setdefault(sub, []).append(
+                [t, ko.get(t) or (names.get(t) or [en])[0], round(caps[t] / 1e9, 1), *ch])
+        out = []
+        for sname, inds in sectors.items():
+            ind = [{'n': n, 's': sorted(v, key=lambda x: -x[2])} for n, v in inds.items()]
+            ind.sort(key=lambda x: -sum(s[2] for s in x['s']))
+            out.append({'n': sname, 'ko': SECTOR_KO.get(sname, sname), 'ind': ind})
+        out.sort(key=lambda x: -sum(s[2] for i in x['ind'] for s in i['s']))
+        if out:
+            maps[key] = {'name': title, 'sectors': out}
     (ROOT / 'docs' / 'heatmap.json').write_text(json.dumps(
-        {'date': full.index[L].strftime('%Y-%m-%d'), 'periods': list(base), 'sectors': out}, ensure_ascii=False, separators=(',', ':')))
-    print(f'S&P 500 지도: {n}개 종목')
+        {'date': full.index[L].strftime('%Y-%m-%d'), 'periods': list(base), 'maps': maps}, ensure_ascii=False, separators=(',', ':')))
+    print('지도:', ', '.join(f"{m['name']} {sum(len(i['s']) for x in m['sectors'] for i in x['ind'])}개" for m in maps.values()))
 
 
 if __name__ == '__main__':

@@ -83,6 +83,8 @@ h2 { font-size: 16px; margin: 32px 0 12px; }
 a.ix { color: var(--c1); text-decoration: none; } a.ix:hover { text-decoration: underline; }
 .hm-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .hm-tabs button { border: 1px solid var(--line, #8885); background: transparent; color: inherit; padding: 4px 10px; border-radius: 999px; font-size: 12px; cursor: pointer; margin-left: 4px; }
+.hm-ctl { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.hm-maps button { font-weight: 600; }
 .hm-tabs button.on { background: var(--c1); border-color: var(--c1); color: #fff; }
 .hm-sec { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
 .hm-sec span { color: #fff; font-size: 12px; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
@@ -630,7 +632,7 @@ async function renderBrief() {
       <div class="t">시장 브리핑 · ${esc(b.asOf.slice(5).replace('-', '월 '))}일${b.updated ? ' ' + esc(b.updated.slice(11, 16)) : ''} 기준</div>
       <p class="sm">${esc(b.summary)} <span class="note" style="white-space:nowrap">(호재 ${cnt('+')} · 악재 ${cnt('-')} · 혼재 ${cnt('±')})</span></p>
     </section>
-    <section class="card" id="hmCard"><h4>S&P 500 지도</h4><div class="note">불러오는 중…</div></section>
+    <section class="card" id="hmCard"><h4>미국 주식 지도</h4><div class="note">불러오는 중…</div></section>
     <section class="card brief-cols">
       <div><h4>이번 주 주요 일정 (한국시간 기준)</h4>${cal(b.week)}
         ${b.weekPast?.length ? `<h4 style="margin-top:18px">이번 주 지난 일정 · 주가 반응</h4>${pastCal(b.weekPast)}` : ''}</div>
@@ -648,8 +650,8 @@ async function renderBrief() {
 }
 
 // ───── S&P 500 지도 (Finviz 맵처럼: 업종 → 세부 업종 → 종목, 크기=시가총액, 색=등락률) ─────
-let HM, hmPeriod = '1d';
-try { hmPeriod = localStorage.getItem('hmPeriod') || '1d'; } catch (e) {}
+let HM, hmPeriod = '1d', hmMap = 'sp500';
+try { hmPeriod = localStorage.getItem('hmPeriod') || '1d'; hmMap = localStorage.getItem('hmMap') || 'sp500'; } catch (e) {}
 const HM_P = { '1d': ['하루', 3], '1w': ['1주', 6], '1m': ['1달', 10], 'ytd': ['연초 이후', 30] };  // [이름, 색이 가장 진해지는 등락률]
 // squarified treemap: items[{v}] 를 사각형 r 안에 채운다
 function squarify(items, r) {
@@ -690,28 +692,33 @@ async function renderHeatmap() {
     try { HM = await (await fetch('heatmap.json', { cache: 'no-cache' })).json(); }
     catch (e) { card.innerHTML = '<h4>S&P 500 지도</h4><div class="note">지도 데이터를 아직 불러오지 못했어요.</div>'; return; }
   }
+  const maps = HM.maps || { sp500: { name: 'S&P 500', sectors: HM.sectors } };
+  if (!maps[hmMap]) hmMap = 'sp500';
+  const MAP = maps[hmMap], mapName = MAP.name;
   const pi = HM.periods.indexOf(hmPeriod), max = HM_P[hmPeriod][1];
   const chg = s => s[3 + pi];
   // 업종별 시가총액 가중 평균 등락률
-  const secAvg = HM.sectors.map(x => {
+  const secAvg = MAP.sectors.map(x => {
     const st = x.ind.flatMap(i => i.s).filter(s => chg(s) != null), cap = st.reduce((a, s) => a + s[2], 0);
     return { ko: x.ko, n: x.n, c: st.reduce((a, s) => a + s[2] * chg(s), 0) / cap, cap };
   });
   const allCap = secAvg.reduce((a, x) => a + x.cap, 0), idx = secAvg.reduce((a, x) => a + x.c * x.cap, 0) / allCap;
   const sorted = [...secAvg].sort((a, b) => b.c - a.c);
-  card.innerHTML = `<div class="hm-top"><h4 style="margin:0">S&P 500 지도 <span class="note">${esc(HM.date)} 미국장 마감 기준</span></h4>
-      <div class="hm-tabs">${Object.entries(HM_P).map(([k, v]) => `<button data-p="${k}" class="${k === hmPeriod ? 'on' : ''}">${v[0]}</button>`).join('')}</div></div>
+  card.innerHTML = `<div class="hm-top"><h4 style="margin:0">${esc(mapName)} 지도 <span class="note">${esc(HM.date)} 미국장 마감 기준</span></h4>
+      <div class="hm-ctl"><div class="hm-tabs hm-maps">${Object.entries(maps).map(([k, m]) => `<button data-m="${k}" class="${k === hmMap ? 'on' : ''}">${esc(m.name)}</button>`).join('')}</div>
+      <div class="hm-tabs">${Object.entries(HM_P).map(([k, v]) => `<button data-p="${k}" class="${k === hmPeriod ? 'on' : ''}">${v[0]}</button>`).join('')}</div></div></div>
     <div class="note" style="margin:4px 0 8px">네모 하나가 종목 하나예요. <b>크기는 시가총액</b>, <b>색은 ${HM_P[hmPeriod][0]} 등락률</b>(빨강 오름 · 파랑 내림, ±${max}%면 가장 진함)이에요. 같은 업종끼리 묶여 있어서 오늘 어느 업종이 올랐는지 한눈에 보여요.</div>
     <div class="hm-sec">${sorted.map(x => `<span style="background:${hmColor(x.c, max)}">${esc(x.ko)} ${x.c >= 0 ? '+' : ''}${x.c.toFixed(2)}%</span>`).join('')}</div>
     <div id="hmMap" class="hm-map"></div><div id="hmTip" class="hm-tip" hidden></div>
-    <div class="note" style="margin-top:6px">S&P 500 종목 시가총액 가중 평균 ${idx >= 0 ? '+' : ''}${idx.toFixed(2)}% · 네모를 누르면 그 종목 실적 조회로 가요. 업종은 GICS 기준이에요.</div>`;
+    <div class="note" style="margin-top:6px">${esc(mapName)} 종목 시가총액 가중 평균 ${idx >= 0 ? '+' : ''}${idx.toFixed(2)}% · 네모를 누르면 그 종목 실적 조회로 가요. 업종은 GICS 기준이에요.</div>`;
   card.querySelectorAll('.hm-tabs button').forEach(bt => bt.onclick = () => {
-    hmPeriod = bt.dataset.p; try { localStorage.setItem('hmPeriod', hmPeriod); } catch (e) {} renderHeatmap();
+    if (bt.dataset.m) hmMap = bt.dataset.m; else hmPeriod = bt.dataset.p;
+    try { localStorage.setItem('hmPeriod', hmPeriod); localStorage.setItem('hmMap', hmMap); } catch (e) {} renderHeatmap();
   });
   const box = document.getElementById('hmMap'), W = box.clientWidth, H = Math.round(W < 640 ? W * 1.35 : Math.min(W * 0.56, 720));
   box.style.height = H + 'px';
   const html = [];
-  const secs = HM.sectors.map(x => ({ x, v: x.ind.reduce((a, i) => a + i.s.reduce((b, s) => b + s[2], 0), 0) }));
+  const secs = MAP.sectors.map(x => ({ x, v: x.ind.reduce((a, i) => a + i.s.reduce((b, s) => b + s[2], 0), 0) }));
   for (const sr of squarify(secs, { x: 0, y: 0, w: W, h: H })) {
     const sx = sr.it.x, head = sr.h > 40 && sr.w > 50 ? 15 : 0;
     html.push(`<div class="hm-s" style="left:${sr.x}px;top:${sr.y}px;width:${sr.w}px;height:${sr.h}px">${head ? `<b>${esc(sx.ko)}</b>` : ''}</div>`);
@@ -728,7 +735,7 @@ async function renderHeatmap() {
   }
   box.innerHTML = html.join('');
   // 마우스를 올리면 종목 정보
-  const find = {}; HM.sectors.forEach(x => x.ind.forEach(i => i.s.forEach(s => find[s[0]] = [s, x.ko, i.n])));
+  const find = {}; MAP.sectors.forEach(x => x.ind.forEach(i => i.s.forEach(s => find[s[0]] = [s, x.ko, i.n])));
   const tip = document.getElementById('hmTip');
   box.onmousemove = e => {
     const a = e.target.closest('.hm-t'); if (!a) { tip.hidden = true; return; }
