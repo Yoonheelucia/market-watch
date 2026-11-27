@@ -1,0 +1,35 @@
+name: 프리장 지도 업데이트
+
+on:
+  schedule:
+    # 미국 프리장(동부 04:00~09:30) 동안 20분마다. 서머타임 여부와 상관없이 덮도록 UTC 08~14시에 돌리고,
+    # 프리장 시간이 아니면 premarket.py 가 아무것도 하지 않는다.
+    - cron: '*/20 8-14 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: premarket
+  cancel-in-progress: false
+
+jobs:
+  premarket:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python premarket.py
+      - name: 변경사항 커밋
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898279+github-actions[bot]@users.noreply.github.com"
+          git add docs/premarket.json 2>/dev/null || true
+          git diff --cached --quiet && exit 0
+          git commit -m "프리장 지도 $(TZ=America/New_York date '+%F %H:%M') ET"
+          for i in 1 2 3; do git pull --rebase --autostash && git push && exit 0; sleep 5; done; exit 1

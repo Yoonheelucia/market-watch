@@ -215,7 +215,8 @@ def build_heatmap(full, names, ko, lists=None):
         if out:
             maps[key] = {'name': title, 'sectors': out}
     (ROOT / 'docs' / 'heatmap.json').write_text(json.dumps(
-        {'date': full.index[L].strftime('%Y-%m-%d'), 'periods': list(base), 'maps': maps}, ensure_ascii=False, separators=(',', ':')))
+        {'date': full.index[L].strftime('%Y-%m-%d'), 'periods': list(base), 'maps': maps,
+         'ranges': {k: [v.name.strftime('%Y-%m-%d'), full.index[L].strftime('%Y-%m-%d')] for k, v in base.items()}}, ensure_ascii=False, separators=(',', ':')))
     print('지도:', ', '.join(f"{m['name']} {sum(len(i['s']) for x in m['sectors'] for i in x['ind'])}개" for m in maps.values()))
 
 

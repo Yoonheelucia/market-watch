@@ -83,6 +83,8 @@ h2 { font-size: 16px; margin: 32px 0 12px; }
 a.ix { color: var(--c1); text-decoration: none; } a.ix:hover { text-decoration: underline; }
 .hm-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .hm-tabs button { border: 1px solid var(--line, #8885); background: transparent; color: inherit; padding: 4px 10px; border-radius: 999px; font-size: 12px; cursor: pointer; margin-left: 4px; }
+.hm-span { font-size: 13px; margin-top: 6px; color: var(--muted); }
+.hm-span b { color: var(--text, inherit); font-weight: 600; }
 .hm-ctl { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .hm-maps button { font-weight: 600; }
 .hm-tabs button.on { background: var(--c1); border-color: var(--c1); color: #fff; }
@@ -650,7 +652,7 @@ async function renderBrief() {
 }
 
 // ───── S&P 500 지도 (Finviz 맵처럼: 업종 → 세부 업종 → 종목, 크기=시가총액, 색=등락률) ─────
-let HM, hmPeriod = '1d', hmMap = 'sp500';
+let HM, PRE, hmPeriod = '1d', hmMap = 'sp500';
 try { hmPeriod = localStorage.getItem('hmPeriod') || '1d'; hmMap = localStorage.getItem('hmMap') || 'sp500'; } catch (e) {}
 const HM_P = { '1d': ['하루', 3], '1w': ['1주', 6], '1m': ['1달', 10], 'ytd': ['연초 이후', 30] };  // [이름, 색이 가장 진해지는 등락률]
 // squarified treemap: items[{v}] 를 사각형 r 안에 채운다
@@ -692,12 +694,22 @@ async function renderHeatmap() {
   if (!HM) {
     try { HM = await (await fetch('heatmap.json', { cache: 'no-cache' })).json(); }
     catch (e) { card.innerHTML = '<h4>S&P 500 지도</h4><div class="note">지도 데이터를 아직 불러오지 못했어요.</div>'; return; }
+    try { PRE = await (await fetch('premarket.json', { cache: 'no-cache' })).json(); } catch (e) { PRE = null; }
   }
+  // 프리장: 지도의 마지막 종가 다음 날 프리장 값이 있을 때만 버튼을 보여 준다
+  const preOk = PRE && PRE.base === HM.date && PRE.date > HM.date;
+  const PER = { ...(preOk ? { pre: ['프리장', 3] } : {}), ...HM_P };
+  if (!PER[hmPeriod]) hmPeriod = '1d';
   const maps = HM.maps || { sp500: { name: 'S&P 500', sectors: HM.sectors } };
   if (!maps[hmMap]) hmMap = 'sp500';
   const MAP = maps[hmMap], mapName = MAP.name;
-  const pi = HM.periods.indexOf(hmPeriod), max = HM_P[hmPeriod][1];
-  const chg = s => s[3 + pi];
+  const pi = HM.periods.indexOf(hmPeriod), max = PER[hmPeriod][1];
+  const chg = hmPeriod === 'pre' ? s => PRE.chg[s[0]] ?? null : s => s[3 + pi];
+  const md = (d, y) => `${y ? d.slice(0, 4) + '/' : ''}${+d.slice(5, 7)}/${+d.slice(8)}(${'일월화수목금토'[new Date(d + 'T00:00:00').getDay()]})`;
+  const rg = hmPeriod === 'pre' ? [PRE.base, PRE.date] : HM.ranges?.[hmPeriod];
+  const span = !rg ? '' : hmPeriod === 'pre'
+    ? `${md(rg[0])} 종가 → ${md(rg[1])} 프리장 ${PRE.et} (한국 ${PRE.kst}) 마지막 거래가`
+    : (yy => `${md(rg[0], yy)} 종가 → ${md(rg[1], yy)} 종가`)(rg[0].slice(0, 4) !== rg[1].slice(0, 4));
   // 업종별 시가총액 가중 평균 등락률
   const secAvg = MAP.sectors.map(x => {
     const st = x.ind.flatMap(i => i.s).filter(s => chg(s) != null), cap = st.reduce((a, s) => a + s[2], 0);
@@ -705,10 +717,11 @@ async function renderHeatmap() {
   });
   const allCap = secAvg.reduce((a, x) => a + x.cap, 0), idx = secAvg.reduce((a, x) => a + x.c * x.cap, 0) / allCap;
   const sorted = [...secAvg].sort((a, b) => b.c - a.c);
-  card.innerHTML = `<div class="hm-top"><h4 style="margin:0">${esc(mapName)} 지도 <span class="note">${esc(HM.date)} 미국장 마감 기준</span></h4>
+  card.innerHTML = `<div class="hm-top"><h4 style="margin:0">${esc(mapName)} 지도 <span class="note">${hmPeriod === 'pre' ? `프리장 미국 ${PRE.et} · 한국 ${PRE.kst} 기준` : `${esc(HM.date)} 미국장 마감 기준`}</span></h4>
       <div class="hm-ctl"><div class="hm-tabs hm-maps">${Object.entries(maps).map(([k, m]) => `<button data-m="${k}" class="${k === hmMap ? 'on' : ''}">${esc(m.name)}</button>`).join('')}</div>
-      <div class="hm-tabs">${Object.entries(HM_P).map(([k, v]) => `<button data-p="${k}" class="${k === hmPeriod ? 'on' : ''}">${v[0]}</button>`).join('')}</div></div></div>
-    <div class="note" style="margin:4px 0 8px">네모 하나가 종목 하나예요. <b>크기는 시가총액</b>, <b>색은 ${HM_P[hmPeriod][0]} 등락률</b>(Finviz처럼 초록 오름 · 빨강 내림, ±${max}%면 가장 진함)이에요. 같은 업종끼리 묶여 있어서 오늘 어느 업종이 올랐는지 한눈에 보여요.</div>
+      <div class="hm-tabs">${Object.entries(PER).map(([k, v]) => `<button data-p="${k}" class="${k === hmPeriod ? 'on' : ''}">${v[0]}</button>`).join('')}</div></div></div>
+    ${span ? `<div class="hm-span">📅 ${PER[hmPeriod][0]} 기간: <b>${span}</b></div>` : ''}
+    <div class="note" style="margin:4px 0 8px">네모 하나가 종목 하나예요. <b>크기는 시가총액</b>, <b>색은 ${PER[hmPeriod][0]} 등락률</b>(Finviz처럼 초록 오름 · 빨강 내림, ±${max}%면 가장 진함)이에요. 같은 업종끼리 묶여 있어서 오늘 어느 업종이 올랐는지 한눈에 보여요.${hmPeriod === 'pre' ? ' 프리장은 거래가 적어서 작은 종목은 몇 건 거래로 크게 움직일 수 있고, 아직 프리장 거래가 없는 종목은 회색이에요. 프리장 동안 20분쯤마다 새로 받아요.' : ''}</div>
     <div class="hm-sec">${sorted.map(x => `<span style="background:${hmColor(x.c, max)}">${esc(x.ko)} ${x.c >= 0 ? '+' : ''}${x.c.toFixed(2)}%</span>`).join('')}</div>
     <div id="hmMap" class="hm-map"></div><div id="hmTip" class="hm-tip" hidden></div>
     <div class="note" style="margin-top:6px">${esc(mapName)} 종목 시가총액 가중 평균 ${idx >= 0 ? '+' : ''}${idx.toFixed(2)}% · 네모를 누르면 그 종목 실적 조회로 가요. 업종은 GICS 기준이에요.</div>`;
@@ -742,7 +755,7 @@ async function renderHeatmap() {
     const a = e.target.closest('.hm-t'); if (!a) { tip.hidden = true; return; }
     const [s, sec, ind] = find[a.dataset.t];
     tip.innerHTML = `<b>${esc(s[0])}</b> ${esc(s[1])}<br><span class="note">${esc(sec)} · ${esc(ind)}</span><br>시가총액 ${s[2] >= 1000 ? '$' + (s[2] / 1000).toFixed(2) + 'T' : '$' + s[2].toFixed(0) + 'B'}<br>
-      ${HM.periods.map((k, j) => `${HM_P[k][0]} ${fmtPct(s[3 + j])}`).join(' · ')}`;
+      ${preOk ? `프리장 ${fmtPct(PRE.chg[s[0]] ?? null)} · ` : ''}${HM.periods.map((k, j) => `${HM_P[k][0]} ${fmtPct(s[3 + j])}`).join(' · ')}`;
     const r = card.getBoundingClientRect();
     tip.hidden = false;
     tip.style.left = Math.min(e.clientX - r.left + 14, r.width - tip.offsetWidth - 4) + 'px';
