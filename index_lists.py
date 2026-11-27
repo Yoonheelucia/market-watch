@@ -21,6 +21,8 @@ SSGA = 'https://www.ssga.com/us/en/intermediary/library-content/products/fund-da
 SECTORS = ['Consumer Discretionary', 'Consumer Staples', 'Energy', 'Financials', 'Health Care', 'Industrials',
            'Information Technology', 'Materials', 'Real Estate', 'Communication Services', 'Utilities']
 SECTOR_SHORT = {'Communication Services': 'Comm Services'}
+CAPS = {}  # 종목 → 시가총액(달러). russell() 이 채운다 (지도 크기에 씀)
+CAPS_CACHE = ROOT / 'caps_cache.json'
 
 
 def norm(t):
@@ -52,7 +54,10 @@ def russell(n_skip, n_take):
     out = []
     for off in range(0, 3250, 250):
         r = yf.screen(q, sortField='intradaymarketcap', sortAsc=False, size=250, offset=off).get('quotes', [])
-        out += [norm(x['symbol']) for x in r if x.get('quoteType') == 'EQUITY' and x.get('marketCap')]
+        for x in r:
+            if x.get('quoteType') == 'EQUITY' and x.get('marketCap'):
+                out.append(norm(x['symbol']))
+                CAPS.setdefault(norm(x['symbol']), x['marketCap'])
         if not r:
             break
     out = list(dict.fromkeys(out))
@@ -103,6 +108,8 @@ def build_lists(nasdaq_listed):
         lists['r1000'] = lists['r3000'][:1000]
         lists['r2000'] = lists['r3000'][1000:3000]
     CACHE.write_text(json.dumps(lists, separators=(',', ':')))
+    if len(CAPS) > 2000:
+        CAPS_CACHE.write_text(json.dumps(CAPS, separators=(',', ':')))
     return lists
 
 

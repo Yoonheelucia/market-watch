@@ -156,7 +156,43 @@ def build_indexes(data, full, fvol, lists, names):
                      None if pd.isna(vol[t]) else int(vol[t]), flags]
     MEMBERS.write_text(json.dumps({'date': full.index[L].strftime('%Y-%m-%d'), 'stocks': stocks, 'groups': groups},
                                   ensure_ascii=False, separators=(',', ':')))
+    try:
+        build_heatmap(full, names, ko)
+    except Exception as e:
+        print('지도 실패:', e)
     print('지수별 표:', ', '.join(f"{r['name']} {r['count']}" for tb in tables for r in tb['rows'][:3]))
+
+
+def build_heatmap(full, names, ko):
+    """브리핑 탭 'S&P 500 지도'(Finviz 맵처럼): 업종 → 세부 업종 → 종목, 크기=시가총액, 색=등락률"""
+    from breadth import SECTOR_KO
+    from index_lists import CAPS, CAPS_CACHE, norm
+    caps = dict(json.loads(CAPS_CACHE.read_text())) if CAPS_CACHE.exists() else {}
+    caps.update(CAPS)
+    sp = pd.read_csv(ROOT / 'sp500.csv')
+    L = len(full) - 1
+    last = full.iloc[L]
+    y0 = full[full.index.year < full.index[L].year]
+    base = {'1d': full.iloc[L - 1], '1w': full.iloc[L - 5], '1m': full.iloc[L - 20], 'ytd': y0.iloc[-1] if len(y0) else full.iloc[0]}
+    sectors = {}
+    for _, r in sp.iterrows():
+        t = norm(r['Symbol'])
+        if t not in full or pd.isna(last[t]) or not caps.get(t):
+            continue
+        ch = [None if pd.isna(base[k][t]) or not base[k][t] else round(float(last[t] / base[k][t] * 100 - 100), 2) for k in base]
+        sec = sectors.setdefault(r['GICS Sector'], {})
+        sec.setdefault(r['GICS Sub-Industry'], []).append(
+            [t, ko.get(t) or (names.get(t) or [r['Security']])[0], round(caps[t] / 1e9, 1), *ch])
+    out = []
+    for sname, inds in sectors.items():
+        ind = [{'n': n, 's': sorted(v, key=lambda x: -x[2])} for n, v in inds.items()]
+        ind.sort(key=lambda x: -sum(s[2] for s in x['s']))
+        out.append({'n': sname, 'ko': SECTOR_KO.get(sname, sname), 'ind': ind})
+    out.sort(key=lambda x: -sum(s[2] for i in x['ind'] for s in i['s']))
+    n = sum(len(i['s']) for x in out for i in x['ind'])
+    (ROOT / 'docs' / 'heatmap.json').write_text(json.dumps(
+        {'date': full.index[L].strftime('%Y-%m-%d'), 'periods': list(base), 'sectors': out}, ensure_ascii=False, separators=(',', ':')))
+    print(f'S&P 500 지도: {n}개 종목')
 
 
 if __name__ == '__main__':
