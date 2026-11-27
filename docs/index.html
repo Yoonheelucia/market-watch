@@ -681,9 +681,10 @@ function squarify(items, r) {
   return out;
 }
 const hmColor = (c, max) => {
+  // Finviz 지도와 같은 색: 초록 오름 · 빨강 내림 · 회색 보합
   if (c == null) return '#555a66';
   const a = Math.min(Math.abs(c) / max, 1) * 88 + (Math.abs(c) < 0.05 ? 0 : 12);
-  return `color-mix(in srgb, ${c >= 0 ? 'var(--up)' : 'var(--down)'} ${a.toFixed(0)}%, #3f4350)`;
+  return `color-mix(in srgb, ${c >= 0 ? '#30cc5a' : '#f63538'} ${a.toFixed(0)}%, #414554)`;
 };
 async function renderHeatmap() {
   const card = document.getElementById('hmCard');
@@ -707,7 +708,7 @@ async function renderHeatmap() {
   card.innerHTML = `<div class="hm-top"><h4 style="margin:0">${esc(mapName)} 지도 <span class="note">${esc(HM.date)} 미국장 마감 기준</span></h4>
       <div class="hm-ctl"><div class="hm-tabs hm-maps">${Object.entries(maps).map(([k, m]) => `<button data-m="${k}" class="${k === hmMap ? 'on' : ''}">${esc(m.name)}</button>`).join('')}</div>
       <div class="hm-tabs">${Object.entries(HM_P).map(([k, v]) => `<button data-p="${k}" class="${k === hmPeriod ? 'on' : ''}">${v[0]}</button>`).join('')}</div></div></div>
-    <div class="note" style="margin:4px 0 8px">네모 하나가 종목 하나예요. <b>크기는 시가총액</b>, <b>색은 ${HM_P[hmPeriod][0]} 등락률</b>(빨강 오름 · 파랑 내림, ±${max}%면 가장 진함)이에요. 같은 업종끼리 묶여 있어서 오늘 어느 업종이 올랐는지 한눈에 보여요.</div>
+    <div class="note" style="margin:4px 0 8px">네모 하나가 종목 하나예요. <b>크기는 시가총액</b>, <b>색은 ${HM_P[hmPeriod][0]} 등락률</b>(Finviz처럼 초록 오름 · 빨강 내림, ±${max}%면 가장 진함)이에요. 같은 업종끼리 묶여 있어서 오늘 어느 업종이 올랐는지 한눈에 보여요.</div>
     <div class="hm-sec">${sorted.map(x => `<span style="background:${hmColor(x.c, max)}">${esc(x.ko)} ${x.c >= 0 ? '+' : ''}${x.c.toFixed(2)}%</span>`).join('')}</div>
     <div id="hmMap" class="hm-map"></div><div id="hmTip" class="hm-tip" hidden></div>
     <div class="note" style="margin-top:6px">${esc(mapName)} 종목 시가총액 가중 평균 ${idx >= 0 ? '+' : ''}${idx.toFixed(2)}% · 네모를 누르면 그 종목 실적 조회로 가요. 업종은 GICS 기준이에요.</div>`;
